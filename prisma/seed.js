@@ -28,6 +28,23 @@ async function main() {
     }
   });
 
+  await prisma.user.upsert({
+    where: { username: "administrator" },
+    update: {
+      password: adminPassword,
+      role: "ZARZAD",
+      status: "ACCEPTED",
+      carrier: "VMPK"
+    },
+    create: {
+      username: "administrator",
+      password: adminPassword,
+      role: "ZARZAD",
+      status: "ACCEPTED",
+      carrier: "VMPK"
+    }
+  });
+
   // 2. Driver
   const driver = await prisma.user.upsert({
     where: { username: "kierowca1" },

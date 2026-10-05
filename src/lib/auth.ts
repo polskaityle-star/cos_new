@@ -3,6 +3,16 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
+if (!process.env.NEXTAUTH_SECRET) {
+  process.env.NEXTAUTH_SECRET = "default_secret_vztm_kielce_987654321_secret";
+}
+if (!process.env.AUTH_TRUST_HOST) {
+  process.env.AUTH_TRUST_HOST = "true";
+}
+if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
+  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({

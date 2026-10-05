@@ -19,6 +19,23 @@ function initPrismaClient(): PrismaClient {
     return new PrismaClient({ adapter });
   }
 
+  // Fallback dla środowiska Vercel bez zewnętrznej bazy:
+  // Kopiujemy seed.db do zapisywalnego katalogu /tmp
+  if (process.env.VERCEL) {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const tmpDb = "/tmp/dev.db";
+      const seedDb = path.join(process.cwd(), "prisma", "seed.db");
+      if (!fs.existsSync(tmpDb) && fs.existsSync(seedDb)) {
+        fs.copyFileSync(seedDb, tmpDb);
+      }
+      process.env.DATABASE_URL = "file:/tmp/dev.db";
+    } catch (e) {
+      console.error("Vercel tmp db setup error:", e);
+    }
+  }
+
   return new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["query"] : ["error"],
   });
