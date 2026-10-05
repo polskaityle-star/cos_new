@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --color-vmpk-red: #E31837;
+  --color-vmpk-yellow: #FFC627;
+  --color-vbp-blue: #005A9C;
+  --color-vbp-white: #FFFFFF;
+}
+
+body {
+  background-color: #0f172a; /* bg-slate-900 */
+  color: #f1f5f9; /* text-slate-100 */
+}

@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      String   @default("KIEROWCA") // KIEROWCA, ZARZAD
+  carrier   String?  // VMPK, VBP (nullable until accepted or specified in registration)
+  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt DateTime @default(now())
+  duties    Duty[]
+}
+
+model Vehicle {
+  id           String   @id @default(cuid())
+  carrier      String   // VMPK, VBP
+  model        String
+  registration String   @unique
+  fleetNumber  String
+}
+
+model Line {
+  id        String   @id @default(cuid())
+  number    String
+  startStop String
+  endStop   String
+  duties    Duty[]
+}
+
+model Duty {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  lineId   String
+  line     Line     @relation(fields: [lineId], references: [id])
+  date     DateTime
+  status   String   @default("SCHEDULED") // SCHEDULED, COMPLETED
+  report   Report?
+}
+
+model Report {
+  id              String   @id @default(cuid())
+  dutyId          String   @unique
+  duty            Duty     @relation(fields: [dutyId], references: [id])
+  startMileage    Int
+  endMileage      Int
+  startScreenshot String
+  endScreenshot   String
+  summaryFile     String
+  status          String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt       DateTime @default(now())
+}
