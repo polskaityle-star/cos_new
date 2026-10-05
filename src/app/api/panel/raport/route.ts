@@ -8,14 +8,21 @@ import path from "path";
 
 async function saveUploadFile(file: File, prefix: string): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
-  const ext = path.extname(file.name) || (prefix.includes("summary") ? ".txt" : ".png");
-  const fileName = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "reports");
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+  const mimeType = file.type || (prefix.includes("summary") ? "text/plain" : "image/png");
+
+  try {
+    const ext = path.extname(file.name) || (prefix.includes("summary") ? ".txt" : ".png");
+    const fileName = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
+    const uploadDir = path.join(process.cwd(), "public", "uploads", "reports");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(uploadDir, fileName), buffer);
+    return `/uploads/reports/${fileName}`;
+  } catch {
+    // Fallback dla hostingu serverless (np. Vercel)
+    return `data:${mimeType};base64,${buffer.toString("base64")}`;
   }
-  fs.writeFileSync(path.join(uploadDir, fileName), buffer);
-  return `/uploads/reports/${fileName}`;
 }
 
 export async function POST(req: Request) {

@@ -34,8 +34,11 @@ export async function POST(req: Request) {
       }
       fs.writeFileSync(path.join(uploadDir, fileName), buffer);
       imageUrl = `/uploads/vehicles/${fileName}`;
-    } catch (e) {
-      console.error("Failed to save vehicle image:", e);
+    } catch {
+      // Fallback dla serverless (np. Vercel)
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      const mime = imageFile.type || "image/jpeg";
+      imageUrl = `data:${mime};base64,${buffer.toString("base64")}`;
     }
   }
 
