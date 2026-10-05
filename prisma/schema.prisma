@@ -8,47 +8,73 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  role      String   @default("KIEROWCA") // KIEROWCA, ZARZAD
-  carrier   String?  // VMPK, VBP (nullable until accepted or specified in registration)
-  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  createdAt DateTime @default(now())
-  duties    Duty[]
+  id             String          @id @default(cuid())
+  username       String          @unique
+  password       String
+  role           String          @default("KIEROWCA") // KIEROWCA, ZARZAD
+  carrier        String?         // VMPK, VBP (nullable until accepted or specified in registration)
+  status         String          @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt      DateTime        @default(now())
+  duties         Duty[]
+  driverRequests DriverRequest[]
+  vehicleDefects VehicleDefect[]
 }
 
 model Vehicle {
-  id           String   @id @default(cuid())
-  carrier      String   // VMPK, VBP
+  id           String          @id @default(cuid())
+  carrier      String          // VMPK, VBP
   model        String
-  registration String   @unique
+  registration String          @unique
   fleetNumber  String
+  status       String          @default("SPRAWNY") // SPRAWNY, WARSZTAT, KASACJA
+  imageUrl     String?         // Ścieżka do zdjęcia PNG/JPG
+  year         Int?
+  capacity     String?
+  defects      VehicleDefect[]
 }
 
 model Line {
-  id        String   @id @default(cuid())
-  number    String
-  startStop String
-  endStop   String
-  duties    Duty[]
+  id               String            @id @default(cuid())
+  number           String
+  startStop        String?           @default("")
+  endStop          String?           @default("")
+  description      String?
+  directions       String?           // Kierunki / warianty trasy
+  brigades         String?           // Brygady (np. "1, 2, 3")
+  duties           Duty[]
+  brigadeSchedules BrigadeSchedule[]
+}
+
+model BrigadeSchedule {
+  id            String   @id @default(cuid())
+  lineId        String
+  line          Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  brigadeNumber String   // np. "34/1", "Brygada 2"
+  startTime     String   // np. "05:15"
+  endTime       String   // np. "13:45"
+  startLocation String   // np. "Zajezdnia VMPK / Bukówka"
+  endLocation   String   // np. "Bukówka / Zajezdnia"
+  driverChanges String?  // Przesiadki kierowców / podmiany (np. "Przesiadka na Żytniej o 09:30")
+  notes         String?  // Uwagi
+  createdAt     DateTime @default(now())
 }
 
 model Duty {
-  id       String   @id @default(cuid())
-  userId   String
-  user     User     @relation(fields: [userId], references: [id])
-  lineId   String
-  line     Line     @relation(fields: [lineId], references: [id])
-  date     DateTime
-  status   String   @default("SCHEDULED") // SCHEDULED, COMPLETED
-  report   Report?
+  id      String   @id @default(cuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lineId  String
+  line    Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  date    DateTime
+  brigade String?  // np. "34/2 - dni robocze"
+  status  String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  report  Report?
 }
 
 model Report {
   id              String   @id @default(cuid())
   dutyId          String   @unique
-  duty            Duty     @relation(fields: [dutyId], references: [id])
+  duty            Duty     @relation(fields: [dutyId], references: [id], onDelete: Cascade)
   startMileage    Int
   endMileage      Int
   startScreenshot String
@@ -56,4 +82,46 @@ model Report {
   summaryFile     String
   status          String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
   createdAt       DateTime @default(now())
+}
+
+model DriverRequest {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String    // DODATKOWA_SLUZBA, ANULOWANIE_SLUZBY, URLOP
+  reason    String
+  dateStart DateTime?
+  dateEnd   DateTime?
+  dutyId    String?
+  details   String?
+  status    String    @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt DateTime  @default(now())
+}
+
+model VehicleDefect {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleId     String
+  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  title         String
+  description   String
+  defectType    String?   // np. "Awaria mechaniczna", "Układ hamulcowy", "Elektryka", "Kolizja"
+  workshopStart DateTime? // Od kiedy na warsztacie
+  workshopEnd   DateTime? // Do kiedy na warsztacie
+  adminNotes    String?   // Notatka zarządu / warsztatu
+  status        String    @default("NOWE") // NOWE, WARSZTAT, NAPRAWIONE, ODRZUCONE
+  createdAt     DateTime  @default(now())
+}
+
+model ContactMessage {
+  id        String    @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  status    String    @default("NOWA") // NOWA, PRZECZYTANA, ODPOWIEDZIANO
+  reply     String?   // Odpowiedź Zarządu
+  repliedAt DateTime? // Data odpowiedzi
+  createdAt DateTime  @default(now())
 }

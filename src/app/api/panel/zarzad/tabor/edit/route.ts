@@ -9,19 +9,21 @@ import path from "path";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session || !session.user || session.user.role !== "ZARZAD") {
     return NextResponse.json({ message: "Brak autoryzacji" }, { status: 401 });
   }
 
   const formData = await req.formData();
+  const id = formData.get("id") as string;
   const carrier = formData.get("carrier") as string;
   const model = formData.get("model") as string;
   const registration = formData.get("registration") as string;
   const fleetNumber = formData.get("fleetNumber") as string;
+  const status = formData.get("status") as string;
   const imageFile = formData.get("image") as File | null;
 
-  let imageUrl: string | null = null;
+  let newImageUrl: string | undefined = undefined;
 
   if (imageFile && imageFile.size > 0 && typeof imageFile.arrayBuffer === "function") {
     try {
@@ -33,21 +35,28 @@ export async function POST(req: Request) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
       fs.writeFileSync(path.join(uploadDir, fileName), buffer);
-      imageUrl = `/uploads/vehicles/${fileName}`;
+      newImageUrl = `/uploads/vehicles/${fileName}`;
     } catch (e) {
-      console.error("Failed to save vehicle image:", e);
+      console.error("Failed to save updated vehicle image:", e);
     }
   }
 
-  if (carrier && model && registration && fleetNumber) {
-    await prisma.vehicle.create({
-      data: {
-        carrier,
-        model,
-        registration,
-        fleetNumber,
-        imageUrl: imageUrl || null
-      }
+  if (id && carrier && model && registration && fleetNumber) {
+    const updateData: any = {
+      carrier,
+      model,
+      registration,
+      fleetNumber,
+      status: status || "SPRAWNY"
+    };
+
+    if (newImageUrl) {
+      updateData.imageUrl = newImageUrl;
+    }
+
+    await prisma.vehicle.update({
+      where: { id },
+      data: updateData
     });
     revalidatePath("/tabor");
     revalidatePath("/panel/zarzad");

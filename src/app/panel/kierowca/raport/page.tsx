@@ -13,9 +13,10 @@ function ReportFormContent() {
 
   const [startMileage, setStartMileage] = useState("");
   const [endMileage, setEndMileage] = useState("");
-  const [startScreen, setStartScreen] = useState("");
-  const [endScreen, setEndScreen] = useState("");
-  const [summaryFile, setSummaryFile] = useState("");
+  
+  const [startFile, setStartFile] = useState<File | null>(null);
+  const [endFile, setEndFile] = useState<File | null>(null);
+  const [summaryFile, setSummaryFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,18 +29,24 @@ function ReportFormContent() {
       return;
     }
 
+    if (!startFile || !endFile || !summaryFile) {
+      setError("Wszystkie 3 pliki (screen start, screen koniec, podsumowanie .txt) są wymagane.");
+      setLoading(false);
+      return;
+    }
+
     try {
+      const formData = new FormData();
+      formData.append("dutyId", dutyId);
+      formData.append("startMileage", startMileage);
+      formData.append("endMileage", endMileage);
+      formData.append("startScreenshotFile", startFile);
+      formData.append("endScreenshotFile", endFile);
+      formData.append("summaryDocFile", summaryFile);
+
       const res = await fetch("/api/panel/raport", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dutyId,
-          startMileage: parseInt(startMileage),
-          endMileage: parseInt(endMileage),
-          startScreenshot: startScreen,
-          endScreenshot: endScreen,
-          summaryFile: summaryFile
-        }),
+        body: formData,
       });
 
       if (!res.ok) {
@@ -66,33 +73,76 @@ function ReportFormContent() {
       
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <label className="text-sm text-slate-300">Stan licznika (Start) [km]</label>
-          <input type="number" required value={startMileage} onChange={e => setStartMileage(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500" />
+          <label className="text-sm font-medium text-slate-300">Stan licznika (Start) [km] *</label>
+          <input
+            type="number"
+            required
+            value={startMileage}
+            onChange={e => setStartMileage(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500 text-white"
+            placeholder="np. 125400"
+          />
         </div>
         <div className="space-y-2">
-          <label className="text-sm text-slate-300">Stan licznika (Koniec) [km]</label>
-          <input type="number" required value={endMileage} onChange={e => setEndMileage(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500" />
+          <label className="text-sm font-medium text-slate-300">Stan licznika (Koniec) [km] *</label>
+          <input
+            type="number"
+            required
+            value={endMileage}
+            onChange={e => setEndMileage(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500 text-white"
+            placeholder="np. 125445"
+          />
         </div>
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm text-slate-300">Link do screena z pierwszego przystanku (np. Imgur)</label>
-        <input type="url" required value={startScreen} onChange={e => setStartScreen(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500" placeholder="https://..." />
+        <label className="text-sm font-medium text-slate-300">
+          📷 Screen z pierwszego przystanku (Start) [JPG, PNG] *
+        </label>
+        <input
+          type="file"
+          required
+          accept="image/png, image/jpeg, image/jpg, image/webp"
+          onChange={e => setStartFile(e.target.files?.[0] || null)}
+          className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-emerald-700 file:text-white hover:file:bg-emerald-600"
+        />
+        <p className="text-xs text-slate-400">Wyraźny zrzut ekranu pulpitu/autobusu na przystanku początkowym.</p>
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm text-slate-300">Link do screena z podsumowania (Ostatni przystanek)</label>
-        <input type="url" required value={endScreen} onChange={e => setEndScreen(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500" placeholder="https://..." />
+        <label className="text-sm font-medium text-slate-300">
+          📷 Screen z podsumowania / ostatniego przystanku (Koniec) [JPG, PNG] *
+        </label>
+        <input
+          type="file"
+          required
+          accept="image/png, image/jpeg, image/jpg, image/webp"
+          onChange={e => setEndFile(e.target.files?.[0] || null)}
+          className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-emerald-700 file:text-white hover:file:bg-emerald-600"
+        />
+        <p className="text-xs text-slate-400">Zrzut ekranu z końcowego przystanku lub ekranu podsumowania trasy.</p>
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm text-slate-300">Link do pliku .txt (Podsumowanie z OMSI)</label>
-        <input type="url" required value={summaryFile} onChange={e => setSummaryFile(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500" placeholder="https://..." />
-        <p className="text-xs text-slate-400">Możesz wrzucić plik tekstowy np. na Pastebin i wkleić tutaj link.</p>
+        <label className="text-sm font-medium text-slate-300">
+          📄 Plik podsumowania z OMSI (.txt) *
+        </label>
+        <input
+          type="file"
+          required
+          accept=".txt, text/plain"
+          onChange={e => setSummaryFile(e.target.files?.[0] || null)}
+          className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-700 file:text-white hover:file:bg-blue-600"
+        />
+        <p className="text-xs text-slate-400">Plik wygenerowany przez OMSI 2 lub zrzut logu ze służby.</p>
       </div>
 
-      <button disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-lg shadow disabled:opacity-50 transition-colors">
-        {loading ? "Wysyłanie..." : "Wyślij raport"}
+      <button
+        disabled={loading}
+        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-lg shadow disabled:opacity-50 transition-colors"
+      >
+        {loading ? "Wysyłanie plików raportu..." : "Wyślij raport ze służby"}
       </button>
     </form>
   );

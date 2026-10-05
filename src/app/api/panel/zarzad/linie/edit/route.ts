@@ -7,27 +7,31 @@ import { revalidatePath } from "next/cache";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
-  
+
   if (!session || !session.user || session.user.role !== "ZARZAD") {
     return NextResponse.json({ message: "Brak autoryzacji" }, { status: 401 });
   }
 
   const formData = await req.formData();
+  const id = formData.get("id") as string;
   const number = formData.get("number") as string;
   const startStop = formData.get("startStop") as string;
   const endStop = formData.get("endStop") as string;
   const directions = formData.get("directions") as string;
   const brigades = formData.get("brigades") as string;
 
-  if (number) {
-    await prisma.line.create({
-      data: {
-        number,
-        startStop: startStop || "",
-        endStop: endStop || "",
-        directions: directions || null,
-        brigades: brigades || null,
-      }
+  if (id && number) {
+    const updateData: any = {
+      number,
+      directions: directions || null,
+      brigades: brigades || null,
+    };
+    if (startStop !== undefined && startStop !== null) updateData.startStop = startStop;
+    if (endStop !== undefined && endStop !== null) updateData.endStop = endStop;
+
+    await prisma.line.update({
+      where: { id },
+      data: updateData
     });
     revalidatePath("/linie");
     revalidatePath("/brygady");
