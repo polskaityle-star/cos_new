@@ -7,8 +7,8 @@ import { Providers } from "@/components/Providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "VZTM Kielce",
-  description: "Wirtualny Zarząd Transportu Miejskiego w Kielcach",
+  title: "VZTM Kielce (v0.3.2.0) - Wirtualny Zarząd Transportu Miejskiego",
+  description: "Wirtualny Zarząd Transportu Miejskiego w Kielcach (OMSI 2)",
 };
 
 export default function RootLayout({

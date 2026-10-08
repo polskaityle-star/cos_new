@@ -23,9 +23,12 @@ export default function Navbar() {
           <span className="text-xl font-bold font-mono tracking-wider flex items-center gap-2 group-hover:text-amber-300 transition-colors">
             🚍 VZTM KIELCE
           </span>
-          <span className="text-[11px] font-mono font-semibold text-amber-300/90 tracking-normal">
-            v0.3.2.0
-          </span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-1.5 py-0.2 rounded text-[11px] font-mono font-bold tracking-normal shadow-xs">
+              v0.3.2.0
+            </span>
+            <span className="text-[10px] text-slate-300 font-medium">BETA</span>
+          </div>
         </Link>
         <div className="flex gap-4 md:gap-5 items-center flex-wrap">
           <Link href="/" className="hover:text-amber-300 font-semibold transition-colors">Strona Główna</Link>
