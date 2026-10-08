@@ -1,7 +1,7 @@
 # 🚍 VZTM Kielce – Poradnik Użytkownika i Systemu
 
 Witaj w oficjalnym przewodniku po systemie **VZTM Kielce** (Wirtualny Zarząd Transportu Miejskiego w Kielcach – wirtualna firma dla symulatora OMSI 2).  
-System umożliwia zarządzanie przewoźnikami **VMPK Kielce** oraz **VBP Kielce**, prowadzenie taboru, układanie rozkładów brygad, przydzielanie służb kierowcom oraz pełne rozliczanie i raportowanie wykonanych kursów.
+System umożliwia zarządzanie przewoźnikami **VMPK Kielce** oraz **VBP Tour Regio Kielce**, prowadzenie taboru, układanie rozkładów brygad, przydzielanie służb kierowcom oraz pełne rozliczanie i raportowanie wykonanych kursów.
 
 ---
 
