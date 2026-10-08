@@ -159,13 +159,24 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
+        // Sanityzacja awatara - zapobieganie 494 REQUEST_HEADER_TOO_LARGE:
+        // Ciasteczko sesyjne JWT nie może zawierać długich ciągów znaków (base64)!
+        let safeAvatar: string | null = null;
+        if (user.avatar) {
+          if (user.avatar.startsWith("http://") || user.avatar.startsWith("https://")) {
+            safeAvatar = user.avatar;
+          } else {
+            safeAvatar = `/api/panel/avatar?userId=${user.id}`;
+          }
+        }
+
         return {
           id: user.id,
           username: user.username,
           role: user.role,
           carrier: user.carrier,
           badgeNumber: user.badgeNumber,
-          avatar: user.avatar,
+          avatar: safeAvatar,
           workingDays: user.workingDays,
           assignedVehicleId: user.assignedVehicleId,
         };
@@ -183,7 +194,16 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.carrier = user.carrier;
         token.badgeNumber = user.badgeNumber;
-        token.avatar = user.avatar;
+        
+        // Zabezpieczenie przed przepełnieniem ciasteczka:
+        if (user.avatar && (user.avatar.startsWith("http://") || user.avatar.startsWith("https://"))) {
+          token.avatar = user.avatar;
+        } else if (user.avatar) {
+          token.avatar = `/api/panel/avatar?userId=${user.id}`;
+        } else {
+          token.avatar = null;
+        }
+
         token.workingDays = user.workingDays;
         token.assignedVehicleId = user.assignedVehicleId;
       }

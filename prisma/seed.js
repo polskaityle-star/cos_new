@@ -24,7 +24,8 @@ async function main() {
       role: "WLASCICIEL",
       badgeNumber: "W1",
       status: "ACCEPTED",
-      carrier: "VMPK"
+      carrier: "VMPK",
+      avatar: null
     },
     create: {
       username: "Godksawiss",

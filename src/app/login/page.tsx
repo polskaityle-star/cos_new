@@ -35,7 +35,9 @@ export default function LoginPage() {
         try {
           const sessionRes = await fetch("/api/auth/session");
           const sessionData = await sessionRes.json();
-          if (sessionData?.user?.role === "ZARZAD") {
+          const role = sessionData?.user?.role;
+          const managementRoles = ["WLASCICIEL", "ZARZAD", "DYSPOZYTOR", "KIEROWNIK_PRZEWOZOW", "MECHANIK", "SPRAWDZAJACY"];
+          if (managementRoles.includes(role)) {
             window.location.href = "/panel/zarzad";
             return;
           }

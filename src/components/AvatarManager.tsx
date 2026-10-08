@@ -20,14 +20,33 @@ export default function AvatarManager({ currentAvatar, username }: { currentAvat
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      setMessage("Maksymalny rozmiar pliku to 2MB.");
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage("Maksymalny rozmiar pliku to 5MB.");
       return;
     }
 
     const reader = new FileReader();
     reader.onload = () => {
-      setAvatarUrl(reader.result as string);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const size = 160;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          // Centrowanie i przycinanie do kwadratu
+          const minDim = Math.min(img.width, img.height);
+          const sx = (img.width - minDim) / 2;
+          const sy = (img.height - minDim) / 2;
+          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+          const compressed = canvas.toDataURL("image/jpeg", 0.8);
+          setAvatarUrl(compressed);
+        } else {
+          setAvatarUrl(reader.result as string);
+        }
+      };
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
   };

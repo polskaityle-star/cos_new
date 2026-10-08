@@ -24,6 +24,7 @@ export async function GET() {
         badgeNumber: "W1",
         status: "ACCEPTED",
         carrier: "VMPK",
+        avatar: null,
       },
       create: {
         username: "Godksawiss",
