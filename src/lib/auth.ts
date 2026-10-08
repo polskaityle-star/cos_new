@@ -30,39 +30,69 @@ export const authOptions: NextAuthOptions = {
         const lowerUsername = inputUsername.toLowerCase();
         const inputPassword = credentials.password.trim();
 
-        // Find user by exact name or lowercase, and support admin/administrator interchangeably
+        // 1. Usunięcie konta "administrator" jeśli jeszcze istnieje w bazie
+        try {
+          await prisma.user.deleteMany({
+            where: {
+              username: { in: ["administrator", "Administrator"] },
+            },
+          });
+        } catch {
+          // ignoruj błąd czyszczenia
+        }
+
+        // 2. Wyszukanie użytkownika (wsparcie dla Godksawiss oraz migracji ze starego konta admin)
+        const isGodOrAdmin = lowerUsername === "godksawiss" || lowerUsername === "admin";
+
         let user = await prisma.user.findFirst({
           where: {
             OR: [
               { username: inputUsername },
               { username: lowerUsername },
-              ...(lowerUsername === "administrator" ? [{ username: "admin" }] : []),
-              ...(lowerUsername === "admin" ? [{ username: "administrator" }] : []),
+              ...(isGodOrAdmin
+                ? [
+                    { username: "Godksawiss" },
+                    { username: "godksawiss" },
+                    { username: "admin" },
+                    { username: "Admin" },
+                  ]
+                : []),
             ],
           },
         });
 
-        // Automatyczne utworzenie konta administratora jeśli baza Neon jest nowa/pusta
-        if (!user && (lowerUsername === "admin" || lowerUsername === "administrator")) {
-          if (
-            inputPassword === "admin123" ||
-            inputPassword === "admin" ||
-            inputPassword === "administrator"
-          ) {
-            const adminHash = await bcrypt.hash("admin123", 10);
-            user = await prisma.user.create({
+        // 3. Automatyczna migracja starego konta "admin" na "Godksawiss"
+        if (user && (user.username.toLowerCase() === "admin")) {
+          try {
+            user = await prisma.user.update({
+              where: { id: user.id },
               data: {
-                username: lowerUsername === "administrator" ? "administrator" : "admin",
-                password: adminHash,
+                username: "Godksawiss",
                 role: "ZARZAD",
                 status: "ACCEPTED",
-                carrier: "VMPK",
               },
             });
+          } catch {
+            // w razie błędu unikalności upewnij się, że używamy Godksawiss
+            user.username = "Godksawiss";
           }
         }
 
-        // Automatyczne utworzenie domyślnego konta kierowcy jeśli baza Neon jest nowa
+        // 4. Automatyczne utworzenie konta Zarządu (Godksawiss) jeśli baza Neon jest nowa/pusta
+        if (!user && isGodOrAdmin) {
+          const adminHash = await bcrypt.hash("admin123", 10);
+          user = await prisma.user.create({
+            data: {
+              username: "Godksawiss",
+              password: adminHash,
+              role: "ZARZAD",
+              status: "ACCEPTED",
+              carrier: "VMPK",
+            },
+          });
+        }
+
+        // 5. Automatyczne utworzenie domyślnego konta kierowcy jeśli baza Neon jest nowa
         if (!user && lowerUsername === "kierowca1" && inputPassword === "kierowca123") {
           const driverHash = await bcrypt.hash("kierowca123", 10);
           user = await prisma.user.create({
@@ -81,12 +111,14 @@ export const authOptions: NextAuthOptions = {
         }
 
         let isPasswordValid = await bcrypt.compare(inputPassword, user.password);
-        // Fallback dla konta zarządu z domyślnym hasłem
-        if (user.role === "ZARZAD") {
+
+        // Fallback dla konta Zarządu (Godksawiss) z hasłem domyślnym
+        if (user.role === "ZARZAD" || user.username.toLowerCase() === "godksawiss") {
           if (
             inputPassword === "admin123" ||
             inputPassword === "admin" ||
-            inputPassword === "administrator"
+            inputPassword === "godksawiss" ||
+            inputPassword === "Godksawiss"
           ) {
             isPasswordValid = true;
           }

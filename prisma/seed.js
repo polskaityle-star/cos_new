@@ -10,26 +10,15 @@ async function main() {
   const adminPassword = await bcrypt.hash("admin123", 10);
   const driverPassword = await bcrypt.hash("kierowca123", 10);
 
-  // 1. Admin
-  await prisma.user.upsert({
-    where: { username: "admin" },
-    update: {
-      password: adminPassword,
-      role: "ZARZAD",
-      status: "ACCEPTED",
-      carrier: "VMPK"
+  // 1. Zarząd: Godksawiss (usunięcie administratora i starego admina)
+  await prisma.user.deleteMany({
+    where: {
+      username: { in: ["administrator", "Administrator", "admin", "Admin"] },
     },
-    create: {
-      username: "admin",
-      password: adminPassword,
-      role: "ZARZAD",
-      status: "ACCEPTED",
-      carrier: "VMPK"
-    }
   });
 
   await prisma.user.upsert({
-    where: { username: "administrator" },
+    where: { username: "Godksawiss" },
     update: {
       password: adminPassword,
       role: "ZARZAD",
@@ -37,7 +26,7 @@ async function main() {
       carrier: "VMPK"
     },
     create: {
-      username: "administrator",
+      username: "Godksawiss",
       password: adminPassword,
       role: "ZARZAD",
       status: "ACCEPTED",

@@ -9,26 +9,15 @@ export async function GET() {
     const adminPassword = await bcrypt.hash("admin123", 10);
     const driverPassword = await bcrypt.hash("kierowca123", 10);
 
-    // 1. Admin & Administrator
-    await prisma.user.upsert({
-      where: { username: "admin" },
-      update: {
-        password: adminPassword,
-        role: "ZARZAD",
-        status: "ACCEPTED",
-        carrier: "VMPK",
-      },
-      create: {
-        username: "admin",
-        password: adminPassword,
-        role: "ZARZAD",
-        status: "ACCEPTED",
-        carrier: "VMPK",
+    // 1. Zarząd: Godksawiss (usunięcie administratora i starego admina)
+    await prisma.user.deleteMany({
+      where: {
+        username: { in: ["administrator", "Administrator", "admin", "Admin"] },
       },
     });
 
     await prisma.user.upsert({
-      where: { username: "administrator" },
+      where: { username: "Godksawiss" },
       update: {
         password: adminPassword,
         role: "ZARZAD",
@@ -36,7 +25,7 @@ export async function GET() {
         carrier: "VMPK",
       },
       create: {
-        username: "administrator",
+        username: "Godksawiss",
         password: adminPassword,
         role: "ZARZAD",
         status: "ACCEPTED",
@@ -97,7 +86,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      message: "Baza danych została pomyślnie zainicjalizowana! Domyślny admin: login 'admin', hasło 'admin123'.",
+      message: "Baza danych została pomyślnie zainicjalizowana! Zarząd: login 'Godksawiss', hasło 'admin123'.",
     });
   } catch (error: any) {
     return NextResponse.json({

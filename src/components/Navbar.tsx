@@ -15,8 +15,13 @@ export default function Navbar() {
   return (
     <nav className={`${navBg} shadow-md transition-colors duration-300`}>
       <div className="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
-        <Link href="/" className="text-xl font-bold font-mono tracking-wider flex items-center gap-2">
-          <span>🚍 VZTM KIELCE</span>
+        <Link href="/" className="flex flex-col group leading-tight">
+          <span className="text-xl font-bold font-mono tracking-wider flex items-center gap-2 group-hover:text-amber-300 transition-colors">
+            🚍 VZTM KIELCE
+          </span>
+          <span className="text-[11px] font-mono font-semibold text-amber-300/90 tracking-normal">
+            v0.2.0.0
+          </span>
         </Link>
         <div className="flex gap-4 md:gap-5 items-center flex-wrap">
           <Link href="/" className="hover:text-amber-300 font-semibold transition-colors">Strona Główna</Link>
