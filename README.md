@@ -1,7 +1,7 @@
 # 🚍 VZTM Kielce – Oficjalny Poradnik Użytkownika i Dokumentacja Systemu
 
 Witaj w oficjalnym przewodniku po systemie **VZTM Kielce** (Wirtualny Zarząd Transportu Miejskiego w Kielcach – wirtualna firma dla symulatora OMSI 2).  
-Wersja systemu: **0.3.2.0** (BETA).
+Wersja systemu: **0.3.5.0** (BETA).
 
 System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-czerwone) oraz **VBP Tour Regio Kielce** (malowanie niebieskie), organizację taboru, rozkłady brygad, grafik służb, zgłaszanie usterek warsztatowych, składanie wniosków pracowniczych oraz weryfikację raportów z tras.
 
@@ -29,7 +29,7 @@ System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-c
    - [Weryfikacja raportów i przeliczanie licznika taboru](#weryfikacja-raportów-i-licznik-taboru)
    - [Historia zgłoszeń technicznych i wniosków](#historia-zgłoszeń-technicznych-i-wniosków)
 5. [Funkcje wizualne i techniczne](#-funkcje-wizualne-i-techniczne)
-6. [Historia zmian – Wersja 0.3.2.0](#-historia-zmian--wersja-0320)
+6. [Historia zmian – Wersja 0.3.5.0](#-historia-zmian--wersja-0350)
 7. [Historia wcześniejszych wydań](#-historia-wcześniejszych-wydań)
 
 ---
@@ -202,28 +202,38 @@ W formularzu tworzenia i edycji brygady dostępne są precyzyjne pola:
 
 ---
 
-## 🚀 Historia zmian – Wersja 0.3.2.0
-
-Wydanie **0.3.2.0** wprowadza kluczowe usprawnienia integracji Panelu Zarządu z Panelem Kierowcy, rygorystyczne walidacje dyspozytorskie oraz rozbudowane wnioski taborowe:
-
-1. **Wybór pojazdu we wniosku o dodatkową służbę:** Kierowca może wskazać preferowany autobus ze swojego taboru przy prośbie o dodatkowy termin.
-2. **Wybór służby z grafiku przy anulowaniu:** Kierowca wybiera konkretną zaplanowaną służbę ze swojego grafiku.
-3. **Rozdzielenie wniosków o stały pojazd:** Odrębny *Wniosek o stały pojazd* oraz *Wniosek o zmianę stałego pojazdu*.
-4. **Wniosek o usunięcie stałego pojazdu:** Nowy typ wniosku pozwalający kierowcy zrezygnować ze stałego przydziału i powrócić do rotacji.
-5. **Karta profilowa w Panelu Zarządu:** Identyczny banner profilowy jak w Panelu Kierowcy (awatar, nick, numer służbowy, rola, przewoźnik, etat, stały wóz, skróty).
-5.1. **Zegar LiveClock:** Zintegrowany zegar czasu rzeczywistego wyświetlający bieżącą datę i godzinę w Panelu Zarządu.
-6. **Wgląd do taboru w Panelu Kierowcy:** Dedykowana sekcja prezentująca wszystkie autobusy przewoźnika kierowcy (VMPK/VBP) ze zdjęciami, stanem licznika, rejestracjami i statusem sprawności.
-7. **Usunięcie napisu „Trasa:” pod linią:** Karty służb w grafiku zostały oczyszczone z redundantnego pola trasy zarówno u kierowcy, jak i w zarządzie.
-8. **Przydział linii i brygad przewoźnikowi:** Dodano możliwość przypisania linii oraz brygad do operatora (VMPK / VBP).
-9. **Walidacja dnia tygodnia brygad:** Blokada przydzielania brygad sobotnich na dni robocze lub niedziele, niedzielnych na soboty/dni powszednie oraz roboczych na weekendy.
-10. **Blokada mieszania przewoźników:** Całkowita blokada wydania pojazdu lub linii VMPK kierowcy VBP oraz vice versa.
-11. **Szczegółowe formatowanie harmonogramu brygady:** Prezentacja `1. przystanek: <godzina>`, `Ostatni przystanek: <godzina>`, `Wyjazd: Zajezdnia VMPK - <przystanek>` oraz `Zjazd: <przystanek> - Zajezdnia VMPK`.
-12. **Awatar profilowy w Navbarze:** Wyświetlanie zdjęcia profilowego bezpośrednio obok nazwy użytkownika oraz przycisku *Panel Kierowcy*.
-13. **Aktualizacja wersji:** Podniesienie wersji systemu do **0.3.2.0** w całym kodzie, layoutach i dokumentacji.
-
+## 🚀 Historia zmian – Wersja 0.3.5.0
+ 
+Wydanie **0.3.5.0** wprowadza kluczowe usprawnienia separacji przewoźników, intuicyjną obsługę wniosków grafiku i zgłoszeń warsztatowych oraz gruntowne poprawki wizualne motywu jasnego:
+ 
+1. **Dedykowany Wykaz Brygad dla VBP:** Kierowcy VBP Tour Regio w wykazie brygad widzą wyłącznie linie i harmonogramy dedykowane ich przewoźnikowi (całkowita blokada wglądu w brygady VMPK).
+2. **Szybkie zarządzanie usterkami i historia napraw:** Zgłoszenia techniczne po zatwierdzeniu, skierowaniu na warsztat lub odrzuceniu natychmiast znikają z listy aktywnej i trafiają do historii zgłoszeń technicznych. Dodano dedykowany przycisk `✅ Ustaw jako naprawione`.
+3. **Płynna akceptacja wniosku o dodatkową służbę (Auto-prefill):** Kliknięcie „Zatwierdź i ułóż w grafiku” przy wniosku o dodatkową służbę natychmiast przenosi dyspozytora do formularza grafiku z automatycznie uzupełnionym kierowcą, datą oraz wybranym przez niego autobusem – dyspozytor wybiera jedynie linię i brygadę, a wniosek zostaje oznaczony jako Zaakceptowany.
+4. **Dynamiczne filtrowanie grafiku według przewoźnika:** Po wyborze kierowcy VBP formularz grafiku natychmiast dynamicznie zawęża listę linii, brygad oraz taboru wyłącznie do VBP (analogicznie dla kierowców VMPK).
+5. **Opcjonalne godziny wyjazdu i zjazdu:** Pola godziny wyjazdu z zajezdni i zjazdu na zajezdnię w wykazie brygad stały się opcjonalne, nie blokując tworzenia brygad o uproszczonym harmonogramie.
+6. **Gruntowna naprawa motywu jasnego (Light Theme):** Wyeliminowano błędy niewidocznego tekstu na ciemnych tłach, naprawiono kontrasty formularzy, tabel, kart służb i bocznych okien modalnych.
+7. **Obowiązkowy pojazd z taboru w grafiku:** Pole wyboru autobusu przy przydzielaniu służby w grafiku stało się wymagane (`required`), zapobiegając przydzielaniu służb bez pojazdu.
+8. **Opcjonalna uwaga do służby:** Dodano opcjonalne pole na uwagi/dyspozycje dyspozytorskie przy planowaniu służby dla kierowcy.
+9. **Uproszczona i przejrzysta karta przydzielonej służby:** Z kart przydzielonych służb usunięto rozbudowane podglądy brygady (godziny, przystanki początkowe/końcowe, wyjazdy, zjazdy, przesiadki) – pozostawiono kluczowe informacje: Linię, Brygadę, Pojazd oraz ewentualną Uwagę.
+10. **Automatyczny wybór przewoźnika brygady:** Przy tworzeniu nowej brygady, wybór linii przypisanej do konkretnego przewoźnika (np. VMPK lub VBP) automatycznie ustawia odpowiedniego operatora w polu przewoźnika brygady.
+11. **Aktualizacja wersji 0.3.5.0:** Wdrożenie nowej wersji w kodzie, pasku nawigacyjnym, stopce, panelu zarządzania, API oraz dokumentacji.
+ 
 ---
-
+ 
 ## 📜 Historia wcześniejszych wydań
+ 
+### Wersja 0.3.2.0
+- Wybór preferowanego pojazdu we wniosku o dodatkową służbę.
+- Wybór konkretnej zaplanowanej służby przy wniosku o anulowanie.
+- Rozdzielenie wniosków o stały pojazd na wniosek o przydział, zmianę oraz rezygnację ze stałego pojazdu.
+- Karta profilowa z awatarem i statystykami w Panelu Zarządu oraz zegar czasu rzeczywistego LiveClock.
+- Wgląd do taboru w Panelu Kierowcy z filtrowaniem wg przewoźnika.
+- Usunięcie etykiety „Trasa” z kart grafiku.
+- Przypisanie linii oraz brygad do operatorów (VMPK / VBP).
+- Walidacja dni tygodnia (dni robocze / soboty / niedziele) przy przydzielaniu służb.
+- Blokada mieszania przewoźników (VMPK / VBP).
+- Formatowanie godzin pierwszego/ostatniego przystanku oraz wyjazdu i zjazdu.
+- Wyświetlanie miniatury profilowego w pasku nawigacji.
 
 ### Wersja 0.3.0.0
 - Wprowadzenie ról służbowych: Właściciel (`W`), Dyspozytor (`D`), Kierownik Przewozów (`P`), Mechanik (`M`), Sprawdzający (`S`), Kierowca (`K`).

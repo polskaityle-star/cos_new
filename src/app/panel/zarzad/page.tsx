@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ReportFileList from "@/components/ReportFileList";
 import LiveClock from "@/components/LiveClock";
+import DutyAssignmentForm from "@/components/DutyAssignmentForm";
+import BrigadeCreationForm from "@/components/BrigadeCreationForm";
 import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
 import {
   canAccessManagementPanel,
@@ -30,6 +32,10 @@ export default async function AdminPanel({
     userCarrier?: string;
     vehCarrier?: string;
     lineCarrier?: string;
+    prefillDriver?: string;
+    prefillDate?: string;
+    prefillVehicle?: string;
+    prefillReqId?: string;
   }>;
 }) {
   const session = await getServerSession(authOptions);
@@ -39,7 +45,18 @@ export default async function AdminPanel({
   }
 
   const resolvedParams = searchParams ? await searchParams : {};
-  const { error, driver, expected, userCarrier, vehCarrier, lineCarrier } = resolvedParams;
+  const {
+    error,
+    driver,
+    expected,
+    userCarrier,
+    vehCarrier,
+    lineCarrier,
+    prefillDriver,
+    prefillDate,
+    prefillVehicle,
+    prefillReqId,
+  } = resolvedParams;
 
   const userRole = session.user.role || "KIEROWCA";
   const canUsers = canManageUsers(userRole);
@@ -273,6 +290,18 @@ export default async function AdminPanel({
         </div>
       )}
 
+      {error === "missing_vehicle" && (
+        <div className="bg-red-950/90 border-2 border-red-500 text-red-100 p-5 rounded-2xl flex items-start gap-4 shadow-xl">
+          <span className="text-3xl">🚌</span>
+          <div>
+            <h3 className="font-bold text-lg text-white">Wymagany pojazd z taboru!</h3>
+            <p className="text-sm text-red-200 mt-1">
+              Przydzielenie służby wymaga wybrania sprawnego autobusu z taboru. Wybierz pojazd przypisany do Twojego przewoźnika.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Nagłówek i statystyki */}
       <div className="border-b border-slate-700 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -283,7 +312,7 @@ export default async function AdminPanel({
             </span>
           </div>
           <p className="text-slate-400 text-sm">
-            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.3.2.0)
+            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.3.5.0)
           </p>
         </div>
         <div className="flex flex-col md:items-end gap-3">
@@ -542,11 +571,22 @@ export default async function AdminPanel({
                         )}
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <form action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=accept`} method="POST">
-                          <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-1.5 rounded text-sm transition-colors shadow">
-                            Zaakceptuj wniosek
-                          </button>
-                        </form>
+                        {req.type === "DODATKOWA_SLUZBA" ? (
+                          <a
+                            href={`/panel/zarzad?prefillDriver=${req.userId}&prefillDate=${
+                              req.dateStart ? new Date(req.dateStart).toISOString().split("T")[0] : ""
+                            }&prefillVehicle=${req.details || ""}&prefillReqId=${req.id}#grafik-form`}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-1.5 rounded text-sm transition-colors shadow flex items-center gap-1.5"
+                          >
+                            <span>📅 Przydziel w grafiku &rarr;</span>
+                          </a>
+                        ) : (
+                          <form action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=accept`} method="POST">
+                            <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-1.5 rounded text-sm transition-colors shadow">
+                              Zaakceptuj wniosek
+                            </button>
+                          </form>
+                        )}
                         <form action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=reject`} method="POST">
                           <button type="submit" className="bg-red-600 hover:bg-red-500 text-white font-medium px-3 py-1.5 rounded text-sm transition-colors shadow">
                             Odrzuć
@@ -638,6 +678,47 @@ export default async function AdminPanel({
                         <div className="text-xs text-slate-400 mt-1">
                           Zgłosił: <b>{def.user.username}</b> &bull; {new Date(def.createdAt).toLocaleString()}
                         </div>
+                      </div>
+
+                      {/* Bezpośrednie szybkie przyciski decyzji (Wymóg 2) */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {def.status === "WARSZTAT" ? (
+                          <form action={`/api/panel/zarzad/usterki?defectId=${def.id}&newStatus=NAPRAWIONE`} method="POST">
+                            <button
+                              type="submit"
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors shadow flex items-center gap-1.5"
+                            >
+                              ✅ Ustaw jako naprawione (zakończ naprawę)
+                            </button>
+                          </form>
+                        ) : (
+                          <>
+                            <form action={`/api/panel/zarzad/usterki?defectId=${def.id}&newStatus=WARSZTAT`} method="POST">
+                              <button
+                                type="submit"
+                                className="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1 rounded text-xs transition-colors shadow"
+                              >
+                                🛠 Skieruj na warsztat
+                              </button>
+                            </form>
+                            <form action={`/api/panel/zarzad/usterki?defectId=${def.id}&newStatus=NAPRAWIONE`} method="POST">
+                              <button
+                                type="submit"
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 py-1 rounded text-xs transition-colors shadow"
+                              >
+                                ✅ Ustaw naprawione
+                              </button>
+                            </form>
+                            <form action={`/api/panel/zarzad/usterki?defectId=${def.id}&newStatus=ODRZUCONE`} method="POST">
+                              <button
+                                type="submit"
+                                className="bg-red-600/80 hover:bg-red-600 text-white font-semibold px-3 py-1 rounded text-xs transition-colors shadow"
+                              >
+                                ❌ Odrzuć
+                              </button>
+                            </form>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -1140,82 +1221,8 @@ export default async function AdminPanel({
             </a>
           </div>
 
-          {/* Formularz dodawania brygady */}
-          <form action="/api/panel/zarzad/brygady" method="POST" className="space-y-4 bg-slate-900 p-5 rounded-lg border border-slate-700 mb-6">
-            <h3 className="font-semibold text-white text-sm">➕ Dodaj Wpis do Wykazu Brygad</h3>
-            <div className="grid md:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Linia *</label>
-                <select name="lineId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white">
-                  <option value="">Wybierz Linię</option>
-                  {allLines.map((line) => (
-                    <option key={line.id} value={line.id}>
-                      Linia {line.number}{line.carrier ? ` [${line.carrier}]` : ""}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Przewoźnik brygady</label>
-                <select name="carrier" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white">
-                  <option value="">Zgodnie z linią</option>
-                  <option value="VMPK">VMPK</option>
-                  <option value="VBP">VBP</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Numer brygady *</label>
-                <input type="text" name="brigadeNumber" placeholder="np. 34/1 - dni robocze, 34/1 - sobotni, 34/1 - niedzielny" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Godzina Wyjazdu *</label>
-                  <input type="time" name="startTime" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-2 text-sm text-white" />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Godzina Zjazdu *</label>
-                  <input type="time" name="endTime" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-2 text-sm text-white" />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Godzina pierwszego przystanku (opcjonalnie)</label>
-                <input type="time" name="firstStopDeparture" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Godzina ostatniego przystanku (opcjonalnie)</label>
-                <input type="time" name="lastStopArrival" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Miejsce wyjazdu / startu *</label>
-                <input type="text" name="startLocation" placeholder="np. Zajezdnia VMPK / Bukówka" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Miejsce zjazdu / zakończenia *</label>
-                <input type="text" name="endLocation" placeholder="np. Bukówka / Zajezdnia" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Przesiadki kierowców / podmiany na trasie</label>
-                <input type="text" name="driverChanges" placeholder="np. Przesiadka na przystanku Żytnia o 09:30 z kierowcą B" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Dodatkowe uwagi</label>
-                <input type="text" name="notes" placeholder="np. Wymagana łączność radiowa, kurs skrócony" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-              </div>
-            </div>
-
-            <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded text-sm transition-colors shadow">
-              Zapisz brygadę do wykazu
-            </button>
-          </form>
+          {/* Formularz dodawania brygady (Wymóg 5 i 10) */}
+          <BrigadeCreationForm lines={allLines} />
 
           {/* Lista brygad */}
           <h3 className="text-sm font-semibold text-slate-400 mb-3">Wpisy w wykazie ({brigadeSchedules.length}):</h3>
@@ -1255,12 +1262,12 @@ export default async function AdminPanel({
                         <input type="text" name="brigadeNumber" defaultValue={b.brigadeNumber} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 block">Godzina Wyjazdu:</label>
-                        <input type="time" name="startTime" defaultValue={b.startTime} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                        <label className="text-[10px] text-slate-400 block">Godzina Wyjazdu (opcjonalnie):</label>
+                        <input type="time" name="startTime" defaultValue={b.startTime || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 block">Godzina Zjazdu:</label>
-                        <input type="time" name="endTime" defaultValue={b.endTime} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                        <label className="text-[10px] text-slate-400 block">Godzina Zjazdu (opcjonalnie):</label>
+                        <input type="time" name="endTime" defaultValue={b.endTime || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
                       </div>
                     </div>
 
@@ -1278,11 +1285,11 @@ export default async function AdminPanel({
                     <div className="grid md:grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce wyjazdu / startu:</label>
-                        <input type="text" name="startLocation" defaultValue={b.startLocation} placeholder="Start" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                        <input type="text" name="startLocation" defaultValue={b.startLocation || ""} placeholder="Start" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
                       </div>
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce zjazdu / końca:</label>
-                        <input type="text" name="endLocation" defaultValue={b.endLocation} placeholder="Koniec" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                        <input type="text" name="endLocation" defaultValue={b.endLocation || ""} placeholder="Koniec" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
                       </div>
                     </div>
 
@@ -1322,70 +1329,48 @@ export default async function AdminPanel({
         <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
           <h2 className="text-2xl font-bold mb-4 text-emerald-400">Wydawanie i Zarządzanie Służbami (Grafik)</h2>
           
-          {/* Formularz wydawania służby */}
-          <form action="/api/panel/zarzad/sluzby" method="POST" className="space-y-4 bg-slate-900 p-5 rounded-lg border border-slate-700 mb-6">
-            <h3 className="font-semibold text-white text-sm">📅 Przydziel Nową Służbę do Grafiku</h3>
-            <div className="grid md:grid-cols-5 gap-3">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Kierowca *</label>
-                <select name="userId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
-                  <option value="">Wybierz Kierowcę</option>
-                  {activeUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.badgeNumber ? `[${user.badgeNumber}] ` : ""}{user.username} [{user.carrier || "Brak"}]
-                      {user.assignedVehicle ? ` (Stały: #${user.assignedVehicle.fleetNumber})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Linia *</label>
-                <select name="lineId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
-                  <option value="">Wybierz Linię</option>
-                  {allLines.map((line) => (
-                    <option key={line.id} value={line.id}>
-                      Linia {line.number}{line.carrier ? ` [${line.carrier}]` : ""}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Pojazd z taboru</label>
-                <select name="vehicleId" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
-                  <option value="">Wybierz Pojazd (opcjonalnie)</option>
-                  {allVehicles.map((veh) => (
-                    <option key={veh.id} value={veh.id}>
-                      #{veh.fleetNumber} ({veh.model}) [{veh.carrier}] - {(veh.mileage || 0).toLocaleString()} km
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Brygada / Nazwa brygady</label>
-                <input
-                  type="text"
-                  name="brigade"
-                  list="brigades-datalist"
-                  placeholder="np. 34/2 - dni robocze"
-                  className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white"
-                />
-                <datalist id="brigades-datalist">
-                  {brigadeSchedules.map((b) => (
-                    <option key={b.id} value={b.brigadeNumber}>
-                      Linia {b.line.number} - {b.brigadeNumber} ({b.startTime} - {b.endTime})
-                    </option>
-                  ))}
-                </datalist>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Data służby *</label>
-                <input type="date" name="date" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white" />
-              </div>
-            </div>
-            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-sm transition-colors shadow">
-              Przydziel służbę do grafiku
-            </button>
-          </form>
+          {/* Formularz wydawania służby (Wymogi 3, 4, 7, 8) */}
+          <DutyAssignmentForm
+            users={activeUsers.map((u) => ({
+              id: u.id,
+              username: u.username,
+              badgeNumber: u.badgeNumber,
+              carrier: u.carrier,
+              assignedVehicle: u.assignedVehicle
+                ? { id: u.assignedVehicle.id, fleetNumber: u.assignedVehicle.fleetNumber }
+                : null,
+            }))}
+            lines={allLines.map((l) => ({
+              id: l.id,
+              number: l.number,
+              carrier: l.carrier,
+              directions: l.directions,
+              startStop: l.startStop,
+              endStop: l.endStop,
+            }))}
+            vehicles={allVehicles.map((v) => ({
+              id: v.id,
+              fleetNumber: v.fleetNumber,
+              model: v.model,
+              carrier: v.carrier,
+              mileage: v.mileage,
+            }))}
+            brigades={brigadeSchedules.map((b) => ({
+              id: b.id,
+              lineId: b.lineId,
+              brigadeNumber: b.brigadeNumber,
+              carrier: b.carrier,
+              startTime: b.startTime,
+              endTime: b.endTime,
+              line: { number: b.line.number, carrier: b.line.carrier },
+            }))}
+            prefill={{
+              driverId: prefillDriver,
+              date: prefillDate,
+              vehicleId: prefillVehicle,
+              requestId: prefillReqId,
+            }}
+          />
 
           {/* Lista służb */}
           <h3 className="text-sm font-semibold text-slate-400 mb-3">Aktualny grafik służb ({allDuties.length}):</h3>
@@ -1419,46 +1404,11 @@ export default async function AdminPanel({
                     <div className="text-xs text-slate-400 mt-1">
                       Data służby: {new Date(duty.date).toLocaleDateString("pl-PL")}
                     </div>
-
-                    {/* Podgląd brygady w karcie służby */}
-                    {duty.brigade && (() => {
-                      const matched = brigadeSchedules.find(
-                        (b) => b.lineId === duty.lineId && (duty.brigade === b.brigadeNumber || duty.brigade?.includes(b.brigadeNumber) || b.brigadeNumber.includes(duty.brigade!))
-                      );
-                      if (!matched) return null;
-                      const carrierName = matched.carrier || duty.line.carrier || duty.user.carrier || "VMPK";
-                      const wyjazdText = matched.startLocation.includes(" - ")
-                        ? matched.startLocation
-                        : matched.startLocation.includes(" / ")
-                          ? matched.startLocation.replace(" / ", " - ")
-                          : `Zajezdnia ${carrierName} - ${matched.startLocation}`;
-                      const zjazdText = matched.endLocation.includes(" - ")
-                        ? matched.endLocation
-                        : matched.endLocation.includes(" / ")
-                          ? matched.endLocation.replace(" / ", " - ")
-                          : `${matched.endLocation} - Zajezdnia ${carrierName}`;
-
-                      return (
-                        <div className="mt-2 text-xs bg-slate-950/70 p-2.5 rounded border border-slate-800 text-slate-300 space-y-1">
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                            <span>⏰ Godziny: <b className="text-amber-300 font-mono">{matched.startTime} - {matched.endTime}</b></span>
-                            {matched.firstStopDeparture && (
-                              <span>🚏 1. przystanek: <b className="text-cyan-300 font-mono">{matched.firstStopDeparture}</b></span>
-                            )}
-                            {matched.lastStopArrival && (
-                              <span>🏁 Ostatni przystanek: <b className="text-cyan-300 font-mono">{matched.lastStopArrival}</b></span>
-                            )}
-                            <span>📍 Wyjazd: <b className="text-white">{wyjazdText}</b></span>
-                            <span>🏁 Zjazd: <b className="text-white">{zjazdText}</b></span>
-                          </div>
-                          {matched.driverChanges && (
-                            <div className="text-[11px] text-slate-400">
-                              🔄 Przesiadki: <span className="text-slate-300">{matched.driverChanges}</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
+                    {duty.notes && (
+                      <div className="mt-1.5 text-xs text-amber-300">
+                        ℹ️ <b>Uwagi:</b> {duty.notes}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">

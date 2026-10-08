@@ -1,10 +1,23 @@
 export interface BrigadeScheduleLike {
+  id?: string;
+  lineId?: string;
   brigadeNumber: string;
+  carrier?: string | null;
   notes?: string | null;
-  startTime?: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  startLocation?: string | null;
+  endLocation?: string | null;
+  firstStopDeparture?: string | null;
+  lastStopArrival?: string | null;
+  driverChanges?: string | null;
   line?: {
+    id?: string;
     number: string;
+    carrier?: string | null;
+    [key: string]: any;
   } | null;
+  [key: string]: any;
 }
 
 /**

@@ -49,9 +49,15 @@ export default async function DriverPanel() {
     }),
   ]);
 
-  const brigadeSchedules = sortBrigades(rawBrigadeSchedules);
-
   const driverCarrier = currentUser?.carrier || session.user.carrier;
+  const filteredBrigades = rawBrigadeSchedules.filter((b) => {
+    if (!driverCarrier) return true;
+    if (b.carrier) return b.carrier === driverCarrier;
+    if (b.line?.carrier) return b.line.carrier === driverCarrier;
+    return !b.carrier && !b.line?.carrier;
+  });
+  const brigadeSchedules = sortBrigades(filteredBrigades);
+
   const availableVehicles = driverCarrier
     ? allVehicles.filter((v) => v.carrier === driverCarrier)
     : allVehicles;
@@ -203,50 +209,11 @@ export default async function DriverPanel() {
                     Data służby: {new Date(duty.date).toLocaleDateString("pl-PL")}
                   </div>
 
-                  {/* Szczegóły przypisanej brygady wg screenshot 2 i wymogu 11 */}
-                  {duty.brigade && (() => {
-                    const matched = brigadeSchedules.find(
-                      (b) => b.lineId === duty.lineId && (duty.brigade === b.brigadeNumber || duty.brigade?.includes(b.brigadeNumber) || b.brigadeNumber.includes(duty.brigade!))
-                    );
-                    if (!matched) return null;
-                    const carrierName = matched.carrier || duty.line.carrier || driverCarrier || "VMPK";
-                    const wyjazdText = matched.startLocation.includes(" - ")
-                      ? matched.startLocation
-                      : matched.startLocation.includes(" / ")
-                        ? matched.startLocation.replace(" / ", " - ")
-                        : `Zajezdnia ${carrierName} - ${matched.startLocation}`;
-                    const zjazdText = matched.endLocation.includes(" - ")
-                      ? matched.endLocation
-                      : matched.endLocation.includes(" / ")
-                        ? matched.endLocation.replace(" / ", " - ")
-                        : `${matched.endLocation} - Zajezdnia ${carrierName}`;
-
-                    return (
-                      <div className="mt-2.5 text-xs bg-slate-950/70 p-3 rounded-lg border border-slate-800 text-slate-300 space-y-1.5 shadow-inner">
-                        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
-                          <span>⏰ Godziny: <b className="text-amber-300 font-mono">{matched.startTime} - {matched.endTime}</b></span>
-                          {matched.firstStopDeparture && (
-                            <span>🚏 1. przystanek: <b className="text-cyan-300 font-mono">{matched.firstStopDeparture}</b></span>
-                          )}
-                          {matched.lastStopArrival && (
-                            <span>🏁 Ostatni przystanek: <b className="text-cyan-300 font-mono">{matched.lastStopArrival}</b></span>
-                          )}
-                          <span>📍 Wyjazd: <b className="text-white font-semibold">{wyjazdText}</b></span>
-                          <span>🏁 Zjazd: <b className="text-white font-semibold">{zjazdText}</b></span>
-                        </div>
-                        {matched.driverChanges && (
-                          <div className="text-[11px] text-slate-400">
-                            🔄 Przesiadki: <span className="text-slate-300 font-medium">{matched.driverChanges}</span>
-                          </div>
-                        )}
-                        {matched.notes && (
-                          <div className="text-[11px] text-amber-400/90">
-                            ℹ️ Uwagi: <span>{matched.notes}</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  {duty.notes && (
+                    <div className="mt-2 text-xs bg-slate-950/60 p-2 rounded border border-slate-800 text-amber-300">
+                      ℹ️ <b>Uwagi do służby:</b> {duty.notes}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -349,8 +316,8 @@ export default async function DriverPanel() {
                       </div>
                     </td>
                     <td className="py-3 px-4 font-mono text-emerald-400 font-bold whitespace-nowrap text-xs">
-                      <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime}</div>
-                      <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime}</div>
+                      <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime || "—"}</div>
+                      <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime || "—"}</div>
                     </td>
                     <td className="py-3 px-4 text-xs text-slate-300 font-mono">
                       <div><span className="text-slate-400 font-sans">1. przystanek:</span> {b.firstStopDeparture || "—"}</div>

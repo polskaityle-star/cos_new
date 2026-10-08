@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
 
 export const dynamic = "force-dynamic";
@@ -7,12 +9,20 @@ export const dynamic = "force-dynamic";
 export default async function BrigadesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ lineId?: string }>;
+  searchParams: Promise<{ lineId?: string; carrier?: string }>;
 }) {
-  const { lineId } = await searchParams;
+  const { lineId, carrier: carrierFilter } = await searchParams;
+  const session = await getServerSession(authOptions);
 
-  const [lines, rawSchedules] = await Promise.all([
-    prisma.line.findMany({ orderBy: { number: "asc" } }),
+  const isDriver = session?.user?.role === "KIEROWCA";
+  const driverCarrier = isDriver ? session?.user?.carrier : null;
+  const effectiveCarrier = driverCarrier || carrierFilter;
+
+  const [allLines, rawSchedules] = await Promise.all([
+    prisma.line.findMany({
+      where: effectiveCarrier ? { OR: [{ carrier: effectiveCarrier }, { carrier: null }] } : undefined,
+      orderBy: { number: "asc" },
+    }),
     prisma.brigadeSchedule.findMany({
       where: lineId ? { lineId } : undefined,
       include: { line: true },
@@ -20,7 +30,16 @@ export default async function BrigadesPage({
     }),
   ]);
 
-  const schedules = sortBrigades(rawSchedules);
+  const filteredRawSchedules = rawSchedules.filter((s) => {
+    if (!effectiveCarrier) return true;
+    if (s.carrier) return s.carrier === effectiveCarrier;
+    if (s.line?.carrier) return s.line.carrier === effectiveCarrier;
+    // Jeśli ani linia ani brygada nie ma przewoźnika, dopuszczamy tylko jeśli nie ma restrykcji
+    return !s.carrier && !s.line?.carrier;
+  });
+
+  const schedules = sortBrigades(filteredRawSchedules);
+  const lines = allLines;
   const activeLine = lines.find((l) => l.id === lineId);
 
   return (
@@ -89,27 +108,33 @@ export default async function BrigadesPage({
               </thead>
               <tbody className="divide-y divide-slate-700">
                 {schedules.map((item) => {
-                  const carrierName = item.carrier || item.line.carrier || "VMPK";
-                  const wyjazdFormatted = item.startLocation.includes(" - ")
-                    ? item.startLocation
-                    : item.startLocation.includes(" / ")
-                      ? item.startLocation.replace(" / ", " - ")
-                      : `Zajezdnia ${carrierName} - ${item.startLocation}`;
-                  const zjazdFormatted = item.endLocation.includes(" - ")
-                    ? item.endLocation
-                    : item.endLocation.includes(" / ")
-                      ? item.endLocation.replace(" / ", " - ")
-                      : `${item.endLocation} - Zajezdnia ${carrierName}`;
+                  const carrierName = item.carrier || item.line?.carrier || "VMPK";
+                  const startLoc = item.startLocation || "";
+                  const endLoc = item.endLocation || "";
+                  const wyjazdFormatted = !startLoc
+                    ? "—"
+                    : startLoc.includes(" - ")
+                      ? startLoc
+                      : startLoc.includes(" / ")
+                        ? startLoc.replace(" / ", " - ")
+                        : `Zajezdnia ${carrierName} - ${startLoc}`;
+                  const zjazdFormatted = !endLoc
+                    ? "—"
+                    : endLoc.includes(" - ")
+                      ? endLoc
+                      : endLoc.includes(" / ")
+                        ? endLoc.replace(" / ", " - ")
+                        : `${endLoc} - Zajezdnia ${carrierName}`;
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-750 transition-colors">
                       <td className="py-3.5 px-4 font-black text-amber-400 text-base whitespace-nowrap">
-                        <span>Linia {item.line.number}</span>
-                        {(item.carrier || item.line.carrier) && (
+                        <span>Linia {item.line?.number || "—"}</span>
+                        {(item.carrier || item.line?.carrier) && (
                           <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold border ${
-                            (item.carrier || item.line.carrier) === "VBP" ? "bg-blue-900/60 text-blue-300 border-blue-600/40" : "bg-red-900/60 text-amber-300 border-red-600/40"
+                            (item.carrier || item.line?.carrier) === "VBP" ? "bg-blue-900/60 text-blue-300 border-blue-600/40" : "bg-red-900/60 text-amber-300 border-red-600/40"
                           }`}>
-                            {item.carrier || item.line.carrier}
+                            {item.carrier || item.line?.carrier}
                           </span>
                         )}
                       </td>
@@ -130,11 +155,11 @@ export default async function BrigadesPage({
                         <div className="text-xs space-y-1">
                           <div>
                             <span className="text-slate-400">Wyjazd:</span>{" "}
-                            <b className="font-mono text-emerald-300">{item.startTime}</b>
+                            <b className="font-mono text-emerald-300">{item.startTime || "—"}</b>
                           </div>
                           <div>
                             <span className="text-slate-400">Zjazd:</span>{" "}
-                            <b className="font-mono text-amber-300">{item.endTime}</b>
+                            <b className="font-mono text-amber-300">{item.endTime || "—"}</b>
                           </div>
                         </div>
                       </td>

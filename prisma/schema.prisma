@@ -63,12 +63,12 @@ model BrigadeSchedule {
   line               Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
   carrier            String?  // VMPK, VBP (opcjonalny dedykowany przewoźnik)
   brigadeNumber      String   // np. "34/1", "Brygada 2"
-  startTime          String   // Godzina Wyjazdu (np. "05:15")
-  endTime            String   // Godzina Zjazdu (np. "13:45")
+  startTime          String?  @default("") // Godzina Wyjazdu (opcjonalna)
+  endTime            String?  @default("") // Godzina Zjazdu (opcjonalna)
   firstStopDeparture String?  // Godzina pierwszego przystanku (np. "05:30")
   lastStopArrival    String?  // Godzina ostatniego przystanku (np. "13:20")
-  startLocation      String   // np. "Zajezdnia VMPK / Bukówka"
-  endLocation        String   // np. "Bukówka / Zajezdnia"
+  startLocation      String?  @default("") // np. "Zajezdnia VMPK / Bukówka"
+  endLocation        String?  @default("") // np. "Bukówka / Zajezdnia"
   driverChanges      String?  // Przesiadki kierowców / podmiany (np. "Przesiadka na Żytniej o 09:30")
   notes              String?  // Uwagi
   createdAt          DateTime @default(now())
@@ -84,6 +84,7 @@ model Duty {
   vehicle   Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   date      DateTime
   brigade   String?  // np. "34/2 - dni robocze"
+  notes     String?  // Opcjonalne uwagi do służby
   status    String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
   report    Report?
 }

@@ -13,60 +13,80 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Tryb Jasny */
+/* =========================================================
+   TRYB JASNY (LIGHT MODE) - W PEŁNI DOPRACOWANY I CZYTELNY
+   ========================================================= */
+
 html.light body,
 html[data-theme="light"] body {
   background-color: #f1f5f9 !important;
   color: #0f172a !important;
 }
 
-html.light .bg-slate-900,
-html[data-theme="light"] .bg-slate-900 {
+/* Kontenery i panele z tłem slate */
+html.light [class*="bg-slate-900"],
+html.light [class*="bg-slate-950"],
+html[data-theme="light"] [class*="bg-slate-900"],
+html[data-theme="light"] [class*="bg-slate-950"] {
   background-color: #ffffff !important;
   color: #0f172a !important;
 }
 
-html.light .bg-slate-800,
-html[data-theme="light"] .bg-slate-800 {
+html.light [class*="bg-slate-800"],
+html[data-theme="light"] [class*="bg-slate-800"] {
   background-color: #f8fafc !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
 
-html.light .bg-slate-700,
-html[data-theme="light"] .bg-slate-700 {
+html.light [class*="bg-slate-700"],
+html[data-theme="light"] [class*="bg-slate-700"] {
   background-color: #e2e8f0 !important;
   color: #1e293b !important;
 }
 
-html.light .bg-slate-950,
-html[data-theme="light"] .bg-slate-950 {
-  background-color: #f1f5f9 !important;
-}
-
-html.light .border-slate-700,
-html.light .border-slate-800,
-html.light .border-slate-600,
-html[data-theme="light"] .border-slate-700,
-html[data-theme="light"] .border-slate-800,
-html[data-theme="light"] .border-slate-600 {
+/* Obramowania */
+html.light [class*="border-slate-"],
+html[data-theme="light"] [class*="border-slate-"] {
   border-color: #cbd5e1 !important;
 }
 
-html.light .text-slate-100,
-html.light .text-slate-200,
-html[data-theme="light"] .text-slate-100,
-html[data-theme="light"] .text-slate-200 {
+/* Kolory tekstów slate */
+html.light [class*="text-slate-100"],
+html.light [class*="text-slate-200"],
+html[data-theme="light"] [class*="text-slate-100"],
+html[data-theme="light"] [class*="text-slate-200"] {
   color: #0f172a !important;
 }
 
-html.light .text-slate-300,
-html.light .text-slate-400,
-html[data-theme="light"] .text-slate-300,
-html[data-theme="light"] .text-slate-400 {
+html.light [class*="text-slate-300"],
+html.light [class*="text-slate-400"],
+html[data-theme="light"] [class*="text-slate-300"],
+html[data-theme="light"] [class*="text-slate-400"] {
   color: #475569 !important;
 }
 
+/* Teksty nagłówkowe i białe elementy w trybie jasnym (z wyjątkiem przycisków akcji) */
+html.light h1.text-white,
+html.light h2.text-white,
+html.light h3.text-white,
+html.light h4.text-white,
+html.light p.text-white,
+html.light span.text-white,
+html.light b.text-white,
+html.light strong.text-white,
+html[data-theme="light"] h1.text-white,
+html[data-theme="light"] h2.text-white,
+html[data-theme="light"] h3.text-white,
+html[data-theme="light"] h4.text-white,
+html[data-theme="light"] p.text-white,
+html[data-theme="light"] span.text-white,
+html[data-theme="light"] b.text-white,
+html[data-theme="light"] strong.text-white {
+  color: #0f172a !important;
+}
+
+/* Pola formularzy w trybie jasnym */
 html.light input,
 html.light select,
 html.light textarea,
@@ -78,9 +98,71 @@ html[data-theme="light"] textarea {
   border-color: #cbd5e1 !important;
 }
 
-html.light button.text-white,
+html.light input::placeholder,
+html.light textarea::placeholder,
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Tabele w trybie jasnym */
+html.light thead,
+html[data-theme="light"] thead {
+  background-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html.light tr:hover,
+html[data-theme="light"] tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Przyciski z kolorowym tłem zachowują czytelny biały tekst */
+html.light button,
 html.light a.text-white,
-html[data-theme="light"] button.text-white,
-html[data-theme="light"] a.text-white {
+html.light [class*="bg-emerald-"],
+html.light [class*="bg-red-"],
+html.light [class*="bg-rose-"],
+html.light [class*="bg-amber-600"],
+html.light [class*="bg-amber-700"],
+html.light [class*="bg-blue-600"],
+html.light [class*="bg-purple-600"],
+html.light [class*="bg-orange-600"],
+html[data-theme="light"] button,
+html[data-theme="light"] a.text-white,
+html[data-theme="light"] [class*="bg-emerald-"],
+html[data-theme="light"] [class*="bg-red-"],
+html[data-theme="light"] [class*="bg-rose-"],
+html[data-theme="light"] [class*="bg-amber-600"],
+html[data-theme="light"] [class*="bg-amber-700"],
+html[data-theme="light"] [class*="bg-blue-600"],
+html[data-theme="light"] [class*="bg-purple-600"],
+html[data-theme="light"] [class*="bg-orange-600"] {
   color: #ffffff !important;
+}
+
+/* Pasek nawigacyjny Navbar zachowuje czytelne tło i kontrast */
+html.light nav.bg-slate-800,
+html[data-theme="light"] nav.bg-slate-800 {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+}
+
+html.light nav.bg-slate-800 a,
+html.light nav.bg-slate-800 span,
+html[data-theme="light"] nav.bg-slate-800 a,
+html[data-theme="light"] nav.bg-slate-800 span {
+  color: #f1f5f9 !important;
+}
+
+html.light nav.bg-slate-800 .text-amber-300,
+html[data-theme="light"] nav.bg-slate-800 .text-amber-300 {
+  color: #fcd34d !important;
+}
+
+/* Stopka */
+html.light footer,
+html[data-theme="light"] footer {
+  background-color: #e2e8f0 !important;
+  color: #475569 !important;
 }

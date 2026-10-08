@@ -20,6 +20,15 @@ export async function POST(req: Request) {
   const vehicleId = formData.get("vehicleId") as string;
   const dateStr = formData.get("date") as string;
   const brigade = formData.get("brigade") as string;
+  const notes = formData.get("notes") as string;
+  const requestId = formData.get("requestId") as string;
+
+  // Wymóg 7: Pojazd z taboru jest obowiązkowy
+  if (!vehicleId) {
+    const url = new URL("/panel/zarzad", req.url);
+    url.searchParams.set("error", "missing_vehicle");
+    return NextResponse.redirect(url, 303);
+  }
 
   if (userId && lineId && dateStr) {
     const dutyDate = new Date(dateStr);
@@ -108,8 +117,21 @@ export async function POST(req: Request) {
         vehicleId: vehicleId || null,
         date: dutyDate,
         brigade: brigade || null,
+        notes: notes || null,
       },
     });
+
+    // Wymóg 3: Automatyczne oznaczenie wniosku o dodatkową służbę jako Zaakceptowany
+    if (requestId) {
+      await prisma.driverRequest.updateMany({
+        where: { id: requestId, status: "PENDING" },
+        data: {
+          status: "ACCEPTED",
+          responseNotes: "Służba została pomyślnie utworzona i przydzielona w grafiku.",
+        },
+      });
+    }
+
     revalidatePath("/panel/zarzad");
     revalidatePath("/panel/kierowca");
   }

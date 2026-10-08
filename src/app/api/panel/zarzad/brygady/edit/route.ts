@@ -27,19 +27,19 @@ export async function POST(req: Request) {
   const driverChanges = formData.get("driverChanges") as string;
   const notes = formData.get("notes") as string;
 
-  if (id && lineId && brigadeNumber && startTime && endTime && startLocation && endLocation) {
+  if (id && lineId && brigadeNumber) {
     await prisma.brigadeSchedule.update({
       where: { id },
       data: {
         lineId,
         carrier: carrier || null,
         brigadeNumber,
-        startTime,
-        endTime,
+        startTime: startTime || "",
+        endTime: endTime || "",
         firstStopDeparture,
         lastStopArrival,
-        startLocation,
-        endLocation,
+        startLocation: startLocation || "",
+        endLocation: endLocation || "",
         driverChanges: driverChanges || null,
         notes: notes || null,
       }
