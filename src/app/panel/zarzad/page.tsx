@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ReportFileList from "@/components/ReportFileList";
+import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function AdminPanel() {
     driverRequests,
     vehicleDefects,
     contactMessages,
-    brigadeSchedules,
+    rawBrigadeSchedules,
   ] = await Promise.all([
     prisma.user.findMany({
       where: { status: "PENDING" },
@@ -82,6 +83,8 @@ export default async function AdminPanel() {
       orderBy: [{ line: { number: "asc" } }, { brigadeNumber: "asc" }],
     }),
   ]);
+
+  const brigadeSchedules = sortBrigades(rawBrigadeSchedules);
 
   return (
     <div className="space-y-12">
@@ -691,7 +694,7 @@ export default async function AdminPanel() {
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Numer brygady *</label>
-              <input type="text" name="brigadeNumber" placeholder="np. 34/1 lub Brygada 2" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
+              <input type="text" name="brigadeNumber" placeholder="np. 34/1 - dni robocze, 34/1 - sobotni, 34/1 - niedzielny" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Godzina startu / wyjazdu *</label>
@@ -751,7 +754,12 @@ export default async function AdminPanel() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block">Brygada:</label>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="text-[10px] text-slate-400 block">Brygada:</label>
+                        <span className={`text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded border ${getDayBadgeClass(b.brigadeNumber, b.notes)}`}>
+                          {getDayLabel(b.brigadeNumber, b.notes)}
+                        </span>
+                      </div>
                       <input type="text" name="brigadeNumber" defaultValue={b.brigadeNumber} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
                     </div>
                     <div>
@@ -851,9 +859,17 @@ export default async function AdminPanel() {
               <input
                 type="text"
                 name="brigade"
+                list="brigades-datalist"
                 placeholder="np. 34/2 - dni robocze"
                 className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white"
               />
+              <datalist id="brigades-datalist">
+                {brigadeSchedules.map((b) => (
+                  <option key={b.id} value={b.brigadeNumber}>
+                    Linia {b.line.number} - {b.brigadeNumber} ({b.startTime} - {b.endTime})
+                  </option>
+                ))}
+              </datalist>
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">Data służby *</label>

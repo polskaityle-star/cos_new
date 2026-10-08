@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function DriverPanel() {
     redirect("/");
   }
 
-  const [duties, driverRequests, vehicleDefects, allVehicles, allLines, brigadeSchedules] = await Promise.all([
+  const [duties, driverRequests, vehicleDefects, allVehicles, allLines, rawBrigadeSchedules] = await Promise.all([
     prisma.duty.findMany({
       where: { userId: session.user.id },
       include: { line: true, vehicle: true, report: true },
@@ -43,6 +44,8 @@ export default async function DriverPanel() {
       orderBy: [{ line: { number: "asc" } }, { brigadeNumber: "asc" }],
     }),
   ]);
+
+  const brigadeSchedules = sortBrigades(rawBrigadeSchedules);
 
   const scheduledDuties = duties.filter((d) => d.status === "SCHEDULED");
   const completedDuties = duties.filter((d) => d.status === "COMPLETED");
@@ -252,9 +255,19 @@ export default async function DriverPanel() {
                       Linia {b.line.number}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
-                      <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
-                        {b.brigadeNumber}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
+                          {b.brigadeNumber}
+                        </span>
+                        <span
+                          className={`text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full border ${getDayBadgeClass(
+                            b.brigadeNumber,
+                            b.notes
+                          )}`}
+                        >
+                          {getDayLabel(b.brigadeNumber, b.notes)}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3 px-4 font-mono text-emerald-400 font-bold whitespace-nowrap text-xs">
                       {b.startTime} - {b.endTime}

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export default async function BrigadesPage({
 }) {
   const { lineId } = await searchParams;
 
-  const [lines, schedules] = await Promise.all([
+  const [lines, rawSchedules] = await Promise.all([
     prisma.line.findMany({ orderBy: { number: "asc" } }),
     prisma.brigadeSchedule.findMany({
       where: lineId ? { lineId } : undefined,
@@ -19,6 +20,7 @@ export default async function BrigadesPage({
     }),
   ]);
 
+  const schedules = sortBrigades(rawSchedules);
   const activeLine = lines.find((l) => l.id === lineId);
 
   return (
@@ -91,7 +93,17 @@ export default async function BrigadesPage({
                       {item.line.number}
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-white">
-                      {item.brigadeNumber}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{item.brigadeNumber}</span>
+                        <span
+                          className={`text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full border ${getDayBadgeClass(
+                            item.brigadeNumber,
+                            item.notes
+                          )}`}
+                        >
+                          {getDayLabel(item.brigadeNumber, item.notes)}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className="bg-slate-900 border border-slate-600 px-2 py-1 rounded font-mono text-xs text-emerald-300">
