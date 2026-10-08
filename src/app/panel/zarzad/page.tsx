@@ -46,6 +46,7 @@ export default async function AdminPanel() {
           include: {
             user: true,
             line: true,
+            vehicle: true,
           },
         },
       },
@@ -334,7 +335,7 @@ export default async function AdminPanel() {
               <div key={report.id} className="bg-slate-900 border border-slate-700 p-5 rounded-lg">
                 <div className="flex flex-wrap justify-between items-center border-b border-slate-700 pb-2 mb-3">
                   <span className="font-bold text-lg text-white">
-                    Kierowca: {report.duty.user.username} (Linia {report.duty.line.number}{report.duty.brigade ? ` • Brygada: ${report.duty.brigade}` : ""})
+                    Kierowca: {report.duty.user.username} (Linia {report.duty.line.number}{report.duty.brigade ? ` • Brygada: ${report.duty.brigade}` : ""}{report.duty.vehicle ? ` • 🚌 #${report.duty.vehicle.fleetNumber}` : ""})
                   </span>
                   <span className="text-xs text-slate-400">
                     Data służby: {new Date(report.duty.date).toLocaleDateString()}

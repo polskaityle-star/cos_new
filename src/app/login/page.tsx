@@ -24,7 +24,11 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setError("Nieprawidłowa nazwa użytkownika lub hasło.");
+        if (res.error.toLowerCase().includes("pending") || res.error.toLowerCase().includes("approval") || res.error.toLowerCase().includes("reject")) {
+          setError("Twoje konto oczekuje na zatwierdzenie przez Zarząd lub zostało odrzucone.");
+        } else {
+          setError("Nieprawidłowa nazwa użytkownika lub hasło.");
+        }
         setLoading(false);
       } else {
         // Sprawdź rolę i wykonaj pełne przekierowanie

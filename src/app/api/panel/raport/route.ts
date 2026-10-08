@@ -10,6 +10,11 @@ async function saveUploadFile(file: File, prefix: string): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
   const mimeType = file.type || (prefix.includes("summary") ? "text/plain" : "image/png");
 
+  // Bezpośredni fallback Base64 dla serverless (Vercel) zapobiegający utracie plików i błędom EROFS
+  if (process.env.VERCEL) {
+    return `data:${mimeType};base64,${buffer.toString("base64")}`;
+  }
+
   try {
     const ext = path.extname(file.name) || (prefix.includes("summary") ? ".txt" : ".png");
     const fileName = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
@@ -93,7 +98,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Służba nie znaleziona" }, { status: 404 });
     }
 
-    if (duty.userId !== session.user.id) {
+    if (duty.userId !== session.user.id && session.user.role !== "ZARZAD") {
       return NextResponse.json({ message: "To nie jest twoja służba" }, { status: 403 });
     }
 
