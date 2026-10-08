@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ReportFileList from "@/components/ReportFileList";
+import LiveClock from "@/components/LiveClock";
 import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
 import {
   canAccessManagementPanel,
@@ -22,7 +23,14 @@ export const dynamic = "force-dynamic";
 export default async function AdminPanel({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string; driver?: string }>;
+  searchParams?: Promise<{
+    error?: string;
+    driver?: string;
+    expected?: string;
+    userCarrier?: string;
+    vehCarrier?: string;
+    lineCarrier?: string;
+  }>;
 }) {
   const session = await getServerSession(authOptions);
 
@@ -31,7 +39,7 @@ export default async function AdminPanel({
   }
 
   const resolvedParams = searchParams ? await searchParams : {};
-  const { error, driver } = resolvedParams;
+  const { error, driver, expected, userCarrier, vehCarrier, lineCarrier } = resolvedParams;
 
   const userRole = session.user.role || "KIEROWCA";
   const canUsers = canManageUsers(userRole);
@@ -41,6 +49,7 @@ export default async function AdminPanel({
   const canReqs = canManageRequests(userRole);
 
   const [
+    currentDbUser,
     pendingUsers,
     allLines,
     allVehicles,
@@ -54,6 +63,10 @@ export default async function AdminPanel({
     contactMessages,
     rawBrigadeSchedules,
   ] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { assignedVehicle: true },
+    }),
     prisma.user.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "desc" },
@@ -127,8 +140,88 @@ export default async function AdminPanel({
   const brigadeSchedules = sortBrigades(rawBrigadeSchedules);
 
   return (
-    <div className="space-y-12 pb-16">
-      {/* Alert błędu: konflikt urlopowy */}
+    <div className="space-y-10 pb-16">
+      {/* Karta Profilowa Zarządu ze Screenshotu 1 + LiveClock (Wymogi 5 i 5.1) */}
+      <div className="bg-slate-900/90 border border-slate-700/80 p-5 md:p-6 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="relative shrink-0">
+            {currentDbUser?.avatar ? (
+              <img
+                src={currentDbUser.avatar}
+                alt={currentDbUser.username}
+                className="w-16 h-16 rounded-full object-cover border-2 border-amber-400 shadow-md"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-slate-950 border-2 border-slate-600 flex items-center justify-center text-xl font-bold text-amber-400 shadow-md">
+                {currentDbUser?.username?.slice(0, 2).toUpperCase() || "GO"}
+              </div>
+            )}
+            {currentDbUser?.badgeNumber && (
+              <span className="absolute -bottom-1 -right-1 bg-amber-500 text-slate-950 font-mono font-black text-[10px] px-1.5 py-0.5 rounded-full border border-slate-900 shadow">
+                {currentDbUser.badgeNumber}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                {currentDbUser?.username || session.user.username}
+              </h2>
+              {currentDbUser?.badgeNumber && (
+                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-mono font-bold text-xs">
+                  {currentDbUser.badgeNumber}
+                </span>
+              )}
+              <span className={`px-2.5 py-0.5 rounded text-xs font-bold border ${getRoleBadgeClass(currentDbUser?.role || userRole)}`}>
+                {getRoleLabel(currentDbUser?.role || userRole)}
+              </span>
+              <span className="bg-slate-800 text-slate-200 border border-slate-700 px-2.5 py-0.5 rounded text-xs font-bold">
+                {currentDbUser?.carrier || "VMPK"}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-300 pt-1">
+              <span>
+                📅 <b>Etat:</b> {currentDbUser?.workingDays ? `${currentDbUser.workingDays} (${currentDbUser.workingDays.split(",").length}/7)` : <span className="text-slate-400">PN,WT,SR,CZ,PT (5/7)</span>}
+              </span>
+              <span>
+                🚌 <b>Stały pojazd:</b> {currentDbUser?.assignedVehicle ? (
+                  <span className="text-emerald-400 font-semibold">
+                    #{currentDbUser.assignedVehicle.fleetNumber} ({currentDbUser.assignedVehicle.model})
+                  </span>
+                ) : (
+                  <span className="text-slate-400">Brak stałego wozu</span>
+                )}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <LiveClock />
+          <Link
+            href="/brygady"
+            className="bg-amber-700 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
+          >
+            <span>📋 Wykaz Brygad</span>
+          </Link>
+          <Link
+            href="/"
+            className="bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-600 shadow"
+          >
+            <span>🌐 Strona publiczna</span>
+          </Link>
+          <Link
+            href="/panel/kierowca"
+            className="bg-orange-600 hover:bg-orange-500 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
+          >
+            <span>Panel Kierowcy &rarr;</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Alerty błędów walidacji */}
       {error === "urlop_conflict" && (
         <div className="bg-red-950/90 border-2 border-red-500 text-red-100 p-5 rounded-2xl flex items-start gap-4 shadow-xl">
           <span className="text-3xl">⚠️</span>
@@ -137,6 +230,44 @@ export default async function AdminPanel({
             <p className="text-sm text-red-200 mt-1">
               Kierowca <b className="text-white underline">{driver || "wybrany pracownik"}</b> posiada w tym terminie <b>zaakceptowany urlop wypoczynkowy</b>. 
               Zgodnie z regulaminem VZTM Kielce, pracownik na urlopie nie może otrzymać służby w grafiku.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {error === "brigade_day_mismatch" && (
+        <div className="bg-amber-950/90 border-2 border-amber-500 text-amber-100 p-5 rounded-2xl flex items-start gap-4 shadow-xl">
+          <span className="text-3xl">⚠️</span>
+          <div>
+            <h3 className="font-bold text-lg text-white">Niezgodność dnia tygodnia dla wybranej brygady!</h3>
+            <p className="text-sm text-amber-200 mt-1">
+              Wybrana brygada wymaga harmonogramu typu: <b className="text-white uppercase underline">{expected || "inny dzień"}</b>. 
+              Brygady sobotnie można przydzielać wyłącznie w soboty, niedzielne w niedziele, a brygady robocze od poniedziałku do piątku.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {error === "carrier_vehicle_mismatch" && (
+        <div className="bg-rose-950/90 border-2 border-rose-500 text-rose-100 p-5 rounded-2xl flex items-start gap-4 shadow-xl">
+          <span className="text-3xl">🚫</span>
+          <div>
+            <h3 className="font-bold text-lg text-white">Niezgodność przewoźnika dla pojazdu!</h3>
+            <p className="text-sm text-rose-200 mt-1">
+              Kierowca jest przypisany do przewoźnika <b className="text-white underline">{userCarrier}</b>, natomiast wybrany autobus należy do floty <b className="text-white underline">{vehCarrier}</b>. 
+              Nie można przydzielać taboru VMPK kierowcom VBP ani taboru VBP kierowcom VMPK.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {error === "carrier_line_mismatch" && (
+        <div className="bg-rose-950/90 border-2 border-rose-500 text-rose-100 p-5 rounded-2xl flex items-start gap-4 shadow-xl">
+          <span className="text-3xl">🚫</span>
+          <div>
+            <h3 className="font-bold text-lg text-white">Niezgodność przewoźnika dla linii!</h3>
+            <p className="text-sm text-rose-200 mt-1">
+              Kierowca jest przypisany do przewoźnika <b className="text-white underline">{userCarrier}</b>, natomiast wybrana linia jest dedykowana dla operatora <b className="text-white underline">{lineCarrier}</b>.
             </p>
           </div>
         </div>
@@ -152,7 +283,7 @@ export default async function AdminPanel({
             </span>
           </div>
           <p className="text-slate-400 text-sm">
-            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.3.0.0)
+            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.3.2.0)
           </p>
         </div>
         <div className="flex flex-col md:items-end gap-3">
@@ -352,7 +483,7 @@ export default async function AdminPanel({
               <div className="space-y-4">
                 {driverRequests.map((req) => {
                   let vehicleInfo = null;
-                  if (req.type === "STALY_POJAZD" && req.details) {
+                  if ((req.type === "STALY_POJAZD" || req.type === "ZMIANA_STALEGO_POJAZDU") && req.details) {
                     vehicleInfo = allVehicles.find((v) => v.id === req.details);
                   }
 
@@ -370,6 +501,10 @@ export default async function AdminPanel({
                               ? "➕ Dodatkowa służba"
                               : req.type === "STALY_POJAZD"
                               ? "🚌 Stały pojazd"
+                              : req.type === "ZMIANA_STALEGO_POJAZDU"
+                              ? "🔄 Zmiana stałego pojazdu"
+                              : req.type === "USUNIECIE_STALEGO_POJAZDU"
+                              ? "🗑️ Rezygnacja ze stałego pojazdu"
                               : req.type === "ZMIANA_ETATU"
                               ? "📅 Zmiana etatu"
                               : "❌ Anulowanie służby"}
@@ -390,13 +525,19 @@ export default async function AdminPanel({
                           </div>
                         )}
 
+                        {req.type === "USUNIECIE_STALEGO_POJAZDU" && (
+                          <div className="text-xs text-amber-300 font-semibold bg-amber-950/60 p-2 rounded border border-amber-800/40">
+                            🗑️ Pracownik prosi o usunięcie stałego pojazdu i powrót do puli rotacyjnej.
+                          </div>
+                        )}
+
                         {req.type === "ZMIANA_ETATU" && req.details && (
                           <div className="text-xs text-amber-300 font-semibold bg-amber-950/60 p-2 rounded border border-amber-800/40">
                             📅 Proponowane nowe dni pracy: {req.details}
                           </div>
                         )}
 
-                        {req.details && !vehicleInfo && req.type !== "ZMIANA_ETATU" && (
+                        {req.details && !vehicleInfo && req.type !== "ZMIANA_ETATU" && req.type !== "USUNIECIE_STALEGO_POJAZDU" && (
                           <div className="text-xs text-slate-400">Szczegóły: {req.details}</div>
                         )}
                       </div>
@@ -434,7 +575,21 @@ export default async function AdminPanel({
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-200">{hReq.user.username}</span>
                         <span className="text-slate-400">&bull;</span>
-                        <span className="text-slate-300">{hReq.type}</span>
+                        <span className="text-slate-300">
+                          {hReq.type === "URLOP"
+                            ? "🏖 Urlop"
+                            : hReq.type === "DODATKOWA_SLUZBA"
+                            ? "➕ Dodatkowa służba"
+                            : hReq.type === "STALY_POJAZD"
+                            ? "🚌 Stały pojazd"
+                            : hReq.type === "ZMIANA_STALEGO_POJAZDU"
+                            ? "🔄 Zmiana stałego pojazdu"
+                            : hReq.type === "USUNIECIE_STALEGO_POJAZDU"
+                            ? "🗑️ Rezygnacja ze stałego pojazdu"
+                            : hReq.type === "ZMIANA_ETATU"
+                            ? "📅 Zmiana etatu"
+                            : "❌ Anulowanie służby"}
+                        </span>
                         <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
                           hReq.status === "ACCEPTED" ? "bg-emerald-900/60 text-emerald-300" : "bg-red-900/60 text-red-300"
                         }`}>
@@ -747,9 +902,19 @@ export default async function AdminPanel({
             {/* Dodaj nową linię */}
             <form action="/api/panel/zarzad/linie" method="POST" className="space-y-3 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
               <h3 className="font-semibold text-white text-sm">➕ Dodaj Nową Linię</h3>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Numer linii *</label>
-                <input type="text" name="number" placeholder="np. 34" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Numer linii *</label>
+                  <input type="text" name="number" placeholder="np. 34" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Dedykowany przewoźnik</label>
+                  <select name="carrier" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white">
+                    <option value="">Wszyscy / Dowolny</option>
+                    <option value="VMPK">VMPK</option>
+                    <option value="VBP">VBP</option>
+                  </select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -783,10 +948,18 @@ export default async function AdminPanel({
                 <div key={line.id} className="bg-slate-900 p-3 rounded-lg border border-slate-700 text-sm space-y-2">
                   <form action="/api/panel/zarzad/linie/edit" method="POST" className="space-y-2">
                     <input type="hidden" name="id" value={line.id} />
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-4 gap-2">
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-0.5">Numer linii:</label>
                         <input type="text" name="number" defaultValue={line.number} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Numer linii" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Przewoźnik:</label>
+                        <select name="carrier" defaultValue={line.carrier || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
+                          <option value="">Dowolny</option>
+                          <option value="VMPK">VMPK</option>
+                          <option value="VBP">VBP</option>
+                        </select>
                       </div>
                       <div>
                         <label className="block text-[10px] text-slate-400 mb-0.5">Kierunki trasy:</label>
@@ -970,16 +1143,24 @@ export default async function AdminPanel({
           {/* Formularz dodawania brygady */}
           <form action="/api/panel/zarzad/brygady" method="POST" className="space-y-4 bg-slate-900 p-5 rounded-lg border border-slate-700 mb-6">
             <h3 className="font-semibold text-white text-sm">➕ Dodaj Wpis do Wykazu Brygad</h3>
-            <div className="grid md:grid-cols-3 gap-3">
+            <div className="grid md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Linia *</label>
                 <select name="lineId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white">
                   <option value="">Wybierz Linię</option>
                   {allLines.map((line) => (
                     <option key={line.id} value={line.id}>
-                      Linia {line.number}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
+                      Linia {line.number}{line.carrier ? ` [${line.carrier}]` : ""}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
                     </option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Przewoźnik brygady</label>
+                <select name="carrier" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white">
+                  <option value="">Zgodnie z linią</option>
+                  <option value="VMPK">VMPK</option>
+                  <option value="VBP">VBP</option>
                 </select>
               </div>
               <div>
@@ -1047,13 +1228,21 @@ export default async function AdminPanel({
                   <form action="/api/panel/zarzad/brygady/edit" method="POST" className="space-y-3">
                     <input type="hidden" name="id" value={b.id} />
                     
-                    <div className="grid md:grid-cols-4 gap-2">
+                    <div className="grid md:grid-cols-5 gap-2">
                       <div>
                         <label className="text-[10px] text-slate-400 block">Linia:</label>
                         <select name="lineId" defaultValue={b.lineId} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
                           {allLines.map((l) => (
-                            <option key={l.id} value={l.id}>Linia {l.number}</option>
+                            <option key={l.id} value={l.id}>Linia {l.number}{l.carrier ? ` [${l.carrier}]` : ""}</option>
                           ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block">Przewoźnik:</label>
+                        <select name="carrier" defaultValue={b.carrier || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
+                          <option value="">Domyślny</option>
+                          <option value="VMPK">VMPK</option>
+                          <option value="VBP">VBP</option>
                         </select>
                       </div>
                       <div>
@@ -1143,8 +1332,8 @@ export default async function AdminPanel({
                   <option value="">Wybierz Kierowcę</option>
                   {activeUsers.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.badgeNumber ? `[${user.badgeNumber}] ` : ""}{user.username} ({user.carrier})
-                      {user.assignedVehicle ? ` [Stały: #${user.assignedVehicle.fleetNumber}]` : ""}
+                      {user.badgeNumber ? `[${user.badgeNumber}] ` : ""}{user.username} [{user.carrier || "Brak"}]
+                      {user.assignedVehicle ? ` (Stały: #${user.assignedVehicle.fleetNumber})` : ""}
                     </option>
                   ))}
                 </select>
@@ -1155,7 +1344,7 @@ export default async function AdminPanel({
                   <option value="">Wybierz Linię</option>
                   {allLines.map((line) => (
                     <option key={line.id} value={line.id}>
-                      Linia {line.number}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
+                      Linia {line.number}{line.carrier ? ` [${line.carrier}]` : ""}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
                     </option>
                   ))}
                 </select>
@@ -1166,7 +1355,7 @@ export default async function AdminPanel({
                   <option value="">Wybierz Pojazd (opcjonalnie)</option>
                   {allVehicles.map((veh) => (
                     <option key={veh.id} value={veh.id}>
-                      {veh.fleetNumber} ({veh.model}) - {(veh.mileage || 0).toLocaleString()} km [{veh.carrier}]
+                      #{veh.fleetNumber} ({veh.model}) [{veh.carrier}] - {(veh.mileage || 0).toLocaleString()} km
                     </option>
                   ))}
                 </select>
@@ -1228,8 +1417,48 @@ export default async function AdminPanel({
                       </span>
                     </div>
                     <div className="text-xs text-slate-400 mt-1">
-                      Trasa: {duty.line.directions || (duty.line.startStop ? `${duty.line.startStop} - ${duty.line.endStop}` : "Zgodnie z rozkładem")} &bull; Data: {new Date(duty.date).toLocaleDateString()}
+                      Data służby: {new Date(duty.date).toLocaleDateString("pl-PL")}
                     </div>
+
+                    {/* Podgląd brygady w karcie służby */}
+                    {duty.brigade && (() => {
+                      const matched = brigadeSchedules.find(
+                        (b) => b.lineId === duty.lineId && (duty.brigade === b.brigadeNumber || duty.brigade?.includes(b.brigadeNumber) || b.brigadeNumber.includes(duty.brigade!))
+                      );
+                      if (!matched) return null;
+                      const carrierName = matched.carrier || duty.line.carrier || duty.user.carrier || "VMPK";
+                      const wyjazdText = matched.startLocation.includes(" - ")
+                        ? matched.startLocation
+                        : matched.startLocation.includes(" / ")
+                          ? matched.startLocation.replace(" / ", " - ")
+                          : `Zajezdnia ${carrierName} - ${matched.startLocation}`;
+                      const zjazdText = matched.endLocation.includes(" - ")
+                        ? matched.endLocation
+                        : matched.endLocation.includes(" / ")
+                          ? matched.endLocation.replace(" / ", " - ")
+                          : `${matched.endLocation} - Zajezdnia ${carrierName}`;
+
+                      return (
+                        <div className="mt-2 text-xs bg-slate-950/70 p-2.5 rounded border border-slate-800 text-slate-300 space-y-1">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                            <span>⏰ Godziny: <b className="text-amber-300 font-mono">{matched.startTime} - {matched.endTime}</b></span>
+                            {matched.firstStopDeparture && (
+                              <span>🚏 1. przystanek: <b className="text-cyan-300 font-mono">{matched.firstStopDeparture}</b></span>
+                            )}
+                            {matched.lastStopArrival && (
+                              <span>🏁 Ostatni przystanek: <b className="text-cyan-300 font-mono">{matched.lastStopArrival}</b></span>
+                            )}
+                            <span>📍 Wyjazd: <b className="text-white">{wyjazdText}</b></span>
+                            <span>🏁 Zjazd: <b className="text-white">{zjazdText}</b></span>
+                          </div>
+                          {matched.driverChanges && (
+                            <div className="text-[11px] text-slate-400">
+                              🔄 Przesiadki: <span className="text-slate-300">{matched.driverChanges}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div>
                     <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">

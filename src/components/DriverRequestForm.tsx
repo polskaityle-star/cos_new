@@ -34,7 +34,9 @@ export default function DriverRequestForm({
   scheduledDuties: ScheduledDuty[];
   availableVehicles: VehicleItem[];
 }) {
-  const [type, setType] = useState<"URLOP" | "DODATKOWA_SLUZBA" | "ANULOWANIE_SLUZBY" | "STALY_POJAZD" | "ZMIANA_ETATU">("URLOP");
+  const [type, setType] = useState<
+    "URLOP" | "DODATKOWA_SLUZBA" | "ANULOWANIE_SLUZBY" | "STALY_POJAZD" | "ZMIANA_STALEGO_POJAZDU" | "USUNIECIE_STALEGO_POJAZDU" | "ZMIANA_ETATU"
+  >("URLOP");
   const [selectedDays, setSelectedDays] = useState<string[]>(["PN", "WT", "SR", "CZ", "PT"]);
   const [etatError, setEtatError] = useState("");
 
@@ -65,7 +67,9 @@ export default function DriverRequestForm({
           <option value="URLOP">🏖 Wniosek o urlop</option>
           <option value="DODATKOWA_SLUZBA">➕ Wniosek o dodatkową służbę</option>
           <option value="ANULOWANIE_SLUZBY">❌ Prośba o anulowanie służby</option>
-          <option value="STALY_POJAZD">🚌 Wniosek o stały pojazd / zmiana stałego pojazdu</option>
+          <option value="STALY_POJAZD">🚌 Wniosek o stały pojazd</option>
+          <option value="ZMIANA_STALEGO_POJAZDU">🔄 Wniosek o zmianę stałego pojazdu</option>
+          <option value="USUNIECIE_STALEGO_POJAZDU">🗑️ Wniosek o usunięcie stałego pojazdu (rezygnacja)</option>
           <option value="ZMIANA_ETATU">📅 Wniosek o zmianę etatu (dni pracy)</option>
         </select>
       </div>
@@ -111,7 +115,7 @@ export default function DriverRequestForm({
         </div>
       )}
 
-      {/* DODATKOWA SLUZBA: wybrany w danym dniu, usuniete uzasadnienie */}
+      {/* DODATKOWA SLUZBA: wybrany dzien, opcja wybrania pojazdu z taboru, usuniete uzasadnienie */}
       {type === "DODATKOWA_SLUZBA" && (
         <div className="space-y-4">
           <div>
@@ -127,6 +131,22 @@ export default function DriverRequestForm({
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Preferowany pojazd z taboru (opcjonalnie)
+            </label>
+            <select
+              name="vehicleId"
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm"
+            >
+              <option value="">-- Bez preferencji pojazdu --</option>
+              {availableVehicles.map((veh) => (
+                <option key={veh.id} value={veh.id}>
+                  #{veh.fleetNumber} - {veh.model} ({veh.registration}) [{veh.carrier}]
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
               Preferowana linia / zmiana (opcjonalnie)
             </label>
             <input
@@ -136,17 +156,16 @@ export default function DriverRequestForm({
               className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm"
             />
           </div>
-          {/* Uzasadnienie usunięte zgodnie z punktem 14 */}
           <input type="hidden" name="reason" value="Wniosek o dodatkową służbę" />
         </div>
       )}
 
-      {/* ANULOWANIE SLUZBY: wybierz dzien w ktorym jest sluzba */}
+      {/* ANULOWANIE SLUZBY: wybor sluzby z grafiku lub data */}
       {type === "ANULOWANIE_SLUZBY" && (
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Wybierz dzień w którym jest służba / służbę do anulowania *
+              Wybierz służbę z grafiku do anulowania *
             </label>
             {scheduledDuties.length > 0 ? (
               <select
@@ -157,7 +176,7 @@ export default function DriverRequestForm({
                 <option value="">-- Wybierz zaplanowaną służbę --</option>
                 {scheduledDuties.map((d) => (
                   <option key={d.id} value={d.id}>
-                    Dzień: {new Date(d.date).toLocaleDateString("pl-PL")} | Linia {d.line.number} {d.brigade ? `[${d.brigade}]` : ""}
+                    Data: {new Date(d.date).toLocaleDateString("pl-PL")} | Linia {d.line.number} {d.brigade ? `[${d.brigade}]` : ""}
                   </option>
                 ))}
               </select>
@@ -169,7 +188,7 @@ export default function DriverRequestForm({
                   required
                   className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm"
                 />
-                <span className="text-[11px] text-slate-400 mt-1 block">Wpisz datę służby, z której rezygnujesz.</span>
+                <span className="text-[11px] text-amber-400 mt-1 block">Brak zaplanowanych służb w grafiku — podaj datę służby, z której rezygnujesz.</span>
               </div>
             )}
           </div>
@@ -188,7 +207,7 @@ export default function DriverRequestForm({
         </div>
       )}
 
-      {/* STALY POJAZD: wniosek o staly pojazd i zmiana stalego pojazdu */}
+      {/* STALY POJAZD: wniosek o przydzielenie stalego pojazdu */}
       {type === "STALY_POJAZD" && (
         <div className="space-y-4">
           <div>
@@ -215,10 +234,66 @@ export default function DriverRequestForm({
             <textarea
               name="reason"
               rows={2}
-              placeholder="np. Prośba o przypisanie stałego wozu na moje służby..."
+              placeholder="np. Prośba o przypisanie pierwszego stałego wozu..."
               className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm resize-none"
             ></textarea>
           </div>
+        </div>
+      )}
+
+      {/* ZMIANA STALEGO POJAZDU: zmiana istniejacego wozu na inny */}
+      {type === "ZMIANA_STALEGO_POJAZDU" && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Wybierz nowy stały pojazd z taboru *
+            </label>
+            <select
+              name="details"
+              required
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm"
+            >
+              <option value="">-- Wybierz nowy autobus --</option>
+              {availableVehicles.map((veh) => (
+                <option key={veh.id} value={veh.id}>
+                  #{veh.fleetNumber} - {veh.model} ({veh.registration}) [{veh.carrier}]
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Powód zmiany stałego pojazdu (opcjonalnie)
+            </label>
+            <textarea
+              name="reason"
+              rows={2}
+              placeholder="np. Chcę przejść na autobus przegubowy lub nowszy model..."
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm resize-none"
+            ></textarea>
+          </div>
+        </div>
+      )}
+
+      {/* USUNIECIE STALEGO POJAZDU: rezygnacja ze stalego wozu */}
+      {type === "USUNIECIE_STALEGO_POJAZDU" && (
+        <div className="space-y-4">
+          <div className="bg-amber-950/40 border border-amber-600/50 p-4 rounded-lg text-amber-200 text-xs">
+            <span className="font-bold block text-sm mb-1 text-white">⚠️ Potwierdzenie rezygnacji ze stałego pojazdu</span>
+            Składasz wniosek o usunięcie przypisanego stałego autobusu. Po zaakceptowaniu wniosku przez Zarząd lub Sprawdzającego, powrócisz do puli pojazdów przydzielanych rotacyjnie.
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Uzasadnienie / uwagi (opcjonalnie)
+            </label>
+            <textarea
+              name="reason"
+              rows={2}
+              placeholder="np. Rezygnacja ze stałego przydziału..."
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm resize-none"
+            ></textarea>
+          </div>
+          <input type="hidden" name="details" value="REZYGNACJA" />
         </div>
       )}
 

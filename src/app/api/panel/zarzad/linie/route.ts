@@ -15,6 +15,7 @@ export async function POST(req: Request) {
 
   const formData = await req.formData();
   const number = formData.get("number") as string;
+  const carrier = (formData.get("carrier") as string) || null;
   const startStop = formData.get("startStop") as string;
   const endStop = formData.get("endStop") as string;
   const directions = formData.get("directions") as string;
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
     await prisma.line.create({
       data: {
         number,
+        carrier: carrier || null,
         startStop: startStop || "",
         endStop: endStop || "",
         directions: directions || null,

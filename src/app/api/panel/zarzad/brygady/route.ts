@@ -15,6 +15,7 @@ export async function POST(req: Request) {
 
   const formData = await req.formData();
   const lineId = formData.get("lineId") as string;
+  const carrier = (formData.get("carrier") as string) || null;
   const brigadeNumber = formData.get("brigadeNumber") as string;
   const startTime = formData.get("startTime") as string;
   const endTime = formData.get("endTime") as string;
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
     await prisma.brigadeSchedule.create({
       data: {
         lineId,
+        carrier: carrier || null,
         brigadeNumber,
         startTime,
         endTime,

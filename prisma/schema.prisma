@@ -47,6 +47,7 @@ model Vehicle {
 model Line {
   id               String            @id @default(cuid())
   number           String
+  carrier          String?           // VMPK, VBP (przypisany przewoźnik)
   startStop        String?           @default("")
   endStop          String?           @default("")
   description      String?
@@ -60,6 +61,7 @@ model BrigadeSchedule {
   id                 String   @id @default(cuid())
   lineId             String
   line               Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  carrier            String?  // VMPK, VBP (opcjonalny dedykowany przewoźnik)
   brigadeNumber      String   // np. "34/1", "Brygada 2"
   startTime          String   // Godzina Wyjazdu (np. "05:15")
   endTime            String   // Godzina Zjazdu (np. "13:45")

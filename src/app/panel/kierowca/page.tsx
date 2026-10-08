@@ -199,29 +199,44 @@ export default async function DriverPanel() {
                       {duty.status === "SCHEDULED" ? "Zaplanowana" : duty.status === "COMPLETED" ? "Zrealizowana" : "Anulowana"}
                     </span>
                   </div>
-                  <div className="text-sm text-slate-300 mt-1">
-                    Trasa: {duty.line.directions || (duty.line.startStop ? `${duty.line.startStop} → ${duty.line.endStop}` : "Zgodnie z rozkładem")}
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    Data służby: {new Date(duty.date).toLocaleDateString()}
+                  <div className="text-xs text-slate-400 mt-1">
+                    Data służby: {new Date(duty.date).toLocaleDateString("pl-PL")}
                   </div>
 
-                  {/* Szczegóły przypisanej brygady */}
+                  {/* Szczegóły przypisanej brygady wg screenshot 2 i wymogu 11 */}
                   {duty.brigade && (() => {
                     const matched = brigadeSchedules.find(
                       (b) => b.lineId === duty.lineId && (duty.brigade === b.brigadeNumber || duty.brigade?.includes(b.brigadeNumber) || b.brigadeNumber.includes(duty.brigade!))
                     );
                     if (!matched) return null;
+                    const carrierName = matched.carrier || duty.line.carrier || driverCarrier || "VMPK";
+                    const wyjazdText = matched.startLocation.includes(" - ")
+                      ? matched.startLocation
+                      : matched.startLocation.includes(" / ")
+                        ? matched.startLocation.replace(" / ", " - ")
+                        : `Zajezdnia ${carrierName} - ${matched.startLocation}`;
+                    const zjazdText = matched.endLocation.includes(" - ")
+                      ? matched.endLocation
+                      : matched.endLocation.includes(" / ")
+                        ? matched.endLocation.replace(" / ", " - ")
+                        : `${matched.endLocation} - Zajezdnia ${carrierName}`;
+
                     return (
-                      <div className="mt-2.5 text-xs bg-slate-950/70 p-2.5 rounded border border-slate-800 text-slate-300 space-y-1">
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      <div className="mt-2.5 text-xs bg-slate-950/70 p-3 rounded-lg border border-slate-800 text-slate-300 space-y-1.5 shadow-inner">
+                        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
                           <span>⏰ Godziny: <b className="text-amber-300 font-mono">{matched.startTime} - {matched.endTime}</b></span>
-                          <span>📍 Wyjazd: <b className="text-white">{matched.startLocation}</b></span>
-                          <span>🏁 Zjazd: <b className="text-white">{matched.endLocation}</b></span>
+                          {matched.firstStopDeparture && (
+                            <span>🚏 1. przystanek: <b className="text-cyan-300 font-mono">{matched.firstStopDeparture}</b></span>
+                          )}
+                          {matched.lastStopArrival && (
+                            <span>🏁 Ostatni przystanek: <b className="text-cyan-300 font-mono">{matched.lastStopArrival}</b></span>
+                          )}
+                          <span>📍 Wyjazd: <b className="text-white font-semibold">{wyjazdText}</b></span>
+                          <span>🏁 Zjazd: <b className="text-white font-semibold">{zjazdText}</b></span>
                         </div>
                         {matched.driverChanges && (
                           <div className="text-[11px] text-slate-400">
-                            🔄 Przesiadki: <span className="text-slate-300">{matched.driverChanges}</span>
+                            🔄 Przesiadki: <span className="text-slate-300 font-medium">{matched.driverChanges}</span>
                           </div>
                         )}
                         {matched.notes && (
@@ -359,6 +374,87 @@ export default async function DriverPanel() {
         )}
       </section>
 
+      {/* Wgląd do Taboru Twojego Przewoźnika (Wymóg 6) */}
+      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2 text-cyan-400">
+              <span>🚌 Tabor Twojego Przewoźnika ({driverCarrier || "Wszystkie"})</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Przeglądaj autobusy przypisane do Twojej zajezdni, ich aktualne stany liczników oraz status techniczny.
+            </p>
+          </div>
+          <span className="text-xs bg-slate-900 border border-slate-700 px-3 py-1 rounded-full text-slate-300 font-mono">
+            Dostępne pojazdy: <b className="text-cyan-400">{availableVehicles.length}</b>
+          </span>
+        </div>
+
+        {availableVehicles.length === 0 ? (
+          <p className="text-slate-400 text-sm">Brak dostępnych pojazdów dla Twojego przewoźnika.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {availableVehicles.map((veh) => (
+              <div
+                key={veh.id}
+                className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden flex flex-col justify-between hover:border-slate-500 transition-colors shadow-md"
+              >
+                {veh.imageUrl ? (
+                  <div className="h-36 w-full overflow-hidden bg-slate-950 relative">
+                    <img
+                      src={veh.imageUrl}
+                      alt={veh.model}
+                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                    />
+                    <span className="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-xs text-amber-300 font-mono font-black text-xs px-2 py-0.5 rounded border border-amber-500/40">
+                      {veh.fleetNumber}
+                    </span>
+                    <span className="absolute top-2 right-2 bg-slate-900/80 backdrop-blur-xs text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-700">
+                      {veh.carrier}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="h-28 bg-gradient-to-br from-slate-950 to-slate-800 flex items-center justify-between p-4 border-b border-slate-800">
+                    <div className="text-3xl">🚌</div>
+                    <div className="text-right">
+                      <span className="bg-amber-900/60 text-amber-300 font-mono font-black text-base px-2 py-0.5 rounded border border-amber-500/40 block">
+                        {veh.fleetNumber}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">{veh.carrier}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-4 space-y-2 flex-grow flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-bold text-white text-sm line-clamp-1">{veh.model}</h3>
+                    <div className="text-xs text-slate-400 font-mono">{veh.registration}</div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Przebieg:</span>
+                      <span className="font-mono text-cyan-300 font-bold">{(veh.mileage || 0).toLocaleString()} km</span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                        veh.status === "SPRAWNY"
+                          ? "bg-emerald-900/60 text-emerald-300 border border-emerald-600/40"
+                          : veh.status === "WARSZTAT"
+                          ? "bg-amber-900/60 text-amber-300 border border-amber-600/40"
+                          : "bg-rose-900/60 text-rose-300 border border-rose-600/40"
+                      }`}
+                    >
+                      {veh.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Wnioski Kierowcy i Zgłaszanie Awarii */}
       <div className="grid lg:grid-cols-2 gap-8">
         <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
@@ -454,6 +550,10 @@ export default async function DriverPanel() {
                             ? "➕ Dodatkowa służba"
                             : req.type === "STALY_POJAZD"
                             ? "🚌 Stały pojazd"
+                            : req.type === "ZMIANA_STALEGO_POJAZDU"
+                            ? "🔄 Zmiana stałego pojazdu"
+                            : req.type === "USUNIECIE_STALEGO_POJAZDU"
+                            ? "🗑️ Rezygnacja ze stałego pojazdu"
                             : req.type === "ZMIANA_ETATU"
                             ? "📅 Zmiana etatu"
                             : "❌ Anulowanie służby"}
@@ -499,6 +599,10 @@ export default async function DriverPanel() {
                             ? "➕ Dodatkowa służba"
                             : req.type === "STALY_POJAZD"
                             ? "🚌 Stały pojazd"
+                            : req.type === "ZMIANA_STALEGO_POJAZDU"
+                            ? "🔄 Zmiana stałego pojazdu"
+                            : req.type === "USUNIECIE_STALEGO_POJAZDU"
+                            ? "🗑️ Rezygnacja ze stałego pojazdu"
                             : req.type === "ZMIANA_ETATU"
                             ? "📅 Zmiana etatu"
                             : "❌ Anulowanie służby"}

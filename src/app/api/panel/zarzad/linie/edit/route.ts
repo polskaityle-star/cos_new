@@ -16,6 +16,7 @@ export async function POST(req: Request) {
   const formData = await req.formData();
   const id = formData.get("id") as string;
   const number = formData.get("number") as string;
+  const carrier = (formData.get("carrier") as string) || null;
   const startStop = formData.get("startStop") as string;
   const endStop = formData.get("endStop") as string;
   const directions = formData.get("directions") as string;
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
   if (id && number) {
     const updateData: any = {
       number,
+      carrier: carrier || null,
       directions: directions || null,
       brigades: brigades || null,
     };

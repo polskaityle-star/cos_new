@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageDuties } from "@/lib/roles";
+import { getDayOrder } from "@/lib/brigades";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -27,7 +28,12 @@ export async function POST(req: Request) {
     const endOfDay = new Date(dutyDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // Sprawdzenie czy kierowca ma zaakceptowany urlop w tym terminie (Wymóg 16)
+    const [driverUser, lineObj] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId } }),
+      prisma.line.findUnique({ where: { id: lineId } }),
+    ]);
+
+    // 1. Sprawdzenie czy kierowca ma zaakceptowany urlop w tym terminie (Wymóg 16)
     const vacationConflict = await prisma.driverRequest.findFirst({
       where: {
         userId,
@@ -45,6 +51,54 @@ export async function POST(req: Request) {
       url.searchParams.set("error", "urlop_conflict");
       url.searchParams.set("driver", driverName);
       return NextResponse.redirect(url, 303);
+    }
+
+    // 2. Walidacja zgodności przewoźnika dla pojazdu (Punkt 10)
+    if (vehicleId) {
+      const vehicleObj = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+      if (vehicleObj && driverUser?.carrier && vehicleObj.carrier !== driverUser.carrier) {
+        const url = new URL("/panel/zarzad", req.url);
+        url.searchParams.set("error", "carrier_vehicle_mismatch");
+        url.searchParams.set("userCarrier", driverUser.carrier);
+        url.searchParams.set("vehCarrier", vehicleObj.carrier);
+        return NextResponse.redirect(url, 303);
+      }
+    }
+
+    // 3. Walidacja zgodności przewoźnika dla linii (Punkt 10)
+    if (lineObj && lineObj.carrier && driverUser?.carrier && lineObj.carrier !== driverUser.carrier) {
+      const url = new URL("/panel/zarzad", req.url);
+      url.searchParams.set("error", "carrier_line_mismatch");
+      url.searchParams.set("userCarrier", driverUser.carrier);
+      url.searchParams.set("lineCarrier", lineObj.carrier);
+      return NextResponse.redirect(url, 303);
+    }
+
+    // 4. Walidacja dnia tygodnia dla brygady (Punkt 9: brygada sobotnia tylko w sobotę, itp.)
+    if (brigade) {
+      const dayOrder = getDayOrder(brigade);
+      // getDay: 0 = niedziela, 1 = pon, ..., 6 = sobota
+      const dayOfWeek = dutyDate.getDay();
+
+      if (dayOrder === 2 && dayOfWeek !== 6) {
+        // Sobota
+        const url = new URL("/panel/zarzad", req.url);
+        url.searchParams.set("error", "brigade_day_mismatch");
+        url.searchParams.set("expected", "sobota");
+        return NextResponse.redirect(url, 303);
+      } else if (dayOrder === 3 && dayOfWeek !== 0) {
+        // Niedziela
+        const url = new URL("/panel/zarzad", req.url);
+        url.searchParams.set("error", "brigade_day_mismatch");
+        url.searchParams.set("expected", "niedziela");
+        return NextResponse.redirect(url, 303);
+      } else if (dayOrder === 1 && (dayOfWeek === 0 || dayOfWeek === 6)) {
+        // Dni robocze
+        const url = new URL("/panel/zarzad", req.url);
+        url.searchParams.set("error", "brigade_day_mismatch");
+        url.searchParams.set("expected", "roboczy");
+        return NextResponse.redirect(url, 303);
+      }
     }
 
     await prisma.duty.create({

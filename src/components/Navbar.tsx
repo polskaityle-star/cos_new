@@ -24,7 +24,7 @@ export default function Navbar() {
             🚍 VZTM KIELCE
           </span>
           <span className="text-[11px] font-mono font-semibold text-amber-300/90 tracking-normal">
-            v0.3.0.0
+            v0.3.2.0
           </span>
         </Link>
         <div className="flex gap-4 md:gap-5 items-center flex-wrap">
@@ -42,12 +42,14 @@ export default function Navbar() {
                   <img
                     src={session.user.avatar}
                     alt={session.user.username}
-                    className="w-6 h-6 rounded-full object-cover border border-amber-400"
+                    className="w-7 h-7 rounded-full object-cover border-2 border-amber-400 shrink-0 shadow-xs"
                   />
                 ) : (
-                  <span className="text-xs">👤</span>
+                  <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-xs font-bold text-amber-400 shrink-0">
+                    {session.user.username?.slice(0, 2).toUpperCase() || "👤"}
+                  </div>
                 )}
-                <span className="text-xs text-slate-300 font-mono font-bold">
+                <span className="text-xs text-slate-200 font-mono font-bold">
                   {session.user.username}
                   {session.user.badgeNumber && (
                     <span className="ml-1 text-[11px] text-amber-300 font-semibold">
@@ -66,8 +68,15 @@ export default function Navbar() {
                 </Link>
               )}
 
-              <Link href="/panel/kierowca" className="bg-slate-700 hover:bg-slate-600 text-white px-2.5 py-1 rounded text-xs font-semibold transition-colors">
-                Panel Kierowcy
+              <Link href="/panel/kierowca" className="bg-slate-700 hover:bg-slate-600 text-white px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs">
+                {session.user.avatar && (
+                  <img
+                    src={session.user.avatar}
+                    alt=""
+                    className="w-4 h-4 rounded-full object-cover border border-amber-300 shrink-0"
+                  />
+                )}
+                <span>Panel Kierowcy</span>
               </Link>
 
               <button

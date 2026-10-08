@@ -35,11 +35,19 @@ export async function POST(req: Request) {
       data: { status: "ACCEPTED" }
     });
 
-    // 1. Jeśli to wniosek o stały pojazd, przypisujemy pojazd kierowcy (Wymóg 4)
-    if (driverReq.type === "STALY_POJAZD" && driverReq.details) {
+    // 1. Jeśli to wniosek o stały pojazd lub zmianę stałego pojazdu, przypisujemy pojazd kierowcy
+    if ((driverReq.type === "STALY_POJAZD" || driverReq.type === "ZMIANA_STALEGO_POJAZDU") && driverReq.details) {
       await prisma.user.update({
         where: { id: driverReq.userId },
         data: { assignedVehicleId: driverReq.details },
+      });
+    }
+
+    // 1.1 Jeśli to wniosek o usunięcie stałego pojazdu (rezygnacja), czyścimy przypisany pojazd
+    if (driverReq.type === "USUNIECIE_STALEGO_POJAZDU") {
+      await prisma.user.update({
+        where: { id: driverReq.userId },
+        data: { assignedVehicleId: null },
       });
     }
 

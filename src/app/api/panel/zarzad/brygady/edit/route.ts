@@ -16,6 +16,7 @@ export async function POST(req: Request) {
   const formData = await req.formData();
   const id = formData.get("id") as string;
   const lineId = formData.get("lineId") as string;
+  const carrier = (formData.get("carrier") as string) || null;
   const brigadeNumber = formData.get("brigadeNumber") as string;
   const startTime = formData.get("startTime") as string;
   const endTime = formData.get("endTime") as string;
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
       where: { id },
       data: {
         lineId,
+        carrier: carrier || null,
         brigadeNumber,
         startTime,
         endTime,

@@ -88,56 +88,76 @@ export default async function BrigadesPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700">
-                {schedules.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-750 transition-colors">
-                    <td className="py-3.5 px-4 font-black text-amber-400 text-base">
-                      Linia {item.line.number}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-white">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span>{item.brigadeNumber}</span>
-                        <span
-                          className={`text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full border ${getDayBadgeClass(
-                            item.brigadeNumber,
-                            item.notes
-                          )}`}
-                        >
-                          {getDayLabel(item.brigadeNumber, item.notes)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <div className="text-xs space-y-1">
-                        <div>
-                          <span className="text-slate-400">Wyjazd:</span>{" "}
-                          <b className="font-mono text-emerald-300">{item.startTime}</b>
+                {schedules.map((item) => {
+                  const carrierName = item.carrier || item.line.carrier || "VMPK";
+                  const wyjazdFormatted = item.startLocation.includes(" - ")
+                    ? item.startLocation
+                    : item.startLocation.includes(" / ")
+                      ? item.startLocation.replace(" / ", " - ")
+                      : `Zajezdnia ${carrierName} - ${item.startLocation}`;
+                  const zjazdFormatted = item.endLocation.includes(" - ")
+                    ? item.endLocation
+                    : item.endLocation.includes(" / ")
+                      ? item.endLocation.replace(" / ", " - ")
+                      : `${item.endLocation} - Zajezdnia ${carrierName}`;
+
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-750 transition-colors">
+                      <td className="py-3.5 px-4 font-black text-amber-400 text-base whitespace-nowrap">
+                        <span>Linia {item.line.number}</span>
+                        {(item.carrier || item.line.carrier) && (
+                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                            (item.carrier || item.line.carrier) === "VBP" ? "bg-blue-900/60 text-blue-300 border-blue-600/40" : "bg-red-900/60 text-amber-300 border-red-600/40"
+                          }`}>
+                            {item.carrier || item.line.carrier}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-white">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>{item.brigadeNumber}</span>
+                          <span
+                            className={`text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full border ${getDayBadgeClass(
+                              item.brigadeNumber,
+                              item.notes
+                            )}`}
+                          >
+                            {getDayLabel(item.brigadeNumber, item.notes)}
+                          </span>
                         </div>
-                        <div>
-                          <span className="text-slate-400">Zjazd:</span>{" "}
-                          <b className="font-mono text-amber-300">{item.endTime}</b>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="text-xs space-y-1">
+                          <div>
+                            <span className="text-slate-400">Wyjazd:</span>{" "}
+                            <b className="font-mono text-emerald-300">{item.startTime}</b>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Zjazd:</span>{" "}
+                            <b className="font-mono text-amber-300">{item.endTime}</b>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-xs text-slate-200">
-                      <div className="space-y-1">
-                        <div>
-                          <span className="text-slate-400">1. przystanek:</span>{" "}
-                          <span className="font-mono text-cyan-300 font-semibold">{item.firstStopDeparture || "—"}</span>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs text-slate-200">
+                        <div className="space-y-1">
+                          <div>
+                            <span className="text-slate-400">1. przystanek:</span>{" "}
+                            <span className="font-mono text-cyan-300 font-semibold">{item.firstStopDeparture || "—"}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400">Ost. przystanek:</span>{" "}
+                            <span className="font-mono text-cyan-300 font-semibold">{item.lastStopArrival || "—"}</span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-slate-400">Ost. przystanek:</span>{" "}
-                          <span className="font-mono text-cyan-300 font-semibold">{item.lastStopArrival || "—"}</span>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-200">
+                        <div className="text-xs font-semibold">
+                          <span className="text-slate-400 font-normal">Wyjazd:</span> {wyjazdFormatted}
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-200">
-                      <div className="text-xs">
-                        <span className="text-slate-400">Wyjazd:</span> {item.startLocation}
-                      </div>
-                      <div className="text-xs mt-0.5">
-                        <span className="text-slate-400">Zjazd:</span> {item.endLocation}
-                      </div>
-                    </td>
+                        <div className="text-xs font-semibold mt-0.5">
+                          <span className="text-slate-400 font-normal">Zjazd:</span> {zjazdFormatted}
+                        </div>
+                      </td>
                     <td className="py-3.5 px-4 text-slate-300">
                       {item.driverChanges ? (
                         <span className="bg-blue-900/40 border border-blue-600/40 text-blue-200 px-2.5 py-1 rounded text-xs block">
@@ -151,7 +171,7 @@ export default async function BrigadesPage({
                       {item.notes || "-"}
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>

@@ -1,7 +1,7 @@
 # 🚍 VZTM Kielce – Oficjalny Poradnik Użytkownika i Dokumentacja Systemu
 
 Witaj w oficjalnym przewodniku po systemie **VZTM Kielce** (Wirtualny Zarząd Transportu Miejskiego w Kielcach – wirtualna firma dla symulatora OMSI 2).  
-Wersja systemu: **0.3.0.0** (BETA).
+Wersja systemu: **0.3.2.0** (BETA).
 
 System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-czerwone) oraz **VBP Tour Regio Kielce** (malowanie niebieskie), organizację taboru, rozkłady brygad, grafik służb, zgłaszanie usterek warsztatowych, składanie wniosków pracowniczych oraz weryfikację raportów z tras.
 
@@ -13,21 +13,24 @@ System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-c
 3. [Poradnik dla Kierowcy (Panel Kierowcy)](#-poradnik-dla-kierowcy)
    - [Profil, awatar i numer służbowy](#profil-awatar-i-numer-służbowy)
    - [Wybór etatu (Limit 6/7)](#wybór-etatu-limit-67)
-   - [Dostęp do taboru przewoźnika](#dostęp-do-taboru-przewoźnika)
-   - [Odbiór służby i blokada wcześniejszych raportów](#odbiór-służby-i-blokada-wcześniejszych-raportów)
+   - [Wgląd do taboru swojego przewoźnika](#wgląd-do-taboru-swojego-przewoźnika)
+   - [Odbiór służby, szczegóły brygady i blokada raportów](#odbiór-służby-szczegóły-brygady-i-blokada-raportów)
    - [Wykonywanie i raportowanie służby](#wykonywanie-i-raportowanie-służby)
-   - [Wnioski pracownicze (Urlopy, Stały wóz, Zmiana etatu)](#wnioski-pracownicze)
+   - [Wnioski pracownicze (Urlopy, Stały wóz, Zmiana, Rezygnacja, Etat)](#wnioski-pracownicze)
    - [Zgłoszenia techniczne i warsztat](#zgłoszenia-techniczne-i-warsztat)
 4. [Poradnik dla Zarządu i Kadry Kierowniczej](#-poradnik-dla-kadry-kierowniczej)
    - [Konto Główne Właściciela: Godksawiss](#konto-główne-właściciela-godksawiss)
+   - [Karta profilowa ze statystykami i zegarem LiveClock](#karta-profilowa-ze-statystykami-i-zegarem-liveclock)
    - [Uprawnienia poszczególnych ról](#uprawnienia-poszczególnych-ról)
    - [Zarządzanie Personelem i zmiana ról](#zarządzanie-personelem-i-zmiana-ról)
-   - [Układanie grafiku i blokada urlopowa](#układanie-grafiku-i-blokada-urlopowa)
-   - [Wykaz brygad (Godziny wyjazdu, zjazdu i przystanków)](#wykaz-brygad)
+   - [Dedykowani przewoźnicy dla Linii i Brygad](#dedykowani-przewoźnicy-dla-linii-i-brygad)
+   - [Układanie grafiku, blokada urlopowa i walidacja dni/przewoźników](#układanie-grafiku-blokada-urlopowa-i-walidacja-dniprzewoźników)
+   - [Wykaz brygad (Godziny wyjazdu, zjazdu, przystanków)](#wykaz-brygad)
    - [Weryfikacja raportów i przeliczanie licznika taboru](#weryfikacja-raportów-i-licznik-taboru)
    - [Historia zgłoszeń technicznych i wniosków](#historia-zgłoszeń-technicznych-i-wniosków)
 5. [Funkcje wizualne i techniczne](#-funkcje-wizualne-i-techniczne)
-6. [Historia zmian – Wersja 0.3.0.0](#-historia-zmian--wersja-0300)
+6. [Historia zmian – Wersja 0.3.2.0](#-historia-zmian--wersja-0320)
+7. [Historia wcześniejszych wydań](#-historia-wcześniejszych-wydań)
 
 ---
 
@@ -39,7 +42,7 @@ Każdy użytkownik w systemie posiada przypisaną rolę oraz **unikalny numer s�
 | :--- | :---: | :---: | :--- |
 | **Właściciel** | `W` | `W0` – `W1` | Pełna administracja systemem, zarządzanie personelem, taborem, liniami i grafikiem. Konto główne: **`Godksawiss`** (`W1`). |
 | **Dyspozytor** | `D` | `D1` – `D99` | Układanie grafiku, przydzielanie służb kierowcom, koordynacja ruchu. |
-| **Kierownik Działu Przewozów** | `P` | `P1` – `P99` | Zarządzanie liniami komunikacyjnymi, trasami i wykazem brygad. |
+| **Kierownik Działu Przewozów** | `P` | `P1` – `P99` | Zarządzanie liniami komunikacyjnymi, trasami i wykazem brygad, przydzielanie linii operatorom. |
 | **Mechanik** | `M` | `M1` – `M99` | Zarządzanie taborem, serwis techniczny, kierowanie wozów na warsztat i zatwierdzanie napraw. |
 | **Sprawdzający** | `S` | `S1` – `S99` | Sprawdzanie i zatwierdzanie raportów z tras oraz rozpatrywanie wniosków pracowniczych. |
 | **Kierowca** | `K` | `K1` – `K9999` | Realizacja przydzielonych służb, składanie raportów z OMSI 2, zgłaszanie wniosków i awarii. |
@@ -63,9 +66,10 @@ Każdy użytkownik w systemie posiada przypisaną rolę oraz **unikalny numer s�
 ## 💺 Poradnik dla Kierowcy
 
 ### Profil, awatar i numer służbowy
-W prawym górnym rogu Panelu Kierowcy znajduje się sekcja Twojego profilu:
-- Możesz wgrać **własne zdjęcie profilowe** (JPG, PNG, WEBP) lub wybrać jeden z przygotowanych gotowych awatarów.
-- Obok Twojego nicku zawsze widnieje Twój numer służbowy (np. `K1923`) oraz spółka (`VMPK` lub `VBP`).
+W nagłówku Panelu Kierowcy znajduje się sekcja Twojego profilu:
+- Możesz wgrać **własne zdjęcie profilowe** (JPG, PNG, WEBP) lub wybrać jeden z gotowych awatarów.
+- Twój awatar wyświetla się również bezpośrednio w pasku nawigacji obok Twojego nicku i przycisku *Panel Kierowcy*.
+- Obok Twojego nicku widnieje Twój numer służbowy (np. `K1923`) oraz spółka (`VMPK` lub `VBP`).
 
 ### Wybór etatu (Limit 6/7)
 Po pierwszej akceptacji konta system wyświetla okno wyboru dni pracy (etatu):
@@ -74,15 +78,22 @@ Po pierwszej akceptacji konta system wyświetla okno wyboru dni pracy (etatu):
   *„Brak możliwości przekroczenia etatu 6/7! Maksymalnie 6 dni w tygodniu.”*
 - Wybór etatu można w każdej chwili zaktualizować za pomocą dedykowanego wniosku.
 
-### Dostęp do taboru przewoźnika
-- Kierowcy zatrudnieni w **VMPK** mają dostęp wyłącznie do autobusów spółki VMPK.
-- Kierowcy zatrudnieni w **VBP** mają dostęp wyłącznie do autobusów spółki VBP Tour Regio.
-- Informacja o Twoim stałym pojeździe wyświetla się w nagłówku Twojego panelu.
+### Wgląd do taboru swojego przewoźnika
+- W sekcji **Tabor Twojego Przewoźnika** kierowca ma pełny podgląd wszystkich autobusów przypisanych do jego spółki (`VMPK` lub `VBP`).
+- Przy każdym pojeździe prezentowane są: zdjęcie, numer taborowy (np. `#101`), model, numer rejestracyjny, aktualny stan licznika w kilometrach oraz stan techniczny (Sprawny / Warsztat / Kasacja).
+- Kierowcy VMPK widzą tylko tabor VMPK, a kierowcy VBP tylko tabor VBP.
 
-### Odbiór służby i blokada wcześniejszych raportów
-W sekcji **Twoje Przydzielone Służby**:
-- Widzisz datę, linię, autobus oraz brygadę.
-- **Blokada przedwczesnych raportów:** Jeżeli służba jest zaplanowana na jutro lub kolejny dzień, przycisk złożenia raportu jest zablokowany z informacją:  
+### Odbiór służby, szczegóły brygady i blokada raportów
+W sekcji **Twoje Służby (Grafik)**:
+- Pod numerem linii znajduje się przejrzysta karta z datą i statusem służby (usunięto powtarzający się napis trasy).
+- Jeśli do służby przypisano brygadę, wyświetla się szczegółowe okno harmonogramu zawierające:
+  - **Godziny:** `Wyjazd - Zjazd`
+  - **1. przystanek:** godzina odjazdu z przystanku początkowego
+  - **Ostatni przystanek:** godzina przyjazdu na przystanek końcowy
+  - **Wyjazd:** w formacie `Zajezdnia VMPK - <Przystanek Początkowy>`
+  - **Zjazd:** w formacie `<Przystanek Końcowy> - Zajezdnia VMPK`
+  - **Przesiadki i podmiany:** informacje o podmianach na trasie
+- **Blokada przedwczesnych raportów:** Jeżeli służba jest zaplanowana na przyszły dzień, przycisk złożenia raportu jest zablokowany:  
   *„🔒 Dostępny w dniu służby (DD.MM.RRRR)”*. Raport można złożyć wyłącznie w dniu odbywania służby lub po jej zakończeniu.
 
 ### Wykonywanie i raportowanie służby
@@ -94,18 +105,22 @@ Po zakończeniu jazdy w symulatorze OMSI 2:
 5. Po akceptacji przez Sprawdzającego lub Zarząd przejechane kilometry automatycznie zasilają licznik przypisanego autobusu!
 
 ### Wnioski pracownicze
-Dostępne w Panelu Kierowcy w 5 dedykowanych formularzach:
+Dostępne w Panelu Kierowcy w dedykowanych, precyzyjnych formularzach:
 1. **Wniosek o urlop wypoczynkowy:**
    - Wybierz *Data początkowa (dla urlopu)* oraz *Data końcowa (dla urlopu)*.
-   - Zaakceptowany urlop blokuje możliwość przydzielenia służby w tym terminie przez dyspozytora.
-2. **Wniosek o stały pojazd / zmiana stałego pojazdu:**
-   - Wybierz pożądany autobus z taboru swojego przewoźnika. Po zatwierdzeniu pojazd jest na stałe przypisany do Twojego konta.
-3. **Wniosek o zmianę etatu:**
+   - Zaakceptowany urlop bezwzględnie blokuje dyspozytorowi możliwość wydania służby w tym terminie.
+2. **Wniosek o dodatkową służbę:**
+   - Wybierz dzień, preferowaną linię/zmianę oraz **opcjonalny preferowany pojazd z taboru** swojego przewoźnika.
+3. **Prośba o anulowanie służby:**
+   - Wygodny wybór konkretnej zaplanowanej służby bezpośrednio z grafiku (wraz z datą, linią i brygadą).
+4. **Wniosek o stały pojazd:**
+   - Wniosek o przypisanie pierwszego stałego wozu z floty Twojego przewoźnika.
+5. **Wniosek o zmianę stałego pojazdu:**
+   - Osobny wniosek umożliwiający zmianę obecnie przypisanego autobusu na inny wóz.
+6. **Wniosek o usunięcie stałego pojazdu (rezygnacja):**
+   - Pozwala zrezygnować ze stałego przydziału i powrócić do pojazdów rotacyjnych.
+7. **Wniosek o zmianę etatu:**
    - Interaktywny wybór nowych dni pracy z walidacją limitu 6/7.
-4. **Wniosek o dodatkową służbę:**
-   - Wskaż konkretny dzień, w którym chcesz otrzymać dodatkową służbę (uzasadnienie jest opcjonalne).
-5. **Prośba o anulowanie służby:**
-   - Wybierz konkretną zaplanowaną służbę z listy, jeśli z przyczyn losowych nie możesz jej zrealizować.
 
 Wszystkie rozpatrzone wnioski trafiają do podsekcji **Historia wniosków**.
 
@@ -122,33 +137,46 @@ Wszystkie rozpatrzone wnioski trafiają do podsekcji **Historia wniosków**.
 - **Rola:** `WLASCICIEL`
 - **Numer służbowy:** `W1`
 
+### Karta profilowa ze statystykami i zegarem LiveClock
+Na samej górze Panelu Zarządu znajduje się pełna karta profilowa tożsama z panelem kierowcy:
+- Wyświetla awatar z plakietką numeru służbowego (np. `W1`), nick `Godksawiss`, rolę oraz spółkę (`VMPK`).
+- Zawiera aktualne dni etatu oraz przypisany stały pojazd.
+- Posiada wbudowany **zegar czasu rzeczywistego (LiveClock)** z datą i godziną co sekundę.
+- Przyciski szybkiego dostępu: *Wykaz Brygad*, *Strona publiczna*, *Panel Kierowcy &rarr;*.
+
 ### Uprawnienia poszczególnych ról
 Panel Zarządzania (`/panel/zarzad`) automatycznie dostosowuje widok i akcje do uprawnień zalogowanego pracownika:
 - **Dyspozytor (`D`):** Dostęp do grafiku służb i przydzielania kursów.
-- **Kierownik Działu Przewozów (`P`):** Dostęp do zarządzania liniami oraz wykazem brygad.
-- **Mechanik (`M`):** Dostęp do taboru, kierowania pojazdów na warsztat i potwierdzania napraw.
+- **Kierownik Działu Przewozów (`P`):** Dostęp do zarządzania liniami oraz wykazem brygad, przydzielanie linii przewoźnikom.
+- **Mechanik (`M`):** Dostęp do taboru, kierowania pojazdów na warsztat i zatwierdzania napraw.
 - **Sprawdzający (`S`):** Dostęp do weryfikacji raportów z tras oraz rozpatrywania wniosków pracowniczych.
 - **Właściciel (`W`):** Pełny dostęp do wszystkich sekcji, w tym rekrutacji i zmiany ról pracowników.
 
-### Zarządzanie Personelem i zmiana ról
-Właściciel może w sekcji **Zarządzanie Personelem i Rolami**:
-- Przeglądać wszystkich aktywnych pracowników, ich wiek, opis, etat oraz stały pojazd.
-- Za pomocą listy rozwijanej awansować pracownika na inną rolę (np. Kierowca &rarr; Dyspozytor &rarr; Mechanik).  
-- System automatycznie nadaje wtedy właściwy prefiks numeru służbowego!
+### Dedykowani przewoźnicy dla Linii i Brygad
+- Zarówno przy dodawaniu, jak i edycji linii oraz brygad istnieje możliwość wyznaczenia dedykowanego operatora (`VMPK`, `VBP` lub Dowolny).
+- W wykazie brygad oraz w grafiku widoczne są plakietki spółek przy numerach linii.
 
-### Układanie grafiku i blokada urlopowa
-Przy przydzielaniu nowej służby:
-- System wyświetla listę kierowców wraz z ich stałymi pojazdami.
-- **Weryfikacja urlopowa:** Jeżeli kierowca ma zaakceptowany urlop w wybranym dniu, system zablokuje przydzielenie służby i wyświetli komunikat ostrzegawczy:  
-  *„Brak możliwości przydzielenia służby! Kierowca przebywa w tym dniu na zaakceptowanym urlopie wypoczynkowym.”*
+### Układanie grafiku, blokada urlopowa i walidacja dni/przewoźników
+Podczas wydawania nowej służby system prowadzi wielostopniową weryfikację:
+1. **Weryfikacja urlopowa:** Jeżeli kierowca ma zaakceptowany urlop w wybranym dniu, system zablokuje przydzielenie służby z komunikatem:  
+   *„Brak możliwości przydzielenia służby! Kierowca przebywa w tym dniu na zaakceptowanym urlopie wypoczynkowym.”*
+2. **Separacja przewoźników (Pojazd & Linia):**
+   - Kierowcy VMPK nie można przydzielić autobusu VBP ani linii dedykowanej dla VBP.
+   - Kierowcy VBP nie można przydzielić autobusu VMPK ani linii dedykowanej dla VMPK.
+3. **Walidacja dnia tygodnia dla brygad:**
+   - Brygadę oznaczoną jako **sobotnia** można przydzielić wyłącznie na **sobotę**.
+   - Brygadę oznaczoną jako **niedzielna / święta** można przydzielić wyłącznie na **niedzielę**.
+   - Brygadę na **dni robocze** można przydzielić wyłącznie na dni od **poniedziałku do piątku**.
+4. **Czysty wygląd grafiku:** Z kart służb usunięto zbędny napis `Trasa:`, eksponując datę, linię, autobus, kierowcę oraz podgląd harmonogramu brygady.
 
 ### Wykaz brygad
 W formularzu tworzenia i edycji brygady dostępne są precyzyjne pola:
 - **Godzina Wyjazdu** (czas rozpoczęcia pracy)
 - **Godzina Zjazdu** (czas zakończenia pracy)
-- **Godzina pierwszego przystanku** (opcjonalny czas odjazdu z pętli początkowej)
-- **Godzina ostatniego przystanku** (opcjonalny czas przyjazdu na pętlę końcową)
-- Miejsca wyjazdu i zjazdu (np. Zajezdnia VMPK)
+- **Godzina pierwszego przystanku** (odjazd z pętli początkowej)
+- **Godzina ostatniego przystanku** (przyjazd na pętlę końcową)
+- **Miejsce wyjazdu i zjazdu** (np. `Zajezdnia VMPK - Jagiellońska MPK` i `Jagiellońska MPK - Zajezdnia VMPK`)
+- **Dedykowany przewoźnik** (VMPK / VBP)
 - Punkty podmian kierowców i dodatkowe uwagi
 
 ### Weryfikacja raportów i licznik taboru
@@ -156,41 +184,61 @@ W formularzu tworzenia i edycji brygady dostępne są precyzyjne pola:
 - Kliknięcie **Akceptuj Raport** powoduje **automatyczne powiększenie stanu licznika kilometrów w autobusie** o dystans przebyty podczas służby.
 
 ### Historia zgłoszeń technicznych i wniosków
-- Rozpatrzone wnioski kierowców nie znikają z bazy – są archiwizowane w sekcji **Historia rozpatrzonych wniosków**.
-- Zgłoszenia naprawione przez warsztat lub odrzucone trafiają do sekcji **Historia zgłoszeń technicznych**, zachowując pełny ślad wykonanych napraw.
+- Rozpatrzone wnioski kierowców są archiwizowane w sekcji **Historia rozpatrzonych wniosków** (wraz z obsługą stałego pojazdu, zmian i rezygnacji).
+- Zgłoszenia naprawione przez warsztat lub odrzucone trafiają do sekcji **Historia zgłoszeń technicznych**.
 
 ---
 
 ## 🎨 Funkcje wizualne i techniczne
 
-1. **Tryb Jasny / Ciemny (Dark / Light Theme):**
-   - Przycisk w prawym górnym rogu nawigacji (ikona ☀️ / 🌙) pozwala błyskawicznie przełączać motyw strony.
-   - Wybór jest trwale zapisywany w przeglądarce (`localStorage`).
-2. **Uproszczony Navbar:**
-   - Główne menu zostało odchudzone o linki Taboru, Linii i Brygad, które są teraz bezpośrednio dostępne z poziomu paneli i dedykowanych kart.
-3. **Płynna responsywność:**
+1. **Awatar użytkownika w pasku nawigacji:**
+   - Profilowe użytkownika jest widoczne bezpośrednio obok nicku oraz przycisku *Panel Kierowcy*.
+2. **Tryb Jasny / Ciemny (Dark / Light Theme):**
+   - Przełącznik motywu w prawym górnym rogu z trwałym zapisem w `localStorage`.
+3. **Zegar LiveClock:**
+   - Czas rzeczywisty w języku polskim w Panelu Zarządu.
+4. **Płynna responsywność:**
    - Pełne wsparcie dla urządzeń mobilnych, tabletów i komputerów stacjonarnych.
 
 ---
 
-## 🚀 Historia zmian – Wersja 0.3.0.0
+## 🚀 Historia zmian – Wersja 0.3.2.0
 
-- ✨ Dodano pola wieku (`age`) oraz opisu o sobie (`bio`) do formularza rejestracji.
-- 🔒 Wprowadzono separację taboru – kierowcy widzą wyłącznie pojazdy swojego przewoźnika (VMPK / VBP).
-- 🏷️ Wprowadzono oficjalny system numerów służbowych z prefiksami (`K`, `D`, `P`, `M`, `S`, `W`).
-- 🛡️ Utworzono 6 wyspecjalizowanych ról z uprawnieniami modułowymi (Właściciel, Dyspozytor, Kierownik Przewozów, Mechanik, Sprawdzający, Kierowca).
-- 📅 Wdrożono automatyczny wybór etatu po rekrutacji z blokadą przekroczenia limitu 6/7.
-- 🏖️ Zaktualizowano wniosek o urlop z etykietami „dla urlopu” oraz blokadą przydzielania służb w trakcie urlopu.
-- 🚌 Dodano wniosek o stały pojazd z automatycznym przypisaniem do profilu kierowcy.
-- 🔄 Dodano wniosek o zmianę etatu z walidacją 6/7.
-- ➕ Przeprojektowano wniosek o dodatkową służbę (wybór dnia, usunięcie wymogu uzasadnienia).
-- ❌ Przeprojektowano wniosek o anulowanie służby (wybór z listy zaplanowanych służb).
-- 🔒 Wprowadzono blokadę składania raportów przed dniem odbywania służby.
-- 📋 Wzbogacono wykaz brygad o godziny pierwszego i ostatniego przystanku oraz nazwy „Godzina Wyjazdu” i „Godzina Zjazdu”.
-- 📜 Wdrożono archiwum i historię wniosków oraz zgłoszeń warsztatowych.
-- 🖼️ Dodano obsługę awatarów profilowych kierowcy.
-- 🌓 Wprowadzono przełącznik trybu ciemnego/jasnego.
-- 🧼 Uporządkowano pasek nawigacji i zaktualizowano wersję do `0.3.0.0`.
+Wydanie **0.3.2.0** wprowadza kluczowe usprawnienia integracji Panelu Zarządu z Panelem Kierowcy, rygorystyczne walidacje dyspozytorskie oraz rozbudowane wnioski taborowe:
+
+1. **Wybór pojazdu we wniosku o dodatkową służbę:** Kierowca może wskazać preferowany autobus ze swojego taboru przy prośbie o dodatkowy termin.
+2. **Wybór służby z grafiku przy anulowaniu:** Kierowca wybiera konkretną zaplanowaną służbę ze swojego grafiku.
+3. **Rozdzielenie wniosków o stały pojazd:** Odrębny *Wniosek o stały pojazd* oraz *Wniosek o zmianę stałego pojazdu*.
+4. **Wniosek o usunięcie stałego pojazdu:** Nowy typ wniosku pozwalający kierowcy zrezygnować ze stałego przydziału i powrócić do rotacji.
+5. **Karta profilowa w Panelu Zarządu:** Identyczny banner profilowy jak w Panelu Kierowcy (awatar, nick, numer służbowy, rola, przewoźnik, etat, stały wóz, skróty).
+5.1. **Zegar LiveClock:** Zintegrowany zegar czasu rzeczywistego wyświetlający bieżącą datę i godzinę w Panelu Zarządu.
+6. **Wgląd do taboru w Panelu Kierowcy:** Dedykowana sekcja prezentująca wszystkie autobusy przewoźnika kierowcy (VMPK/VBP) ze zdjęciami, stanem licznika, rejestracjami i statusem sprawności.
+7. **Usunięcie napisu „Trasa:” pod linią:** Karty służb w grafiku zostały oczyszczone z redundantnego pola trasy zarówno u kierowcy, jak i w zarządzie.
+8. **Przydział linii i brygad przewoźnikowi:** Dodano możliwość przypisania linii oraz brygad do operatora (VMPK / VBP).
+9. **Walidacja dnia tygodnia brygad:** Blokada przydzielania brygad sobotnich na dni robocze lub niedziele, niedzielnych na soboty/dni powszednie oraz roboczych na weekendy.
+10. **Blokada mieszania przewoźników:** Całkowita blokada wydania pojazdu lub linii VMPK kierowcy VBP oraz vice versa.
+11. **Szczegółowe formatowanie harmonogramu brygady:** Prezentacja `1. przystanek: <godzina>`, `Ostatni przystanek: <godzina>`, `Wyjazd: Zajezdnia VMPK - <przystanek>` oraz `Zjazd: <przystanek> - Zajezdnia VMPK`.
+12. **Awatar profilowy w Navbarze:** Wyświetlanie zdjęcia profilowego bezpośrednio obok nazwy użytkownika oraz przycisku *Panel Kierowcy*.
+13. **Aktualizacja wersji:** Podniesienie wersji systemu do **0.3.2.0** w całym kodzie, layoutach i dokumentacji.
+
+---
+
+## 📜 Historia wcześniejszych wydań
+
+### Wersja 0.3.0.0
+- Wprowadzenie ról służbowych: Właściciel (`W`), Dyspozytor (`D`), Kierownik Przewozów (`P`), Mechanik (`M`), Sprawdzający (`S`), Kierowca (`K`).
+- Generowanie unikalnych numerów służbowych z literowymi prefiksami.
+- Wybór etatu po rekrutacji z blokadą etatu powyżej 6/7.
+- Blokada urlopowa przy planowaniu służb w grafiku.
+- Blokada składania raportów przed dniem służby.
+- Archiwum i historia wniosków oraz napraw technicznych taboru.
+- Obsługa awatarów użytkownika i przełącznik trybu ciemnego/jasnego.
+
+### Wersja 0.2.0.0
+- Dedykowane podstrony przewoźników VMPK i VBP.
+- Przeliczanie dystansu z raportu na licznik kilometrów pojazdu.
+- Sortowanie brygad: dni robocze &rarr; soboty &rarr; niedziele.
+- Zmiana konta administracyjnego na `Godksawiss`.
 
 ---
 *VZTM Kielce © 2026. Wszelkie prawa zastrzeżone.*
