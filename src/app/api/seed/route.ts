@@ -20,14 +20,16 @@ export async function GET() {
       where: { username: "Godksawiss" },
       update: {
         password: adminPassword,
-        role: "ZARZAD",
+        role: "WLASCICIEL",
+        badgeNumber: "W1",
         status: "ACCEPTED",
         carrier: "VMPK",
       },
       create: {
         username: "Godksawiss",
         password: adminPassword,
-        role: "ZARZAD",
+        role: "WLASCICIEL",
+        badgeNumber: "W1",
         status: "ACCEPTED",
         carrier: "VMPK",
       },
@@ -39,6 +41,7 @@ export async function GET() {
       update: {
         password: driverPassword,
         role: "KIEROWCA",
+        badgeNumber: "K1001",
         status: "ACCEPTED",
         carrier: "VMPK",
       },

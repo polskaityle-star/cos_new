@@ -10,4 +10,77 @@
 body {
   background-color: #0f172a; /* bg-slate-900 */
   color: #f1f5f9; /* text-slate-100 */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Tryb Jasny */
+html.light body,
+html[data-theme="light"] body {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-slate-900,
+html[data-theme="light"] .bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.light .bg-slate-800,
+html[data-theme="light"] .bg-slate-800 {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light .bg-slate-700,
+html[data-theme="light"] .bg-slate-700 {
+  background-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html.light .bg-slate-950,
+html[data-theme="light"] .bg-slate-950 {
+  background-color: #f1f5f9 !important;
+}
+
+html.light .border-slate-700,
+html.light .border-slate-800,
+html.light .border-slate-600,
+html[data-theme="light"] .border-slate-700,
+html[data-theme="light"] .border-slate-800,
+html[data-theme="light"] .border-slate-600 {
+  border-color: #cbd5e1 !important;
+}
+
+html.light .text-slate-100,
+html.light .text-slate-200,
+html[data-theme="light"] .text-slate-100,
+html[data-theme="light"] .text-slate-200 {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-300,
+html.light .text-slate-400,
+html[data-theme="light"] .text-slate-300,
+html[data-theme="light"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+html.light input,
+html.light select,
+html.light textarea,
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light button.text-white,
+html.light a.text-white,
+html[data-theme="light"] button.text-white,
+html[data-theme="light"] a.text-white {
+  color: #ffffff !important;
 }

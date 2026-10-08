@@ -21,14 +21,16 @@ async function main() {
     where: { username: "Godksawiss" },
     update: {
       password: adminPassword,
-      role: "ZARZAD",
+      role: "WLASCICIEL",
+      badgeNumber: "W1",
       status: "ACCEPTED",
       carrier: "VMPK"
     },
     create: {
       username: "Godksawiss",
       password: adminPassword,
-      role: "ZARZAD",
+      role: "WLASCICIEL",
+      badgeNumber: "W1",
       status: "ACCEPTED",
       carrier: "VMPK"
     }
@@ -40,6 +42,7 @@ async function main() {
     update: {
       password: driverPassword,
       role: "KIEROWCA",
+      badgeNumber: "K1001",
       status: "ACCEPTED",
       carrier: "VMPK"
     },
@@ -47,6 +50,7 @@ async function main() {
       username: "kierowca1",
       password: driverPassword,
       role: "KIEROWCA",
+      badgeNumber: "K1001",
       status: "ACCEPTED",
       carrier: "VMPK"
     }

@@ -4,12 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { canManageRequests } from "@/lib/roles";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   
-  if (!session || !session.user || session.user.role !== "ZARZAD") {
-    return NextResponse.json({ message: "Brak autoryzacji" }, { status: 401 });
+  if (!session || !session.user || !canManageRequests(session.user.role)) {
+    return NextResponse.json({ message: "Brak uprawnień do sprawdzania raportów" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);

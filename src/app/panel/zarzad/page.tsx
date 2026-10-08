@@ -5,15 +5,40 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ReportFileList from "@/components/ReportFileList";
 import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
+import {
+  canAccessManagementPanel,
+  canManageDuties,
+  canManageLines,
+  canManageFleet,
+  canManageRequests,
+  canManageUsers,
+  getRoleLabel,
+  getRoleBadgeClass,
+  ROLES,
+} from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPanel() {
+export default async function AdminPanel({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string; driver?: string }>;
+}) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || session.user.role !== "ZARZAD") {
+  if (!session || !session.user || !canAccessManagementPanel(session.user.role)) {
     redirect("/");
   }
+
+  const resolvedParams = searchParams ? await searchParams : {};
+  const { error, driver } = resolvedParams;
+
+  const userRole = session.user.role || "KIEROWCA";
+  const canUsers = canManageUsers(userRole);
+  const canLines = canManageLines(userRole);
+  const canFleet = canManageFleet(userRole);
+  const canDuties = canManageDuties(userRole);
+  const canReqs = canManageRequests(userRole);
 
   const [
     pendingUsers,
@@ -23,7 +48,9 @@ export default async function AdminPanel() {
     pendingReports,
     allDuties,
     driverRequests,
+    driverRequestsHistory,
     vehicleDefects,
+    vehicleDefectsHistory,
     contactMessages,
     rawBrigadeSchedules,
   ] = await Promise.all([
@@ -39,6 +66,7 @@ export default async function AdminPanel() {
     }),
     prisma.user.findMany({
       where: { status: "ACCEPTED" },
+      include: { assignedVehicle: true },
       orderBy: { username: "asc" },
     }),
     prisma.report.findMany({
@@ -62,17 +90,29 @@ export default async function AdminPanel() {
         report: true,
       },
       orderBy: { date: "desc" },
-      take: 40,
+      take: 50,
     }),
     prisma.driverRequest.findMany({
       where: { status: "PENDING" },
       include: { user: true },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.driverRequest.findMany({
+      where: { status: { in: ["ACCEPTED", "REJECTED"] } },
+      include: { user: true },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+    }),
     prisma.vehicleDefect.findMany({
       where: { status: { in: ["NOWE", "WARSZTAT"] } },
       include: { user: true, vehicle: true },
       orderBy: { createdAt: "desc" },
+    }),
+    prisma.vehicleDefect.findMany({
+      where: { status: { in: ["NAPRAWIONE", "ODRZUCONE"] } },
+      include: { user: true, vehicle: true },
+      orderBy: { createdAt: "desc" },
+      take: 40,
     }),
     prisma.contactMessage.findMany({
       orderBy: { createdAt: "desc" },
@@ -87,25 +127,52 @@ export default async function AdminPanel() {
   const brigadeSchedules = sortBrigades(rawBrigadeSchedules);
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-12 pb-16">
+      {/* Alert błędu: konflikt urlopowy */}
+      {error === "urlop_conflict" && (
+        <div className="bg-red-950/90 border-2 border-red-500 text-red-100 p-5 rounded-2xl flex items-start gap-4 shadow-xl">
+          <span className="text-3xl">⚠️</span>
+          <div>
+            <h3 className="font-bold text-lg text-white">Brak możliwości przydzielenia służby!</h3>
+            <p className="text-sm text-red-200 mt-1">
+              Kierowca <b className="text-white underline">{driver || "wybrany pracownik"}</b> posiada w tym terminie <b>zaakceptowany urlop wypoczynkowy</b>. 
+              Zgodnie z regulaminem VZTM Kielce, pracownik na urlopie nie może otrzymać służby w grafiku.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Nagłówek i statystyki */}
       <div className="border-b border-slate-700 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-extrabold text-amber-400">Panel Główny Zarządu</h1>
-          <p className="text-slate-400 mt-1">
-            Zarządzanie personelem, taborem, liniami, brygadami i zgłoszeniami VZTM Kielce
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-amber-400">Panel Zarządzania VZTM</h1>
+            <span className={`text-xs px-2.5 py-1 rounded-full border font-bold ${getRoleBadgeClass(userRole)}`}>
+              {session.user.badgeNumber ? `[${session.user.badgeNumber}] ` : ""}{getRoleLabel(userRole)}
+            </span>
+          </div>
+          <p className="text-slate-400 text-sm">
+            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.3.0.0)
           </p>
         </div>
         <div className="flex flex-col md:items-end gap-3">
-          <Link
-            href="/"
-            className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 border border-slate-600 self-start md:self-auto"
-          >
-            <span>🌐 Przejdź do strony publicznej &rarr;</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/panel/kierowca"
+              className="bg-emerald-700 hover:bg-emerald-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
+            >
+              <span>🚌 Panel Kierowcy &rarr;</span>
+            </Link>
+            <Link
+              href="/"
+              className="bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-600 shadow"
+            >
+              <span>🌐 Strona Główna</span>
+            </Link>
+          </div>
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
-              Kierowcy: <b className="text-emerald-400">{activeUsers.length}</b>
+              Pracownicy: <b className="text-emerald-400">{activeUsers.length}</b>
             </span>
             <span className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
               Pojazdy: <b className="text-blue-400">{allVehicles.length}</b>
@@ -117,281 +184,498 @@ export default async function AdminPanel() {
               Brygady: <b className="text-amber-400">{brigadeSchedules.length}</b>
             </span>
             <span className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
+              Wnioski: <b className="text-purple-400">{driverRequests.length}</b>
+            </span>
+            <span className="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
               Awarie: <b className="text-rose-400">{vehicleDefects.length}</b>
             </span>
           </div>
         </div>
       </div>
 
-      {/* 1. Rekrutacja (Wnioski o konto) */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-yellow-400 flex items-center justify-between">
-          <span>👥 Oczekujące wnioski rekrutacyjne ({pendingUsers.length})</span>
-        </h2>
-        {pendingUsers.length === 0 ? (
-          <p className="text-slate-400 text-sm">Brak nowych wniosków rekrutacyjnych.</p>
-        ) : (
-          <div className="space-y-4">
-            {pendingUsers.map((user) => (
-              <div
-                key={user.id}
-                className="bg-slate-900 border border-slate-700 p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div>
-                  <div className="font-bold text-lg text-white">Kandydat: {user.username}</div>
-                  <div className="text-xs text-slate-400">Złożono: {new Date(user.createdAt).toLocaleString()}</div>
+      {/* 1. Rekrutacja (Wnioski o konto z wiekiem i bio) */}
+      {canUsers && (
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+          <h2 className="text-2xl font-bold mb-4 text-yellow-400 flex items-center justify-between">
+            <span>👥 Oczekujące wnioski rekrutacyjne ({pendingUsers.length})</span>
+          </h2>
+          {pendingUsers.length === 0 ? (
+            <p className="text-slate-400 text-sm">Brak nowych wniosków rekrutacyjnych.</p>
+          ) : (
+            <div className="space-y-4">
+              {pendingUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="bg-slate-900 border border-slate-700 p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <div className="font-bold text-lg text-white flex items-center gap-2">
+                      <span>Kandydat: {user.username}</span>
+                      {user.age && (
+                        <span className="text-xs bg-slate-800 border border-slate-600 px-2 py-0.5 rounded text-slate-300">
+                          Wiek: {user.age} lat
+                        </span>
+                      )}
+                      <span className="text-xs bg-amber-900/40 text-amber-300 border border-amber-600/40 px-2 py-0.5 rounded">
+                        Numer: {user.badgeNumber || "K???"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      Złożono: {new Date(user.createdAt).toLocaleString()}
+                    </div>
+                    {user.bio && (
+                      <div className="text-xs text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 mt-1 max-w-xl">
+                        <b>O sobie:</b> {user.bio}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <form action={`/api/panel/zarzad/akceptacja?userId=${user.id}&action=accept`} method="POST" className="flex items-center gap-2">
+                      <select
+                        name="carrier"
+                        required
+                        defaultValue={user.carrier || "VMPK"}
+                        className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white"
+                      >
+                        <option value="VMPK">VMPK (Czerwono-żółty)</option>
+                        <option value="VBP">VBP Tour Regio (Niebieski)</option>
+                      </select>
+                      <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-1.5 rounded text-sm transition-colors">
+                        Zaakceptuj
+                      </button>
+                    </form>
+                    <form action={`/api/panel/zarzad/akceptacja?userId=${user.id}&action=reject`} method="POST">
+                      <button type="submit" className="bg-red-600 hover:bg-red-500 text-white font-medium px-3 py-1.5 rounded text-sm transition-colors">
+                        Odrzuć
+                      </button>
+                    </form>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <form action={`/api/panel/zarzad/akceptacja?userId=${user.id}&action=accept`} method="POST" className="flex items-center gap-2">
-                    <select
-                      name="carrier"
-                      required
-                      className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white"
-                    >
-                      <option value="">Wybierz przewoźnika</option>
-                      <option value="VMPK">VMPK (Czerwono-żółty)</option>
-                      <option value="VBP">VBP Tour Regio (Niebieski)</option>
-                    </select>
-                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-1.5 rounded text-sm transition-colors">
-                      Zaakceptuj
-                    </button>
-                  </form>
-                  <form action={`/api/panel/zarzad/akceptacja?userId=${user.id}&action=reject`} method="POST">
-                    <button type="submit" className="bg-red-600 hover:bg-red-500 text-white font-medium px-3 py-1.5 rounded text-sm transition-colors">
-                      Odrzuć
-                    </button>
-                  </form>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
-      {/* 2. Wnioski kierowców (Urlopy, Dodatkowe służby, Anulowania) */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-amber-400 flex items-center justify-between">
-          <span>📝 Wnioski od Kierowców ({driverRequests.length})</span>
-        </h2>
-        {driverRequests.length === 0 ? (
-          <p className="text-slate-400 text-sm">Brak oczekujących wniosków od kierowców.</p>
-        ) : (
-          <div className="space-y-4">
-            {driverRequests.map((req) => (
-              <div key={req.id} className="bg-slate-900 border border-slate-700 p-5 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-lg text-white">{req.user.username}</span>
-                    <span className="bg-amber-900/60 text-amber-300 border border-amber-600/40 text-xs px-2.5 py-0.5 rounded-full font-bold">
-                      {req.type === "URLOP" ? "🏖 Wniosek o urlop" : req.type === "DODATKOWA_SLUZBA" ? "➕ Dodatkowa służba" : "❌ Anulowanie służby"}
+      {/* 2. Zarządzanie Pracownikami i Rolami (Wymóg 11, 12, Właściciel/Zarząd) */}
+      {canUsers && (
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+          <h2 className="text-2xl font-bold mb-4 text-amber-400 flex items-center justify-between">
+            <span>🛡️ Zarządzanie Personelem i Rolami ({activeUsers.length})</span>
+          </h2>
+          <div className="overflow-x-auto rounded-lg border border-slate-700">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-900 text-xs text-slate-300 uppercase tracking-wider border-b border-slate-700">
+                <tr>
+                  <th className="py-3 px-4">Numer</th>
+                  <th className="py-3 px-4">Użytkownik</th>
+                  <th className="py-3 px-4">Przewoźnik</th>
+                  <th className="py-3 px-4">Rola w VZTM</th>
+                  <th className="py-3 px-4">Etat / Stały wóz</th>
+                  <th className="py-3 px-4 text-right">Zmień rolę</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700 bg-slate-900/60">
+                {activeUsers.map((u) => (
+                  <tr key={u.id} className="hover:bg-slate-800/60 transition-colors">
+                    <td className="py-3 px-4 font-mono font-bold text-amber-300">
+                      {u.badgeNumber || "—"}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-semibold text-white">{u.username}</div>
+                      <div className="text-[11px] text-slate-400">Dołączył: {new Date(u.createdAt).toLocaleDateString()}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`text-xs px-2 py-0.5 rounded font-bold ${
+                        u.carrier === "VBP" ? "bg-blue-900/60 text-blue-300 border border-blue-600/40" : "bg-red-900/60 text-amber-300 border border-red-600/40"
+                      }`}>
+                        {u.carrier || "Nieprzypisany"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`text-xs px-2.5 py-0.5 rounded-full border font-bold ${getRoleBadgeClass(u.role)}`}>
+                        {getRoleLabel(u.role)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-xs text-slate-300">
+                      <div>Etat: <b>{u.workingDays || "Brak"}</b></div>
+                      <div>
+                        Stały wóz:{" "}
+                        {u.assignedVehicle ? (
+                          <b className="text-cyan-300">#{u.assignedVehicle.fleetNumber} ({u.assignedVehicle.model})</b>
+                        ) : (
+                          <span className="text-slate-500">Brak</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <form action="/api/panel/zarzad/uzytkownicy" method="POST" className="inline-flex items-center gap-1.5">
+                        <input type="hidden" name="userId" value={u.id} />
+                        <select
+                          name="role"
+                          defaultValue={u.role}
+                          className="bg-slate-800 border border-slate-600 text-xs rounded px-2 py-1 text-white outline-none"
+                        >
+                          <option value="KIEROWCA">Kierowca (K)</option>
+                          <option value="DYSPOZYTOR">Dyspozytor (D)</option>
+                          <option value="KIEROWNIK_PRZEWOZOW">Kierownik Przewozów (P)</option>
+                          <option value="MECHANIK">Mechanik (M)</option>
+                          <option value="SPRAWDZAJACY">Sprawdzający (S)</option>
+                          <option value="WLASCICIEL">Właściciel (W)</option>
+                        </select>
+                        <button
+                          type="submit"
+                          className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-2.5 py-1 rounded font-semibold transition-colors"
+                        >
+                          Zapisz
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* 3. Wnioski kierowców - Oczekujące i Historia (Wymóg 4, 6, 14, 15, 19) */}
+      {canReqs && (
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-4 text-amber-400 flex items-center justify-between">
+              <span>📝 Oczekujące Wnioski od Kierowców ({driverRequests.length})</span>
+            </h2>
+            {driverRequests.length === 0 ? (
+              <p className="text-slate-400 text-sm">Brak oczekujących wniosków od kierowców.</p>
+            ) : (
+              <div className="space-y-4">
+                {driverRequests.map((req) => {
+                  let vehicleInfo = null;
+                  if (req.type === "STALY_POJAZD" && req.details) {
+                    vehicleInfo = allVehicles.find((v) => v.id === req.details);
+                  }
+
+                  return (
+                    <div key={req.id} className="bg-slate-900 border border-slate-700 p-5 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-lg text-white">
+                            {req.user.badgeNumber ? `[${req.user.badgeNumber}] ` : ""}{req.user.username}
+                          </span>
+                          <span className="bg-amber-900/60 text-amber-300 border border-amber-600/40 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                            {req.type === "URLOP"
+                              ? "🏖 Wniosek o urlop"
+                              : req.type === "DODATKOWA_SLUZBA"
+                              ? "➕ Dodatkowa służba"
+                              : req.type === "STALY_POJAZD"
+                              ? "🚌 Stały pojazd"
+                              : req.type === "ZMIANA_ETATU"
+                              ? "📅 Zmiana etatu"
+                              : "❌ Anulowanie służby"}
+                          </span>
+                        </div>
+                        <p className="text-slate-300 text-sm"><b>Opis:</b> {req.reason}</p>
+                        
+                        {req.dateStart && (
+                          <div className="text-xs text-slate-400">
+                            <b>Termin:</b> {new Date(req.dateStart).toLocaleDateString()}
+                            {req.dateEnd ? ` do ${new Date(req.dateEnd).toLocaleDateString()}` : ""}
+                          </div>
+                        )}
+
+                        {vehicleInfo && (
+                          <div className="text-xs text-cyan-300 font-semibold bg-cyan-950/60 p-2 rounded border border-cyan-800/40">
+                            🚌 Prośba o pojazd: #{vehicleInfo.fleetNumber} {vehicleInfo.model} ({vehicleInfo.registration}) [{vehicleInfo.carrier}]
+                          </div>
+                        )}
+
+                        {req.type === "ZMIANA_ETATU" && req.details && (
+                          <div className="text-xs text-amber-300 font-semibold bg-amber-950/60 p-2 rounded border border-amber-800/40">
+                            📅 Proponowane nowe dni pracy: {req.details}
+                          </div>
+                        )}
+
+                        {req.details && !vehicleInfo && req.type !== "ZMIANA_ETATU" && (
+                          <div className="text-xs text-slate-400">Szczegóły: {req.details}</div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <form action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=accept`} method="POST">
+                          <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-1.5 rounded text-sm transition-colors shadow">
+                            Zaakceptuj wniosek
+                          </button>
+                        </form>
+                        <form action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=reject`} method="POST">
+                          <button type="submit" className="bg-red-600 hover:bg-red-500 text-white font-medium px-3 py-1.5 rounded text-sm transition-colors shadow">
+                            Odrzuć
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Historia wniosków (Wymóg 19) */}
+          <div className="border-t border-slate-700 pt-6">
+            <h3 className="text-lg font-bold text-slate-300 mb-3 flex items-center gap-2">
+              <span>📜 Historia rozpatrzonych wniosków ({driverRequestsHistory.length})</span>
+            </h3>
+            {driverRequestsHistory.length === 0 ? (
+              <p className="text-slate-500 text-xs">Brak historii wniosków.</p>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {driverRequestsHistory.map((hReq) => (
+                  <div key={hReq.id} className="bg-slate-900/60 border border-slate-800 p-3 rounded text-xs flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-200">{hReq.user.username}</span>
+                        <span className="text-slate-400">&bull;</span>
+                        <span className="text-slate-300">{hReq.type}</span>
+                        <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                          hReq.status === "ACCEPTED" ? "bg-emerald-900/60 text-emerald-300" : "bg-red-900/60 text-red-300"
+                        }`}>
+                          {hReq.status === "ACCEPTED" ? "ZAAKCEPTOWANY" : "ODRZUCONY"}
+                        </span>
+                      </div>
+                      <div className="text-slate-400 mt-0.5">
+                        {hReq.reason} {hReq.details ? `(${hReq.details})` : ""}
+                      </div>
+                    </div>
+                    <div className="text-slate-500 text-[11px] shrink-0">
+                      Data: {new Date(hReq.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* 4. Zgłoszenia awarii i incydentów pojazdów - Aktywne oraz Historia (Wymóg 18) */}
+      {canFleet && (
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-4 text-rose-400 flex items-center justify-between">
+              <span>🚨 Aktywne Zgłoszenia Techniczne Taboru ({vehicleDefects.length})</span>
+            </h2>
+            {vehicleDefects.length === 0 ? (
+              <p className="text-slate-400 text-sm">Brak aktywnych zgłoszeń awarii. Wszystkie pojazdy są sprawne!</p>
+            ) : (
+              <div className="space-y-6">
+                {vehicleDefects.map((def) => (
+                  <div key={def.id} className="bg-slate-900 border border-slate-700 p-5 rounded-lg space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-lg text-rose-300">{def.title}</span>
+                          <span className="text-xs bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-slate-300">
+                            {def.vehicle.fleetNumber} ({def.vehicle.model}) [{def.vehicle.carrier}]
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded font-mono font-bold ${def.status === 'WARSZTAT' ? 'bg-amber-900/60 text-amber-300' : 'bg-rose-900/60 text-rose-300'}`}>
+                            Stan: {def.status}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">
+                          Zgłosił: <b>{def.user.username}</b> &bull; {new Date(def.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-sm text-slate-300 bg-slate-950/60 p-3 rounded border border-slate-800">
+                      <span className="text-xs text-slate-400 font-semibold block mb-1">Opis kierowcy:</span>
+                      {def.description}
+                    </div>
+
+                    {/* Formularz zarządzania warsztatem */}
+                    <form action={`/api/panel/zarzad/usterki?defectId=${def.id}`} method="POST" className="bg-slate-800/80 p-4 rounded-lg border border-slate-700 space-y-3">
+                      <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                        ⚙️ Decyzja Działu Technicznego / Warsztatu:
+                      </div>
+                      <div className="grid md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Rodzaj usterki / awarii</label>
+                          <input
+                            type="text"
+                            name="defectType"
+                            defaultValue={def.defectType || def.title}
+                            placeholder="np. Układ hamulcowy, Drzwi, Silnik"
+                            className="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Na warsztacie od</label>
+                          <input
+                            type="date"
+                            name="workshopStart"
+                            defaultValue={def.workshopStart ? new Date(def.workshopStart).toISOString().split('T')[0] : ""}
+                            className="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Przewidywany powrót do</label>
+                          <input
+                            type="date"
+                            name="workshopEnd"
+                            defaultValue={def.workshopEnd ? new Date(def.workshopEnd).toISOString().split('T')[0] : ""}
+                            className="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Notatki z naprawy / komentarz</label>
+                        <input
+                          type="text"
+                          name="adminNotes"
+                          defaultValue={def.adminNotes || ""}
+                          placeholder="np. Wymiana klocków, pojazd gotowy do jazdy"
+                          className="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        <button
+                          type="submit"
+                          name="status"
+                          value="WARSZTAT"
+                          className="bg-amber-600 hover:bg-amber-500 text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                        >
+                          🛠 Skieruj / Zapisz jako WARSZTAT
+                        </button>
+                        <button
+                          type="submit"
+                          name="status"
+                          value="NAPRAWIONE"
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                        >
+                          ✅ Oznacz jako NAPRAWIONE (Zapisz do historii)
+                        </button>
+                        <button
+                          type="submit"
+                          name="status"
+                          value="ODRZUCONE"
+                          className="bg-red-600 hover:bg-red-500 text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
+                        >
+                          ❌ Odrzuć zgłoszenie (Zapisz do historii)
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Historia zgłoszeń technicznych (Wymóg 18) */}
+          <div className="border-t border-slate-700 pt-6">
+            <h3 className="text-lg font-bold text-slate-300 mb-3 flex items-center gap-2">
+              <span>📜 Historia napraw i odrzuconych zgłoszeń technicznych ({vehicleDefectsHistory.length})</span>
+            </h3>
+            {vehicleDefectsHistory.length === 0 ? (
+              <p className="text-slate-500 text-xs">Brak wpisów w historii warsztatu.</p>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto">
+                {vehicleDefectsHistory.map((hDef) => (
+                  <div key={hDef.id} className="bg-slate-900/60 border border-slate-800 p-3 rounded text-xs flex flex-col md:flex-row md:items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white">#{hDef.vehicle.fleetNumber} ({hDef.vehicle.model})</span>
+                        <span className="text-slate-400">&bull;</span>
+                        <span className="text-slate-300">{hDef.title}</span>
+                        <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                          hDef.status === "NAPRAWIONE" ? "bg-emerald-900/60 text-emerald-300" : "bg-red-900/60 text-red-300"
+                        }`}>
+                          {hDef.status === "NAPRAWIONE" ? "NAPRAWIONE" : "ODRZUCONE"}
+                        </span>
+                      </div>
+                      <div className="text-slate-400 mt-0.5">
+                        {hDef.adminNotes ? `Notatka: ${hDef.adminNotes}` : `Zgłosił: ${hDef.user.username}`}
+                      </div>
+                    </div>
+                    <div className="text-slate-500 text-[11px] shrink-0">
+                      Data zgłoszenia: {new Date(hDef.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* 5. Raporty z tras */}
+      {canReqs && (
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+          <h2 className="text-2xl font-bold mb-4 text-blue-400">
+            📋 Oczekujące Raporty z Tras ({pendingReports.length})
+          </h2>
+          {pendingReports.length === 0 ? (
+            <p className="text-slate-400 text-sm">Brak raportów do rozpatrzenia.</p>
+          ) : (
+            <div className="space-y-4">
+              {pendingReports.map((report) => (
+                <div key={report.id} className="bg-slate-900 border border-slate-700 p-5 rounded-lg">
+                  <div className="flex flex-wrap justify-between items-center border-b border-slate-700 pb-2 mb-3">
+                    <span className="font-bold text-lg text-white">
+                      Kierowca: {report.duty.user.username} (Linia {report.duty.line.number}{report.duty.brigade ? ` • Brygada: ${report.duty.brigade}` : ""}{report.duty.vehicle ? ` • 🚌 #${report.duty.vehicle.fleetNumber}` : ""})
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      Data służby: {new Date(report.duty.date).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-slate-300 text-sm"><b>Powód:</b> {req.reason}</p>
-                  {req.dateStart && (
-                    <div className="text-xs text-slate-400">
-                      Termin: {new Date(req.dateStart).toLocaleDateString()}
-                      {req.dateEnd ? ` do ${new Date(req.dateEnd).toLocaleDateString()}` : ""}
-                    </div>
-                  )}
-                  {req.details && <div className="text-xs text-slate-400">Szczegóły: {req.details}</div>}
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <form action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=accept`} method="POST">
-                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-1.5 rounded text-sm transition-colors">
-                      Zaakceptuj wniosek
-                    </button>
-                  </form>
-                  <form action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=reject`} method="POST">
-                    <button type="submit" className="bg-red-600 hover:bg-red-500 text-white font-medium px-3 py-1.5 rounded text-sm transition-colors">
-                      Odrzuć
-                    </button>
-                  </form>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* 3. Zgłoszenia awarii i incydentów pojazdów z datami warsztatu */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-rose-400 flex items-center justify-between">
-          <span>🚨 Zgłoszenia Techniczne Taboru (Awarie i Warsztat) ({vehicleDefects.length})</span>
-        </h2>
-        {vehicleDefects.length === 0 ? (
-          <p className="text-slate-400 text-sm">Brak aktywnych zgłoszeń awarii. Wszystkie pojazdy są sprawne!</p>
-        ) : (
-          <div className="space-y-6">
-            {vehicleDefects.map((def) => (
-              <div key={def.id} className="bg-slate-900 border border-slate-700 p-5 rounded-lg space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-lg text-rose-300">{def.title}</span>
-                      <span className="text-xs bg-slate-800 border border-slate-700 px-2 py-0.5 rounded text-slate-300">
-                        {def.vehicle.fleetNumber} ({def.vehicle.model}) [{def.vehicle.carrier}]
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded font-mono font-bold ${def.status === 'WARSZTAT' ? 'bg-amber-900/60 text-amber-300' : 'bg-rose-900/60 text-rose-300'}`}>
-                        Stan: {def.status}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      Zgłosił: <b>{def.user.username}</b> &bull; {new Date(def.createdAt).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-sm text-slate-300 bg-slate-950/60 p-3 rounded border border-slate-800">
-                  <span className="text-xs text-slate-400 font-semibold block mb-1">Opis kierowcy:</span>
-                  {def.description}
-                </div>
-
-                {/* Formularz zarządzania warsztatem dla admina */}
-                <form action={`/api/panel/zarzad/usterki?defectId=${def.id}`} method="POST" className="bg-slate-800/80 p-4 rounded-lg border border-slate-700 space-y-3">
-                  <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                    ⚙️ Ustalenia Warsztatowe (Zarząd):
-                  </div>
-                  <div className="grid md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+                    <div>Stan początkowy: <b className="text-slate-200">{report.startMileage} km</b></div>
+                    <div>Stan końcowy: <b className="text-slate-200">{report.endMileage} km</b></div>
+                    <div>Dystans z kursu: <b className="text-emerald-400 font-bold">+{Math.max(0, report.endMileage - report.startMileage)} km</b></div>
                     <div>
-                      <label className="block text-xs text-slate-400 mb-1">Rodzaj usterki / awarii</label>
-                      <input
-                        type="text"
-                        name="defectType"
-                        defaultValue={def.defectType || def.title}
-                        placeholder="np. Układ hamulcowy, Drzwi, Silnik"
-                        className="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Na warsztacie od</label>
-                      <input
-                        type="date"
-                        name="workshopStart"
-                        defaultValue={def.workshopStart ? new Date(def.workshopStart).toISOString().split('T')[0] : ""}
-                        className="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Przewidywany powrót do</label>
-                      <input
-                        type="date"
-                        name="workshopEnd"
-                        defaultValue={def.workshopEnd ? new Date(def.workshopEnd).toISOString().split('T')[0] : ""}
-                        className="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white"
-                      />
+                      {report.duty.vehicle ? (
+                        <span className="text-cyan-300 text-xs">
+                          Licznik #{report.duty.vehicle.fleetNumber}: <b>{report.duty.vehicle.mileage} km</b>
+                          <span className="text-emerald-400 block text-[11px] font-semibold">
+                            ➔ po akceptacji: {report.duty.vehicle.mileage + Math.max(0, report.endMileage - report.startMileage)} km
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-amber-400 text-xs">Brak przypisanego pojazdu</span>
+                      )}
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Notatki z naprawy / komentarz</label>
-                    <input
-                      type="text"
-                      name="adminNotes"
-                      defaultValue={def.adminNotes || ""}
-                      placeholder="np. Wymiana klocków, oczekiwanie na części zamienne"
-                      className="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1.5 text-xs text-white"
+                  {/* Podgląd plików i screenów */}
+                  <div className="mb-4">
+                    <ReportFileList
+                      reportId={report.id}
+                      startScreenshot={report.startScreenshot}
+                      endScreenshot={report.endScreenshot}
+                      summaryFile={report.summaryFile}
                     />
                   </div>
 
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <button
-                      type="submit"
-                      name="status"
-                      value="WARSZTAT"
-                      className="bg-amber-600 hover:bg-amber-500 text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
-                    >
-                      🛠 Skieruj / Zapisz jako WARSZTAT
-                    </button>
-                    <button
-                      type="submit"
-                      name="status"
-                      value="NAPRAWIONE"
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
-                    >
-                      ✅ Oznacz jako NAPRAWIONE (Sprawny)
-                    </button>
-                    <button
-                      type="submit"
-                      name="status"
-                      value="ODRZUCONE"
-                      className="bg-red-600 hover:bg-red-500 text-white font-medium px-3 py-1.5 rounded text-xs transition-colors"
-                    >
-                      Odrzuć zgłoszenie
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* 4. Raporty z tras z plikami */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-blue-400">
-          📋 Oczekujące Raporty z Tras ({pendingReports.length})
-        </h2>
-        {pendingReports.length === 0 ? (
-          <p className="text-slate-400 text-sm">Brak raportów do rozpatrzenia.</p>
-        ) : (
-          <div className="space-y-4">
-            {pendingReports.map((report) => (
-              <div key={report.id} className="bg-slate-900 border border-slate-700 p-5 rounded-lg">
-                <div className="flex flex-wrap justify-between items-center border-b border-slate-700 pb-2 mb-3">
-                  <span className="font-bold text-lg text-white">
-                    Kierowca: {report.duty.user.username} (Linia {report.duty.line.number}{report.duty.brigade ? ` • Brygada: ${report.duty.brigade}` : ""}{report.duty.vehicle ? ` • 🚌 #${report.duty.vehicle.fleetNumber}` : ""})
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    Data służby: {new Date(report.duty.date).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
-                  <div>Stan początkowy: <b className="text-slate-200">{report.startMileage} km</b></div>
-                  <div>Stan końcowy: <b className="text-slate-200">{report.endMileage} km</b></div>
-                  <div>Dystans z kursu: <b className="text-emerald-400 font-bold">+{Math.max(0, report.endMileage - report.startMileage)} km</b></div>
-                  <div>
-                    {report.duty.vehicle ? (
-                      <span className="text-cyan-300 text-xs">
-                        Licznik #{report.duty.vehicle.fleetNumber}: <b>{report.duty.vehicle.mileage} km</b>
-                        <span className="text-emerald-400 block text-[11px] font-semibold">
-                          ➔ po akceptacji: {report.duty.vehicle.mileage + Math.max(0, report.endMileage - report.startMileage)} km
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-amber-400 text-xs">Brak przypisanego pojazdu</span>
-                    )}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
+                    <form action={`/api/panel/zarzad/raporty?reportId=${report.id}&action=accept`} method="POST">
+                      <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center gap-1.5 shadow">
+                        ✅ Akceptuj Raport (+{Math.max(0, report.endMileage - report.startMileage)} km do licznika)
+                      </button>
+                    </form>
+                    <form action={`/api/panel/zarzad/raporty?reportId=${report.id}&action=reject`} method="POST">
+                      <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold transition-colors">
+                        ✕ Odrzuć Raport
+                      </button>
+                    </form>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
-                {/* Podgląd plików i screenów z lightboxem i bezpośrednimi linkami */}
-                <div className="mb-4">
-                  <ReportFileList
-                    reportId={report.id}
-                    startScreenshot={report.startScreenshot}
-                    endScreenshot={report.endScreenshot}
-                    summaryFile={report.summaryFile}
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
-                  <form action={`/api/panel/zarzad/raporty?reportId=${report.id}&action=accept`} method="POST">
-                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center gap-1.5 shadow">
-                      ✅ Akceptuj Raport (+{Math.max(0, report.endMileage - report.startMileage)} km do licznika)
-                    </button>
-                  </form>
-                  <form action={`/api/panel/zarzad/raporty?reportId=${report.id}&action=reject`} method="POST">
-                    <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold transition-colors">
-                      ✕ Odrzuć Raport
-                    </button>
-                  </form>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* 5. Wiadomości kontaktowe z opcją odpowiedzi */}
+      {/* 6. Wiadomości kontaktowe */}
       <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
         <h2 className="text-2xl font-bold mb-4 text-purple-400 flex items-center justify-between">
           <span>📬 Skrzynka Wiadomości Kontaktowych ({contactMessages.length})</span>
@@ -428,7 +712,6 @@ export default async function AdminPanel() {
                   </div>
                 </div>
 
-                {/* Istniejąca odpowiedź */}
                 {msg.reply && (
                   <div className="bg-slate-950/80 p-3 rounded border border-purple-800/40 text-xs space-y-1">
                     <span className="font-bold text-purple-300 block">Odpowiedź Zarządu ({msg.repliedAt ? new Date(msg.repliedAt).toLocaleString() : ""}):</span>
@@ -436,7 +719,6 @@ export default async function AdminPanel() {
                   </div>
                 )}
 
-                {/* Formularz odpowiedzi */}
                 <form action={`/api/panel/zarzad/wiadomosci?id=${msg.id}&action=reply`} method="POST" className="flex gap-2 items-center pt-1 border-t border-slate-800">
                   <input
                     type="text"
@@ -455,475 +737,513 @@ export default async function AdminPanel() {
         )}
       </section>
 
-      {/* 6. Zarządzanie Liniami i Taborem */}
+      {/* 7. Zarządzanie Liniami i Taborem */}
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Zarządzanie Liniami */}
-        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-          <h2 className="text-2xl font-bold mb-4 text-emerald-400">Zarządzanie Liniami</h2>
-          
-          {/* Dodaj nową linię */}
-          <form action="/api/panel/zarzad/linie" method="POST" className="space-y-3 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
-            <h3 className="font-semibold text-white text-sm">➕ Dodaj Nową Linię</h3>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Numer linii *</label>
-              <input type="text" name="number" placeholder="np. 34" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+        {canLines && (
+          <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+            <h2 className="text-2xl font-bold mb-4 text-emerald-400">Zarządzanie Liniami</h2>
+            
+            {/* Dodaj nową linię */}
+            <form action="/api/panel/zarzad/linie" method="POST" className="space-y-3 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
+              <h3 className="font-semibold text-white text-sm">➕ Dodaj Nową Linię</h3>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Kierunki trasy / warianty</label>
-                <input type="text" name="directions" placeholder="np. A: Bukówka, B: Wichrowa" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
+                <label className="block text-xs text-slate-400 mb-1">Numer linii *</label>
+                <input type="text" name="number" placeholder="np. 34" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
               </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Dostępne brygady</label>
-                <input type="text" name="brigades" placeholder="np. 1, 2, 3, 4" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Przystanek startowy (opcjonalnie)</label>
-                <input type="text" name="startStop" placeholder="np. Bukówka" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Przystanek końcowy (opcjonalnie)</label>
-                <input type="text" name="endStop" placeholder="np. Wichrowa" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
-              </div>
-            </div>
-            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-sm transition-colors">
-              Zapisz nową linię
-            </button>
-          </form>
-
-          {/* Lista linii z modyfikacją i usuwaniem */}
-          <h3 className="text-sm font-semibold text-slate-400 mb-2">Zdefiniowane linie ({allLines.length}):</h3>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {allLines.map((line) => (
-              <div key={line.id} className="bg-slate-900 p-3 rounded-lg border border-slate-700 text-sm space-y-2">
-                <form action="/api/panel/zarzad/linie/edit" method="POST" className="space-y-2">
-                  <input type="hidden" name="id" value={line.id} />
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Numer linii:</label>
-                      <input type="text" name="number" defaultValue={line.number} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Numer linii" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Kierunki trasy:</label>
-                      <input type="text" name="directions" defaultValue={line.directions || ""} placeholder="Kierunki" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Brygady:</label>
-                      <input type="text" name="brigades" defaultValue={line.brigades || ""} placeholder="np. 1, 2" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center pt-1">
-                    <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
-                      Zapisz zmiany
-                    </button>
-                    <button
-                      type="submit"
-                      formAction={`/api/panel/zarzad/linie/delete?id=${line.id}`}
-                      className="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold"
-                    >
-                      🗑 Usuń linię
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Zarządzanie Taborem z uploadem zdjęć */}
-        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-          <h2 className="text-2xl font-bold mb-4 text-emerald-400">Zarządzanie Taborem</h2>
-          
-          {/* Dodaj pojazd ze zdjęciem */}
-          <form action="/api/panel/zarzad/tabor" method="POST" encType="multipart/form-data" className="space-y-3 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
-            <h3 className="font-semibold text-white text-sm">➕ Dodaj Nowy Pojazd</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Przewoźnik *</label>
-                <select name="carrier" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white">
-                  <option value="">Wybierz przewoźnika</option>
-                  <option value="VMPK">VMPK</option>
-                  <option value="VBP">VBP</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Numer taborowy *</label>
-                <input type="text" name="fleetNumber" placeholder="np. #103" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Model pojazdu *</label>
-                <input type="text" name="model" placeholder="np. Solaris Urbino 12" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Numer rejestracyjny *</label>
-                <input type="text" name="registration" placeholder="np. TK 99999" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Początkowy stan licznika [km]</label>
-                <input type="number" name="mileage" placeholder="np. 145000" defaultValue="0" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Status techniczny</label>
-                <select name="status" defaultValue="SPRAWNY" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white">
-                  <option value="SPRAWNY">Sprawny</option>
-                  <option value="WARSZTAT">Warsztat</option>
-                  <option value="KASACJA">Wyłączony / Kasacja</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">📷 Zdjęcie pojazdu [JPG, PNG, WEBP]</label>
-              <input
-                type="file"
-                name="image"
-                accept="image/png, image/jpeg, image/jpg, image/webp"
-                className="w-full bg-slate-800 border border-slate-600 rounded px-2.5 py-1 text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-emerald-700 file:text-white"
-              />
-            </div>
-            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-sm transition-colors">
-              Zapisz pojazd do floty
-            </button>
-          </form>
-
-          {/* Lista pojazdów z edycją, zdjęciem i usuwaniem */}
-          <h3 className="text-sm font-semibold text-slate-400 mb-2">Pojazdy w bazie ({allVehicles.length}):</h3>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {allVehicles.map((veh) => (
-              <div key={veh.id} className="bg-slate-900 p-3.5 rounded-lg border border-slate-700 text-sm space-y-2">
-                <form action="/api/panel/zarzad/tabor/edit" method="POST" encType="multipart/form-data" className="space-y-2">
-                  <input type="hidden" name="id" value={veh.id} />
-                  
-                  {veh.imageUrl && (
-                    <div className="flex items-center gap-3 bg-slate-950 p-2 rounded border border-slate-800">
-                      <img src={veh.imageUrl} alt={veh.fleetNumber} className="h-12 w-20 object-cover rounded" />
-                      <span className="text-xs text-slate-400">Aktualne zdjęcie przypisane</span>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Przewoźnik:</label>
-                      <select name="carrier" defaultValue={veh.carrier} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
-                        <option value="VMPK">VMPK</option>
-                        <option value="VBP">VBP</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Nr taborowy:</label>
-                      <input type="text" name="fleetNumber" defaultValue={veh.fleetNumber} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Nr taborowy" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Status:</label>
-                      <select name="status" defaultValue={veh.status} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
-                        <option value="SPRAWNY">Sprawny</option>
-                        <option value="WARSZTAT">Warsztat</option>
-                        <option value="KASACJA">Kasacja</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Model pojazdu:</label>
-                      <input type="text" name="model" defaultValue={veh.model} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Model" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Rejestracja:</label>
-                      <input type="text" name="registration" defaultValue={veh.registration} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Rejestracja" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Stan licznika [km]:</label>
-                      <input type="number" name="mileage" defaultValue={veh.mileage || 0} placeholder="Przebieg [km]" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Przebieg pojazdu [km]" />
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-emerald-400 font-mono">
-                    Aktualny przebieg / postęp: <b>{(veh.mileage || 0).toLocaleString()} km</b>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] text-slate-400 mb-0.5">Zmień / wgraj nowe zdjęcie pojazdu:</label>
-                    <input
-                      type="file"
-                      name="image"
-                      accept="image/png, image/jpeg, image/jpg, image/webp"
-                      className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-300 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[11px] file:bg-blue-700 file:text-white"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center pt-1">
-                    <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
-                      Zapisz zmiany
-                    </button>
-                    <button
-                      type="submit"
-                      formAction={`/api/panel/zarzad/tabor/delete?id=${veh.id}`}
-                      className="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold"
-                    >
-                      🗑 Usuń pojazd
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      {/* 7. Zarządzanie Wykazem Brygad (Nowa funkcjonalność) */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
-          <h2 className="text-2xl font-bold text-amber-400">📋 Wykaz Brygad (Harmonogram, Odjazdy i Przesiadki)</h2>
-          <a href="/brygady" target="_blank" className="text-xs text-amber-400 hover:underline">
-            Zobacz publiczny widok brygad &rarr;
-          </a>
-        </div>
-
-        {/* Formularz dodawania brygady */}
-        <form action="/api/panel/zarzad/brygady" method="POST" className="space-y-4 bg-slate-900 p-5 rounded-lg border border-slate-700 mb-6">
-          <h3 className="font-semibold text-white text-sm">➕ Dodaj Wpis do Wykazu Brygad</h3>
-          <div className="grid md:grid-cols-4 gap-3">
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Linia *</label>
-              <select name="lineId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white">
-                <option value="">Wybierz Linię</option>
-                {allLines.map((line) => (
-                  <option key={line.id} value={line.id}>
-                    Linia {line.number}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Numer brygady *</label>
-              <input type="text" name="brigadeNumber" placeholder="np. 34/1 - dni robocze, 34/1 - sobotni, 34/1 - niedzielny" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Godzina startu / wyjazdu *</label>
-              <input type="time" name="startTime" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Godzina zjazdu / końca *</label>
-              <input type="time" name="endTime" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Miejsce wyjazdu / startu *</label>
-              <input type="text" name="startLocation" placeholder="np. Zajezdnia VMPK / Bukówka" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Miejsce zjazdu / zakończenia *</label>
-              <input type="text" name="endLocation" placeholder="np. Bukówka / Zajezdnia" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Przesiadki kierowców / podmiany na trasie</label>
-              <input type="text" name="driverChanges" placeholder="np. Przesiadka na przystanku Żytnia o 09:30 z kierowcą B" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Dodatkowe uwagi</label>
-              <input type="text" name="notes" placeholder="np. Wymagana łączność radiowa, kurs skrócony" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-            </div>
-          </div>
-
-          <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded text-sm transition-colors">
-            Zapisz brygadę do wykazu
-          </button>
-        </form>
-
-        {/* Lista brygad z edycją i usuwaniem */}
-        <h3 className="text-sm font-semibold text-slate-400 mb-3">Wpisy w wykazie ({brigadeSchedules.length}):</h3>
-        {brigadeSchedules.length === 0 ? (
-          <p className="text-slate-400 text-sm">Brak zdefiniowanych brygad w wykazie.</p>
-        ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {brigadeSchedules.map((b) => (
-              <div key={b.id} className="bg-slate-900 border border-slate-700 p-4 rounded-lg text-sm space-y-3">
-                <form action="/api/panel/zarzad/brygady/edit" method="POST" className="space-y-3">
-                  <input type="hidden" name="id" value={b.id} />
-                  
-                  <div className="grid md:grid-cols-4 gap-2">
-                    <div>
-                      <label className="text-[10px] text-slate-400 block">Linia:</label>
-                      <select name="lineId" defaultValue={b.lineId} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
-                        {allLines.map((l) => (
-                          <option key={l.id} value={l.id}>Linia {l.number}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <label className="text-[10px] text-slate-400 block">Brygada:</label>
-                        <span className={`text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded border ${getDayBadgeClass(b.brigadeNumber, b.notes)}`}>
-                          {getDayLabel(b.brigadeNumber, b.notes)}
-                        </span>
-                      </div>
-                      <input type="text" name="brigadeNumber" defaultValue={b.brigadeNumber} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400 block">Start:</label>
-                      <input type="time" name="startTime" defaultValue={b.startTime} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-slate-400 block">Koniec:</label>
-                      <input type="time" name="endTime" defaultValue={b.endTime} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce startu / wyjazdu:</label>
-                      <input type="text" name="startLocation" defaultValue={b.startLocation} placeholder="Start" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce zjazdu / końca:</label>
-                      <input type="text" name="endLocation" defaultValue={b.endLocation} placeholder="Koniec" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Przesiadki kierowców / podmiany:</label>
-                      <input type="text" name="driverChanges" defaultValue={b.driverChanges || ""} placeholder="Przesiadki kierowców" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-slate-400 mb-0.5">Dodatkowe uwagi:</label>
-                      <input type="text" name="notes" defaultValue={b.notes || ""} placeholder="Uwagi" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center pt-1 border-t border-slate-800">
-                    <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
-                      Zapisz zmiany
-                    </button>
-                    <button
-                      type="submit"
-                      formAction={`/api/panel/zarzad/brygady/delete?id=${b.id}`}
-                      className="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold"
-                    >
-                      🗑 Usuń brygadę
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* 8. Przydzielanie i usuwanie Służb (Grafik) */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-emerald-400">Wydawanie i Zarządzanie Służbami (Grafik)</h2>
-        
-        {/* Formularz wydawania */}
-        <form action="/api/panel/zarzad/sluzby" method="POST" className="space-y-4 bg-slate-900 p-5 rounded-lg border border-slate-700 mb-6">
-          <h3 className="font-semibold text-white text-sm">📅 Przydziel Nową Służbę</h3>
-          <div className="grid md:grid-cols-5 gap-3">
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Kierowca *</label>
-              <select name="userId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
-                <option value="">Wybierz Kierowcę</option>
-                {activeUsers.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.username} ({user.carrier})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Linia *</label>
-              <select name="lineId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
-                <option value="">Wybierz Linię</option>
-                {allLines.map((line) => (
-                  <option key={line.id} value={line.id}>
-                    Linia {line.number}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Pojazd z taboru</label>
-              <select name="vehicleId" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
-                <option value="">Wybierz Pojazd (opcjonalnie)</option>
-                {allVehicles.map((veh) => (
-                  <option key={veh.id} value={veh.id}>
-                    {veh.fleetNumber} ({veh.model}) - {(veh.mileage || 0).toLocaleString()} km
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Brygada / Nazwa brygady</label>
-              <input
-                type="text"
-                name="brigade"
-                list="brigades-datalist"
-                placeholder="np. 34/2 - dni robocze"
-                className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white"
-              />
-              <datalist id="brigades-datalist">
-                {brigadeSchedules.map((b) => (
-                  <option key={b.id} value={b.brigadeNumber}>
-                    Linia {b.line.number} - {b.brigadeNumber} ({b.startTime} - {b.endTime})
-                  </option>
-                ))}
-              </datalist>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Data służby *</label>
-              <input type="date" name="date" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white" />
-            </div>
-          </div>
-          <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-sm transition-colors">
-            Przydziel służbę do grafiku
-          </button>
-        </form>
-
-        {/* Lista przydzielonych służb z opcją usuwania */}
-        <h3 className="text-sm font-semibold text-slate-400 mb-3">Aktualny grafik służb ({allDuties.length}):</h3>
-        {allDuties.length === 0 ? (
-          <p className="text-slate-400 text-sm">Brak przypisanych służb w systemie.</p>
-        ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {allDuties.map((duty) => (
-              <div key={duty.id} className="bg-slate-900 border border-slate-700 p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-white text-base">Linia {duty.line.number}</span>
-                    {duty.brigade && (
-                      <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
-                        Brygada: {duty.brigade}
-                      </span>
-                    )}
-                    {duty.vehicle && (
-                      <span className="bg-blue-900/50 text-blue-300 border border-blue-600/40 text-xs px-2 py-0.5 rounded font-bold">
-                        🚌 {duty.vehicle.fleetNumber} ({duty.vehicle.model}) &bull; {(duty.vehicle.mileage || 0).toLocaleString()} km
-                      </span>
-                    )}
-                    <span className="text-slate-400">&bull;</span>
-                    <span className="font-semibold text-emerald-400">{duty.user.username} ({duty.user.carrier})</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${duty.status === 'SCHEDULED' ? 'bg-blue-900/60 text-blue-300' : 'bg-emerald-900/60 text-emerald-300'}`}>
-                      {duty.status === 'SCHEDULED' ? 'Zaplanowana' : 'Zrealizowana'}
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    Trasa: {duty.line.directions || (duty.line.startStop ? `${duty.line.startStop} - ${duty.line.endStop}` : "Zgodnie z rozkładem")} &bull; Data: {new Date(duty.date).toLocaleDateString()}
-                  </div>
+                  <label className="block text-xs text-slate-400 mb-1">Kierunki trasy / warianty</label>
+                  <input type="text" name="directions" placeholder="np. A: Bukówka, B: Wichrowa" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
                 </div>
                 <div>
-                  <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">
-                    <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold transition-colors">
-                      🗑 Usuń służbę
-                    </button>
+                  <label className="block text-xs text-slate-400 mb-1">Dostępne brygady</label>
+                  <input type="text" name="brigades" placeholder="np. 1, 2, 3, 4" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Przystanek startowy (opcjonalnie)</label>
+                  <input type="text" name="startStop" placeholder="np. Bukówka" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Przystanek końcowy (opcjonalnie)</label>
+                  <input type="text" name="endStop" placeholder="np. Wichrowa" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-sm transition-colors shadow">
+                Zapisz nową linię
+              </button>
+            </form>
+
+            {/* Lista linii */}
+            <h3 className="text-sm font-semibold text-slate-400 mb-2">Zdefiniowane linie ({allLines.length}):</h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {allLines.map((line) => (
+                <div key={line.id} className="bg-slate-900 p-3 rounded-lg border border-slate-700 text-sm space-y-2">
+                  <form action="/api/panel/zarzad/linie/edit" method="POST" className="space-y-2">
+                    <input type="hidden" name="id" value={line.id} />
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Numer linii:</label>
+                        <input type="text" name="number" defaultValue={line.number} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Numer linii" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Kierunki trasy:</label>
+                        <input type="text" name="directions" defaultValue={line.directions || ""} placeholder="Kierunki" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Brygady:</label>
+                        <input type="text" name="brigades" defaultValue={line.brigades || ""} placeholder="np. 1, 2" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-1">
+                      <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
+                        Zapisz zmiany
+                      </button>
+                      <button
+                        type="submit"
+                        formAction={`/api/panel/zarzad/linie/delete?id=${line.id}`}
+                        className="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold"
+                      >
+                        🗑 Usuń linię
+                      </button>
+                    </div>
                   </form>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </section>
         )}
-      </section>
+
+        {/* Zarządzanie Taborem */}
+        {canFleet && (
+          <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+            <h2 className="text-2xl font-bold mb-4 text-emerald-400">Zarządzanie Taborem</h2>
+            
+            {/* Dodaj pojazd */}
+            <form action="/api/panel/zarzad/tabor" method="POST" encType="multipart/form-data" className="space-y-3 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
+              <h3 className="font-semibold text-white text-sm">➕ Dodaj Nowy Pojazd</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Przewoźnik *</label>
+                  <select name="carrier" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white">
+                    <option value="">Wybierz przewoźnika</option>
+                    <option value="VMPK">VMPK</option>
+                    <option value="VBP">VBP</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Numer taborowy *</label>
+                  <input type="text" name="fleetNumber" placeholder="np. #103" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Model pojazdu *</label>
+                  <input type="text" name="model" placeholder="np. Solaris Urbino 12" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Numer rejestracyjny *</label>
+                  <input type="text" name="registration" placeholder="np. TK 99999" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Początkowy stan licznika [km]</label>
+                  <input type="number" name="mileage" placeholder="np. 145000" defaultValue="0" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Status techniczny</label>
+                  <select name="status" defaultValue="SPRAWNY" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white">
+                    <option value="SPRAWNY">Sprawny</option>
+                    <option value="WARSZTAT">Warsztat</option>
+                    <option value="KASACJA">Wyłączony / Kasacja</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">📷 Zdjęcie pojazdu [JPG, PNG, WEBP]</label>
+                <input
+                  type="file"
+                  name="image"
+                  accept="image/png, image/jpeg, image/jpg, image/webp"
+                  className="w-full bg-slate-800 border border-slate-600 rounded px-2.5 py-1 text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-emerald-700 file:text-white"
+                />
+              </div>
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-sm transition-colors shadow">
+                Zapisz pojazd do floty
+              </button>
+            </form>
+
+            {/* Lista pojazdów */}
+            <h3 className="text-sm font-semibold text-slate-400 mb-2">Pojazdy w bazie ({allVehicles.length}):</h3>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {allVehicles.map((veh) => (
+                <div key={veh.id} className="bg-slate-900 p-3.5 rounded-lg border border-slate-700 text-sm space-y-2">
+                  <form action="/api/panel/zarzad/tabor/edit" method="POST" encType="multipart/form-data" className="space-y-2">
+                    <input type="hidden" name="id" value={veh.id} />
+                    
+                    {veh.imageUrl && (
+                      <div className="flex items-center gap-3 bg-slate-950 p-2 rounded border border-slate-800">
+                        <img src={veh.imageUrl} alt={veh.fleetNumber} className="h-12 w-20 object-cover rounded" />
+                        <span className="text-xs text-slate-400">Aktualne zdjęcie przypisane</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Przewoźnik:</label>
+                        <select name="carrier" defaultValue={veh.carrier} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
+                          <option value="VMPK">VMPK</option>
+                          <option value="VBP">VBP</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Nr taborowy:</label>
+                        <input type="text" name="fleetNumber" defaultValue={veh.fleetNumber} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Nr taborowy" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Status:</label>
+                        <select name="status" defaultValue={veh.status} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
+                          <option value="SPRAWNY">Sprawny</option>
+                          <option value="WARSZTAT">Warsztat</option>
+                          <option value="KASACJA">Kasacja</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Model pojazdu:</label>
+                        <input type="text" name="model" defaultValue={veh.model} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Model" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Rejestracja:</label>
+                        <input type="text" name="registration" defaultValue={veh.registration} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Rejestracja" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Stan licznika [km]:</label>
+                        <input type="number" name="mileage" defaultValue={veh.mileage || 0} placeholder="Przebieg [km]" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Przebieg pojazdu [km]" />
+                      </div>
+                    </div>
+                    <div className="text-[11px] text-emerald-400 font-mono">
+                      Aktualny przebieg: <b>{(veh.mileage || 0).toLocaleString()} km</b>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-0.5">Zmień / wgraj nowe zdjęcie pojazdu:</label>
+                      <input
+                        type="file"
+                        name="image"
+                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                        className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-300 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[11px] file:bg-blue-700 file:text-white"
+                      />
+                    </div>
+                    <div className="flex justify-between items-center pt-1">
+                      <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
+                        Zapisz zmiany
+                      </button>
+                      <button
+                        type="submit"
+                        formAction={`/api/panel/zarzad/tabor/delete?id=${veh.id}`}
+                        className="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold"
+                      >
+                        🗑 Usuń pojazd
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* 8. Zarządzanie Wykazem Brygad (Wymóg 17: Godzina Wyjazdu, Zjazdu, 1. i ostatniego przystanku) */}
+      {canLines && (
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-amber-400">📋 Wykaz Brygad (Harmonogram, Godziny Wyjazdu i Zjazdu)</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Wprowadzaj godziny wyjazdu, zjazdu oraz odjazdów z pierwszego i ostatniego przystanku.</p>
+            </div>
+            <a href="/brygady" target="_blank" className="text-xs text-amber-400 hover:underline">
+              Zobacz publiczny widok brygad &rarr;
+            </a>
+          </div>
+
+          {/* Formularz dodawania brygady */}
+          <form action="/api/panel/zarzad/brygady" method="POST" className="space-y-4 bg-slate-900 p-5 rounded-lg border border-slate-700 mb-6">
+            <h3 className="font-semibold text-white text-sm">➕ Dodaj Wpis do Wykazu Brygad</h3>
+            <div className="grid md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Linia *</label>
+                <select name="lineId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white">
+                  <option value="">Wybierz Linię</option>
+                  {allLines.map((line) => (
+                    <option key={line.id} value={line.id}>
+                      Linia {line.number}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Numer brygady *</label>
+                <input type="text" name="brigadeNumber" placeholder="np. 34/1 - dni robocze, 34/1 - sobotni, 34/1 - niedzielny" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Godzina Wyjazdu *</label>
+                  <input type="time" name="startTime" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-2 text-sm text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Godzina Zjazdu *</label>
+                  <input type="time" name="endTime" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-2 text-sm text-white" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Godzina pierwszego przystanku (opcjonalnie)</label>
+                <input type="time" name="firstStopDeparture" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Godzina ostatniego przystanku (opcjonalnie)</label>
+                <input type="time" name="lastStopArrival" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Miejsce wyjazdu / startu *</label>
+                <input type="text" name="startLocation" placeholder="np. Zajezdnia VMPK / Bukówka" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Miejsce zjazdu / zakończenia *</label>
+                <input type="text" name="endLocation" placeholder="np. Bukówka / Zajezdnia" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Przesiadki kierowców / podmiany na trasie</label>
+                <input type="text" name="driverChanges" placeholder="np. Przesiadka na przystanku Żytnia o 09:30 z kierowcą B" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Dodatkowe uwagi</label>
+                <input type="text" name="notes" placeholder="np. Wymagana łączność radiowa, kurs skrócony" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
+              </div>
+            </div>
+
+            <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded text-sm transition-colors shadow">
+              Zapisz brygadę do wykazu
+            </button>
+          </form>
+
+          {/* Lista brygad */}
+          <h3 className="text-sm font-semibold text-slate-400 mb-3">Wpisy w wykazie ({brigadeSchedules.length}):</h3>
+          {brigadeSchedules.length === 0 ? (
+            <p className="text-slate-400 text-sm">Brak zdefiniowanych brygad w wykazie.</p>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {brigadeSchedules.map((b) => (
+                <div key={b.id} className="bg-slate-900 border border-slate-700 p-4 rounded-lg text-sm space-y-3">
+                  <form action="/api/panel/zarzad/brygady/edit" method="POST" className="space-y-3">
+                    <input type="hidden" name="id" value={b.id} />
+                    
+                    <div className="grid md:grid-cols-4 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-400 block">Linia:</label>
+                        <select name="lineId" defaultValue={b.lineId} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
+                          {allLines.map((l) => (
+                            <option key={l.id} value={l.id}>Linia {l.number}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="text-[10px] text-slate-400 block">Brygada:</label>
+                          <span className={`text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded border ${getDayBadgeClass(b.brigadeNumber, b.notes)}`}>
+                            {getDayLabel(b.brigadeNumber, b.notes)}
+                          </span>
+                        </div>
+                        <input type="text" name="brigadeNumber" defaultValue={b.brigadeNumber} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block">Godzina Wyjazdu:</label>
+                        <input type="time" name="startTime" defaultValue={b.startTime} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-400 block">Godzina Zjazdu:</label>
+                        <input type="time" name="endTime" defaultValue={b.endTime} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Godzina 1. przystanku:</label>
+                        <input type="time" name="firstStopDeparture" defaultValue={b.firstStopDeparture || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Godzina ostatniego przystanku:</label>
+                        <input type="time" name="lastStopArrival" defaultValue={b.lastStopArrival || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce wyjazdu / startu:</label>
+                        <input type="text" name="startLocation" defaultValue={b.startLocation} placeholder="Start" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce zjazdu / końca:</label>
+                        <input type="text" name="endLocation" defaultValue={b.endLocation} placeholder="Koniec" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Przesiadki kierowców / podmiany:</label>
+                        <input type="text" name="driverChanges" defaultValue={b.driverChanges || ""} placeholder="Przesiadki kierowców" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-0.5">Dodatkowe uwagi:</label>
+                        <input type="text" name="notes" defaultValue={b.notes || ""} placeholder="Uwagi" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-800">
+                      <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
+                        Zapisz zmiany
+                      </button>
+                      <button
+                        type="submit"
+                        formAction={`/api/panel/zarzad/brygady/delete?id=${b.id}`}
+                        className="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold"
+                      >
+                        🗑 Usuń brygadę
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* 9. Przydzielanie i usuwanie Służb (Grafik) */}
+      {canDuties && (
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+          <h2 className="text-2xl font-bold mb-4 text-emerald-400">Wydawanie i Zarządzanie Służbami (Grafik)</h2>
+          
+          {/* Formularz wydawania służby */}
+          <form action="/api/panel/zarzad/sluzby" method="POST" className="space-y-4 bg-slate-900 p-5 rounded-lg border border-slate-700 mb-6">
+            <h3 className="font-semibold text-white text-sm">📅 Przydziel Nową Służbę do Grafiku</h3>
+            <div className="grid md:grid-cols-5 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Kierowca *</label>
+                <select name="userId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
+                  <option value="">Wybierz Kierowcę</option>
+                  {activeUsers.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.badgeNumber ? `[${user.badgeNumber}] ` : ""}{user.username} ({user.carrier})
+                      {user.assignedVehicle ? ` [Stały: #${user.assignedVehicle.fleetNumber}]` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Linia *</label>
+                <select name="lineId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
+                  <option value="">Wybierz Linię</option>
+                  {allLines.map((line) => (
+                    <option key={line.id} value={line.id}>
+                      Linia {line.number}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Pojazd z taboru</label>
+                <select name="vehicleId" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
+                  <option value="">Wybierz Pojazd (opcjonalnie)</option>
+                  {allVehicles.map((veh) => (
+                    <option key={veh.id} value={veh.id}>
+                      {veh.fleetNumber} ({veh.model}) - {(veh.mileage || 0).toLocaleString()} km [{veh.carrier}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Brygada / Nazwa brygady</label>
+                <input
+                  type="text"
+                  name="brigade"
+                  list="brigades-datalist"
+                  placeholder="np. 34/2 - dni robocze"
+                  className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white"
+                />
+                <datalist id="brigades-datalist">
+                  {brigadeSchedules.map((b) => (
+                    <option key={b.id} value={b.brigadeNumber}>
+                      Linia {b.line.number} - {b.brigadeNumber} ({b.startTime} - {b.endTime})
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Data służby *</label>
+                <input type="date" name="date" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white" />
+              </div>
+            </div>
+            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-sm transition-colors shadow">
+              Przydziel służbę do grafiku
+            </button>
+          </form>
+
+          {/* Lista służb */}
+          <h3 className="text-sm font-semibold text-slate-400 mb-3">Aktualny grafik służb ({allDuties.length}):</h3>
+          {allDuties.length === 0 ? (
+            <p className="text-slate-400 text-sm">Brak przypisanych służb w systemie.</p>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {allDuties.map((duty) => (
+                <div key={duty.id} className="bg-slate-900 border border-slate-700 p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-white text-base">Linia {duty.line.number}</span>
+                      {duty.brigade && (
+                        <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
+                          Brygada: {duty.brigade}
+                        </span>
+                      )}
+                      {duty.vehicle && (
+                        <span className="bg-blue-900/50 text-blue-300 border border-blue-600/40 text-xs px-2 py-0.5 rounded font-bold">
+                          🚌 {duty.vehicle.fleetNumber} ({duty.vehicle.model}) &bull; {(duty.vehicle.mileage || 0).toLocaleString()} km
+                        </span>
+                      )}
+                      <span className="text-slate-400">&bull;</span>
+                      <span className="font-semibold text-emerald-400">
+                        {duty.user.badgeNumber ? `[${duty.user.badgeNumber}] ` : ""}{duty.user.username} ({duty.user.carrier})
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${duty.status === 'SCHEDULED' ? 'bg-blue-900/60 text-blue-300' : 'bg-emerald-900/60 text-emerald-300'}`}>
+                        {duty.status === 'SCHEDULED' ? 'Zaplanowana' : 'Zrealizowana'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1">
+                      Trasa: {duty.line.directions || (duty.line.startStop ? `${duty.line.startStop} - ${duty.line.endStop}` : "Zgodnie z rozkładem")} &bull; Data: {new Date(duty.date).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div>
+                    <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">
+                      <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold transition-colors">
+                        🗑 Usuń służbę
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

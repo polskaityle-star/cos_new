@@ -25,7 +25,7 @@ export default function RootLayout({
             {children}
           </main>
           <footer className="bg-slate-800 py-6 text-center text-sm text-slate-400">
-            <p>&copy; {new Date().getFullYear()} VZTM Kielce (OMSI 2 Wirtualna Firma) • wersja 0.2.0.0</p>
+            <p>&copy; {new Date().getFullYear()} VZTM Kielce (OMSI 2 Wirtualna Firma) • wersja 0.3.0.0</p>
           </footer>
         </Providers>
       </body>

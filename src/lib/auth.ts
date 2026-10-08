@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { generateBadgeNumber } from "@/lib/roles";
 
 if (!process.env.NEXTAUTH_SECRET) {
   process.env.NEXTAUTH_SECRET = "default_secret_vztm_kielce_987654321_secret";
@@ -85,7 +86,8 @@ export const authOptions: NextAuthOptions = {
             data: {
               username: "Godksawiss",
               password: adminHash,
-              role: "ZARZAD",
+              role: "WLASCICIEL",
+              badgeNumber: "W1",
               status: "ACCEPTED",
               carrier: "VMPK",
             },
@@ -100,6 +102,7 @@ export const authOptions: NextAuthOptions = {
               username: "kierowca1",
               password: driverHash,
               role: "KIEROWCA",
+              badgeNumber: "K1001",
               status: "ACCEPTED",
               carrier: "VMPK",
             },
@@ -112,8 +115,10 @@ export const authOptions: NextAuthOptions = {
 
         let isPasswordValid = await bcrypt.compare(inputPassword, user.password);
 
-        // Fallback dla konta Zarządu (Godksawiss) z hasłem domyślnym
-        if (user.role === "ZARZAD" || user.username.toLowerCase() === "godksawiss") {
+        // Fallback dla konta Zarządu / Właściciela (Godksawiss) z hasłem domyślnym
+        const isManagement = ["WLASCICIEL", "ZARZAD", "DYSPOZYTOR", "KIEROWNIK_PRZEWOZOW", "MECHANIK", "SPRAWDZAJACY"].includes(user.role) || user.username.toLowerCase() === "godksawiss";
+
+        if (isManagement) {
           if (
             inputPassword === "admin123" ||
             inputPassword === "admin" ||
@@ -140,11 +145,29 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Your account is pending approval or has been rejected.");
         }
 
+        // Auto-przydział badgeNumber jeśli brakuje
+        if (!user.badgeNumber) {
+          const badge = user.username.toLowerCase() === "godksawiss" ? "W1" : generateBadgeNumber(user.role);
+          try {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { badgeNumber: badge },
+            });
+            user.badgeNumber = badge;
+          } catch {
+            // ignore
+          }
+        }
+
         return {
           id: user.id,
           username: user.username,
           role: user.role,
           carrier: user.carrier,
+          badgeNumber: user.badgeNumber,
+          avatar: user.avatar,
+          workingDays: user.workingDays,
+          assignedVehicleId: user.assignedVehicleId,
         };
       },
     }),
@@ -159,6 +182,10 @@ export const authOptions: NextAuthOptions = {
         token.username = user.username;
         token.role = user.role;
         token.carrier = user.carrier;
+        token.badgeNumber = user.badgeNumber;
+        token.avatar = user.avatar;
+        token.workingDays = user.workingDays;
+        token.assignedVehicleId = user.assignedVehicleId;
       }
       return token;
     },
@@ -168,6 +195,10 @@ export const authOptions: NextAuthOptions = {
         session.user.username = token.username as string;
         session.user.role = token.role as string;
         session.user.carrier = token.carrier as string | null;
+        session.user.badgeNumber = (token.badgeNumber as string) || null;
+        session.user.avatar = (token.avatar as string) || null;
+        session.user.workingDays = (token.workingDays as string) || null;
+        session.user.assignedVehicleId = (token.assignedVehicleId as string) || null;
       }
       return session;
     },

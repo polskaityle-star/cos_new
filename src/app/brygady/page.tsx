@@ -80,8 +80,9 @@ export default async function BrigadesPage({
                 <tr>
                   <th className="py-3.5 px-4">Linia</th>
                   <th className="py-3.5 px-4">Brygada</th>
-                  <th className="py-3.5 px-4">Godziny pracy</th>
-                  <th className="py-3.5 px-4">Wyjazd &rarr; Zjazd</th>
+                  <th className="py-3.5 px-4">Godzina Wyjazdu / Zjazdu</th>
+                  <th className="py-3.5 px-4">Przystanki (Pierwszy &rarr; Ostatni)</th>
+                  <th className="py-3.5 px-4">Miejsce Wyjazdu &rarr; Zjazdu</th>
                   <th className="py-3.5 px-4">Przesiadki / Podmiany</th>
                   <th className="py-3.5 px-4">Uwagi</th>
                 </tr>
@@ -90,7 +91,7 @@ export default async function BrigadesPage({
                 {schedules.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-750 transition-colors">
                     <td className="py-3.5 px-4 font-black text-amber-400 text-base">
-                      {item.line.number}
+                      Linia {item.line.number}
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-white">
                       <div className="flex flex-wrap items-center gap-2">
@@ -106,16 +107,35 @@ export default async function BrigadesPage({
                       </div>
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="bg-slate-900 border border-slate-600 px-2 py-1 rounded font-mono text-xs text-emerald-300">
-                        {item.startTime} &ndash; {item.endTime}
-                      </span>
+                      <div className="text-xs space-y-1">
+                        <div>
+                          <span className="text-slate-400">Wyjazd:</span>{" "}
+                          <b className="font-mono text-emerald-300">{item.startTime}</b>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Zjazd:</span>{" "}
+                          <b className="font-mono text-amber-300">{item.endTime}</b>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-xs text-slate-200">
+                      <div className="space-y-1">
+                        <div>
+                          <span className="text-slate-400">1. przystanek:</span>{" "}
+                          <span className="font-mono text-cyan-300 font-semibold">{item.firstStopDeparture || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Ost. przystanek:</span>{" "}
+                          <span className="font-mono text-cyan-300 font-semibold">{item.lastStopArrival || "—"}</span>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-200">
                       <div className="text-xs">
-                        <span className="text-slate-400">Start:</span> {item.startLocation}
+                        <span className="text-slate-400">Wyjazd:</span> {item.startLocation}
                       </div>
                       <div className="text-xs mt-0.5">
-                        <span className="text-slate-400">Koniec:</span> {item.endLocation}
+                        <span className="text-slate-400">Zjazd:</span> {item.endLocation}
                       </div>
                     </td>
                     <td className="py-3.5 px-4 text-slate-300">

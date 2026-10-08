@@ -9,31 +9,39 @@ datasource db {
 
 
 model User {
-  id             String          @id @default(cuid())
-  username       String          @unique
-  password       String
-  role           String          @default("KIEROWCA") // KIEROWCA, ZARZAD
-  carrier        String?         // VMPK, VBP (nullable until accepted or specified in registration)
-  status         String          @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  createdAt      DateTime        @default(now())
-  duties         Duty[]
-  driverRequests DriverRequest[]
-  vehicleDefects VehicleDefect[]
+  id                String          @id @default(cuid())
+  username          String          @unique
+  password          String
+  role              String          @default("KIEROWCA") // KIEROWCA, DYSPOZYTOR, KIEROWNIK_PRZEWOZOW, MECHANIK, SPRAWDZAJACY, WLASCICIEL, ZARZAD
+  carrier           String?         // VMPK, VBP (nullable until accepted or specified in registration)
+  status            String          @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  age               Int?            // Wiek użytkownika
+  bio               String?         // O sobie
+  avatar            String?         // Ścieżka do zdjęcia profilowego
+  badgeNumber       String?         // Numer służbowy (np. K1923, D14, P05, M12, S03, W1)
+  workingDays       String?         // Etat - wybrane dni tygodnia (np. PN,WT,SR,CZ,PT)
+  assignedVehicleId String?         // Stały pojazd
+  assignedVehicle   Vehicle?        @relation("AssignedVehicle", fields: [assignedVehicleId], references: [id], onDelete: SetNull)
+  createdAt         DateTime        @default(now())
+  duties            Duty[]
+  driverRequests    DriverRequest[]
+  vehicleDefects    VehicleDefect[]
 }
 
 model Vehicle {
-  id           String          @id @default(cuid())
-  carrier      String          // VMPK, VBP
-  model        String
-  registration String          @unique
-  fleetNumber  String
-  status       String          @default("SPRAWNY") // SPRAWNY, WARSZTAT, KASACJA
-  imageUrl     String?         // Ścieżka do zdjęcia PNG/JPG
-  year         Int?
-  capacity     String?
-  mileage      Int             @default(0) // Przebieg / progress pojazdu w km
-  defects      VehicleDefect[]
-  duties       Duty[]
+  id            String          @id @default(cuid())
+  carrier       String          // VMPK, VBP
+  model         String
+  registration  String          @unique
+  fleetNumber   String
+  status        String          @default("SPRAWNY") // SPRAWNY, WARSZTAT, KASACJA
+  imageUrl      String?         // Ścieżka do zdjęcia PNG/JPG
+  year          Int?
+  capacity      String?
+  mileage       Int             @default(0) // Przebieg / progress pojazdu w km
+  defects       VehicleDefect[]
+  duties        Duty[]
+  assignedUsers User[]          @relation("AssignedVehicle")
 }
 
 model Line {
@@ -49,17 +57,19 @@ model Line {
 }
 
 model BrigadeSchedule {
-  id            String   @id @default(cuid())
-  lineId        String
-  line          Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
-  brigadeNumber String   // np. "34/1", "Brygada 2"
-  startTime     String   // np. "05:15"
-  endTime       String   // np. "13:45"
-  startLocation String   // np. "Zajezdnia VMPK / Bukówka"
-  endLocation   String   // np. "Bukówka / Zajezdnia"
-  driverChanges String?  // Przesiadki kierowców / podmiany (np. "Przesiadka na Żytniej o 09:30")
-  notes         String?  // Uwagi
-  createdAt     DateTime @default(now())
+  id                 String   @id @default(cuid())
+  lineId             String
+  line               Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  brigadeNumber      String   // np. "34/1", "Brygada 2"
+  startTime          String   // Godzina Wyjazdu (np. "05:15")
+  endTime            String   // Godzina Zjazdu (np. "13:45")
+  firstStopDeparture String?  // Godzina pierwszego przystanku (np. "05:30")
+  lastStopArrival    String?  // Godzina ostatniego przystanku (np. "13:20")
+  startLocation      String   // np. "Zajezdnia VMPK / Bukówka"
+  endLocation        String   // np. "Bukówka / Zajezdnia"
+  driverChanges      String?  // Przesiadki kierowców / podmiany (np. "Przesiadka na Żytniej o 09:30")
+  notes              String?  // Uwagi
+  createdAt          DateTime @default(now())
 }
 
 model Duty {
@@ -90,17 +100,18 @@ model Report {
 }
 
 model DriverRequest {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String    // DODATKOWA_SLUZBA, ANULOWANIE_SLUZBY, URLOP
-  reason    String
-  dateStart DateTime?
-  dateEnd   DateTime?
-  dutyId    String?
-  details   String?
-  status    String    @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  createdAt DateTime  @default(now())
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String    // DODATKOWA_SLUZBA, ANULOWANIE_SLUZBY, URLOP, STALY_POJAZD, ZMIANA_ETATU
+  reason        String?   // Opcjonalne uzasadnienie
+  dateStart     DateTime?
+  dateEnd       DateTime?
+  dutyId        String?
+  details       String?   // np. wybrany pojazd lub nowe dni etatu
+  status        String    @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  responseNotes String?   // Notatka zarządu
+  createdAt     DateTime  @default(now())
 }
 
 model VehicleDefect {

@@ -4,12 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { canManageRequests } from "@/lib/roles";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || session.user.role !== "ZARZAD") {
-    return NextResponse.json({ message: "Brak autoryzacji" }, { status: 401 });
+  if (!session || !session.user || !canManageRequests(session.user.role)) {
+    return NextResponse.json({ message: "Brak autoryzacji do zarządzania wnioskami" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);
@@ -34,7 +35,23 @@ export async function POST(req: Request) {
       data: { status: "ACCEPTED" }
     });
 
-    // Jeśli to było anulowanie służby i podano ID służby, usuwamy lub oznaczamy jako anulowana
+    // 1. Jeśli to wniosek o stały pojazd, przypisujemy pojazd kierowcy (Wymóg 4)
+    if (driverReq.type === "STALY_POJAZD" && driverReq.details) {
+      await prisma.user.update({
+        where: { id: driverReq.userId },
+        data: { assignedVehicleId: driverReq.details },
+      });
+    }
+
+    // 2. Jeśli to wniosek o zmianę etatu, aktualizujemy dni pracy (Wymóg 6)
+    if (driverReq.type === "ZMIANA_ETATU" && driverReq.details) {
+      await prisma.user.update({
+        where: { id: driverReq.userId },
+        data: { workingDays: driverReq.details },
+      });
+    }
+
+    // 3. Jeśli to było anulowanie służby i podano ID służby, usuwamy służbę z grafiku (Wymóg 15)
     if (driverReq.type === "ANULOWANIE_SLUZBY" && driverReq.dutyId) {
       try {
         await prisma.duty.delete({
@@ -56,3 +73,4 @@ export async function POST(req: Request) {
 
   redirect("/panel/zarzad");
 }
+

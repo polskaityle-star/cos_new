@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
+import { getRoleLabel, getRoleBadgeClass, canAccessManagementPanel } from "@/lib/roles";
+import DriverEtatModal from "@/components/DriverEtatModal";
+import AvatarManager from "@/components/AvatarManager";
+import DriverRequestForm from "@/components/DriverRequestForm";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +18,11 @@ export default async function DriverPanel() {
     redirect("/login");
   }
 
-  if (session.user.role !== "KIEROWCA" && session.user.role !== "ZARZAD") {
-    redirect("/");
-  }
-
-  const [duties, driverRequests, vehicleDefects, allVehicles, allLines, rawBrigadeSchedules] = await Promise.all([
+  const [currentUser, duties, driverRequests, vehicleDefects, allVehicles, allLines, rawBrigadeSchedules] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { assignedVehicle: true },
+    }),
     prisma.duty.findMany({
       where: { userId: session.user.id },
       include: { line: true, vehicle: true, report: true },
@@ -47,6 +51,11 @@ export default async function DriverPanel() {
 
   const brigadeSchedules = sortBrigades(rawBrigadeSchedules);
 
+  const driverCarrier = currentUser?.carrier || session.user.carrier;
+  const availableVehicles = driverCarrier
+    ? allVehicles.filter((v) => v.carrier === driverCarrier)
+    : allVehicles;
+
   const scheduledDuties = duties.filter((d) => d.status === "SCHEDULED");
   const completedDuties = duties.filter((d) => d.status === "COMPLETED");
   const acceptedReports = duties.filter((d) => d.report?.status === "ACCEPTED");
@@ -59,14 +68,51 @@ export default async function DriverPanel() {
 
   return (
     <div className="space-y-10">
-      {/* Nagłówek panelu */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700 pb-6">
-        <div>
-          <h1 className="text-4xl font-extrabold text-white">Panel Kierowcy</h1>
-          <p className="text-slate-400 mt-1">
-            Zalogowany jako: <span className="font-semibold text-emerald-400">{session.user.username}</span> ({session.user.carrier || "Brak przydziału"})
-          </p>
+      {/* Modal wyboru etatu jeśli kierowca nie ma jeszcze zdefiniowanych dni */}
+      <DriverEtatModal currentWorkingDays={currentUser?.workingDays} />
+
+      {/* Nagłówek panelu z profilem, avatarem i numerem służbowym */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-700 pb-6 bg-slate-800/40 p-6 rounded-2xl border">
+        <div className="flex items-center gap-4">
+          <AvatarManager
+            currentAvatar={currentUser?.avatar}
+            username={currentUser?.username || session.user.username}
+          />
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-3xl font-extrabold text-white">
+                {currentUser?.username || session.user.username}
+              </h1>
+              {currentUser?.badgeNumber && (
+                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-mono font-bold text-xs">
+                  {currentUser.badgeNumber}
+                </span>
+              )}
+              <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getRoleBadgeClass(currentUser?.role || session.user.role)}`}>
+                {getRoleLabel(currentUser?.role || session.user.role)}
+              </span>
+              <span className="bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-xs font-semibold">
+                {driverCarrier || "Brak przydziału"}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-300 pt-1">
+              <span>
+                📅 <b>Etat:</b> {currentUser?.workingDays ? `${currentUser.workingDays} (${currentUser.workingDays.split(",").length}/7)` : <span className="text-amber-400 font-semibold">Nieustalony (Wybierz etat)</span>}
+              </span>
+              <span>
+                🚌 <b>Stały pojazd:</b> {currentUser?.assignedVehicle ? (
+                  <span className="text-emerald-400 font-semibold">
+                    #{currentUser.assignedVehicle.fleetNumber} ({currentUser.assignedVehicle.model})
+                  </span>
+                ) : (
+                  <span className="text-slate-400">Brak stałego wozu</span>
+                )}
+              </span>
+            </div>
+          </div>
         </div>
+
         <div className="flex flex-wrap gap-2 items-center">
           <Link
             href="/brygady"
@@ -80,10 +126,10 @@ export default async function DriverPanel() {
           >
             <span>🌐 Strona publiczna</span>
           </Link>
-          {session.user.role === "ZARZAD" && (
+          {canAccessManagementPanel(currentUser?.role || session.user.role) && (
             <Link
               href="/panel/zarzad"
-              className="bg-amber-600 hover:bg-amber-500 text-white font-medium px-3.5 py-2 rounded-lg transition-colors text-xs"
+              className="bg-amber-600 hover:bg-amber-500 text-white font-medium px-3.5 py-2 rounded-lg transition-colors text-xs shadow"
             >
               Panel Zarządu &rarr;
             </Link>
@@ -189,16 +235,33 @@ export default async function DriverPanel() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  {duty.status === "SCHEDULED" && (
-                    <>
+                  {duty.status === "SCHEDULED" && (() => {
+                    const now = new Date();
+                    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                    const dutyD = new Date(duty.date);
+                    const dutyStr = `${dutyD.getFullYear()}-${String(dutyD.getMonth() + 1).padStart(2, "0")}-${String(dutyD.getDate()).padStart(2, "0")}`;
+                    const isFuture = dutyStr > todayStr;
+
+                    if (isFuture) {
+                      return (
+                        <span
+                          className="bg-slate-950/80 border border-slate-700 text-slate-400 px-3 py-1.5 rounded-lg text-xs font-medium cursor-not-allowed flex items-center gap-1.5"
+                          title="Raport dostępny w dniu odbywania służby lub po jej zakończeniu"
+                        >
+                          🔒 Dostępny w dniu służby ({dutyD.toLocaleDateString("pl-PL")})
+                        </span>
+                      );
+                    }
+
+                    return (
                       <a
                         href={`/panel/kierowca/raport?dutyId=${duty.id}`}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-semibold transition-colors text-sm"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-semibold transition-colors text-sm shadow"
                       >
                         Złóż raport
                       </a>
-                    </>
-                  )}
+                    );
+                  })()}
                   {duty.status === "COMPLETED" && (
                     <div className="text-right">
                       <span className="bg-slate-800 px-3 py-1 rounded text-xs text-slate-300 block mb-1">
@@ -243,6 +306,7 @@ export default async function DriverPanel() {
                   <th className="py-3 px-4">Linia</th>
                   <th className="py-3 px-4">Brygada</th>
                   <th className="py-3 px-4">Godziny</th>
+                  <th className="py-3 px-4">Przystanki</th>
                   <th className="py-3 px-4">Trasa / Wyjazd ➔ Zjazd</th>
                   <th className="py-3 px-4">Przesiadki kierowców</th>
                   <th className="py-3 px-4">Uwagi</th>
@@ -270,10 +334,15 @@ export default async function DriverPanel() {
                       </div>
                     </td>
                     <td className="py-3 px-4 font-mono text-emerald-400 font-bold whitespace-nowrap text-xs">
-                      {b.startTime} - {b.endTime}
+                      <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime}</div>
+                      <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime}</div>
+                    </td>
+                    <td className="py-3 px-4 text-xs text-slate-300 font-mono">
+                      <div><span className="text-slate-400 font-sans">1. przystanek:</span> {b.firstStopDeparture || "—"}</div>
+                      <div><span className="text-slate-400 font-sans">Ost. przystanek:</span> {b.lastStopArrival || "—"}</div>
                     </td>
                     <td className="py-3 px-4 text-xs text-slate-300">
-                      <div><b>Start:</b> {b.startLocation}</div>
+                      <div><b>Wyjazd:</b> {b.startLocation}</div>
                       <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation}</div>
                     </td>
                     <td className="py-3 px-4 text-xs text-slate-300">
@@ -290,113 +359,37 @@ export default async function DriverPanel() {
         )}
       </section>
 
-      {/* Wnioski Kierowcy (Urlop, Dodatkowa służba, Anulowanie) */}
+      {/* Wnioski Kierowcy i Zgłaszanie Awarii */}
       <div className="grid lg:grid-cols-2 gap-8">
         <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-amber-400">
             <span>📝 Złóż wniosek do Zarządu</span>
           </h2>
-          <form action="/api/panel/kierowca/wniosek" method="POST" className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Typ wniosku *</label>
-              <select
-                name="type"
-                required
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100"
-              >
-                <option value="URLOP">🏖 Wniosek o urlop</option>
-                <option value="DODATKOWA_SLUZBA">➕ Wniosek o dodatkową służbę</option>
-                <option value="ANULOWANIE_SLUZBY">❌ Prośba o anulowanie / rezygnację ze służby</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Data początkowa / data służby</label>
-                <input
-                  type="date"
-                  name="dateStart"
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Data końcowa (dla urlopu)</label>
-                <input
-                  type="date"
-                  name="dateEnd"
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100"
-                />
-              </div>
-            </div>
-
-            {scheduledDuties.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Wybierz służbę do anulowania (jeśli dotyczy)
-                </label>
-                <select
-                  name="dutyId"
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100"
-                >
-                  <option value="">-- Nie dotyczy / wybierz jeśli anulujesz --</option>
-                  {scheduledDuties.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      Linia {d.line.number} {d.brigade ? `[${d.brigade}]` : ""} (Dnia: {new Date(d.date).toLocaleDateString()})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Szczegóły / preferowana linia (opcjonalnie)
-              </label>
-              <input
-                type="text"
-                name="details"
-                placeholder="np. Preferowana linia 34, zmiana popołudniowa"
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Powód / Uzasadnienie *</label>
-              <textarea
-                name="reason"
-                required
-                rows={3}
-                placeholder="Wyjaśnij powód składania wniosku..."
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 resize-none"
-              ></textarea>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 rounded-lg shadow transition-colors"
-            >
-              Wyślij wniosek do Zarządu
-            </button>
-          </form>
+          <DriverRequestForm
+            scheduledDuties={scheduledDuties}
+            availableVehicles={availableVehicles}
+          />
         </section>
 
-        {/* Zgłaszanie Awarii Pojazdu */}
+        {/* Zgłaszanie Awarii Pojazdu (tylko tabor swojego przewoźnika) */}
         <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-rose-400">
             <span>🚨 Zgłoś usterkę / zdarzenie pojazdu</span>
           </h2>
           <form action="/api/panel/kierowca/usterka" method="POST" className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Pojazd z taboru *</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Pojazd z taboru ({driverCarrier}) *
+              </label>
               <select
                 name="vehicleId"
                 required
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-rose-500 text-slate-100"
               >
                 <option value="">-- Wybierz pojazd --</option>
-                {allVehicles.map((veh) => (
+                {availableVehicles.map((veh) => (
                   <option key={veh.id} value={veh.id}>
-                    {veh.fleetNumber} - {veh.model} [{veh.carrier}] ({veh.registration})
+                    #{veh.fleetNumber} - {veh.model} [{veh.carrier}] ({veh.registration})
                   </option>
                 ))}
               </select>
@@ -434,95 +427,189 @@ export default async function DriverPanel() {
         </section>
       </div>
 
-      {/* Twoje Zgłoszenia i Wnioski (Historia) */}
+      {/* Twoje Zgłoszenia i Wnioski (Aktywne oraz Historia) */}
       <div className="grid lg:grid-cols-2 gap-8">
-        {/* Status wniosków kierowcy */}
-        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-          <h3 className="text-xl font-bold mb-4 text-slate-200">Twoje wnioski</h3>
-          {driverRequests.length === 0 ? (
-            <p className="text-slate-400 text-sm">Brak złożonych wniosków.</p>
-          ) : (
-            <div className="space-y-3 max-h-72 overflow-y-auto">
-              {driverRequests.map((req) => (
-                <div key={req.id} className="bg-slate-900 border border-slate-700 p-3.5 rounded-lg text-sm">
-                  <div className="flex justify-between items-start gap-2">
-                    <span className="font-bold text-amber-300">
-                      {req.type === "URLOP"
-                        ? "🏖 Urlop"
-                        : req.type === "DODATKOWA_SLUZBA"
-                        ? "➕ Dodatkowa służba"
-                        : "❌ Anulowanie służby"}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded font-bold ${
-                        req.status === "PENDING"
-                          ? "bg-yellow-900/60 text-yellow-300"
-                          : req.status === "ACCEPTED"
-                          ? "bg-emerald-900/60 text-emerald-300"
-                          : "bg-red-900/60 text-red-300"
-                      }`}
-                    >
-                      {req.status === "PENDING" ? "Oczekuje" : req.status === "ACCEPTED" ? "Zaakceptowany" : "Odrzucony"}
-                    </span>
-                  </div>
-                  <p className="text-slate-300 mt-1">{req.reason}</p>
-                  {req.dateStart && (
-                    <div className="text-xs text-slate-400 mt-1">
-                      Termin: {new Date(req.dateStart).toLocaleDateString()}
-                      {req.dateEnd ? ` - ${new Date(req.dateEnd).toLocaleDateString()}` : ""}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Status zgłoszonych usterek pojazdów */}
-        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-          <h3 className="text-xl font-bold mb-4 text-slate-200">Twoje zgłoszenia techniczne</h3>
-          {vehicleDefects.length === 0 ? (
-            <p className="text-slate-400 text-sm">Brak zgłoszonych usterek.</p>
-          ) : (
-            <div className="space-y-3 max-h-72 overflow-y-auto">
-              {vehicleDefects.map((def) => (
-                <div key={def.id} className="bg-slate-900 border border-slate-700 p-3.5 rounded-lg text-sm">
-                  <div className="flex justify-between items-start gap-2">
-                    <div>
-                      <span className="font-bold text-rose-300">{def.title}</span>
-                      <div className="text-xs text-slate-400">
-                        Pojazd: {def.vehicle.fleetNumber} ({def.vehicle.model})
+        {/* Wnioski kierowcy: Aktywne i Historia */}
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-6">
+          <div>
+            <h3 className="text-xl font-bold mb-3 text-slate-200 flex items-center justify-between">
+              <span>Twoje aktywne wnioski</span>
+              <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-amber-400 font-mono">
+                {driverRequests.filter((r) => r.status === "PENDING").length}
+              </span>
+            </h3>
+            {driverRequests.filter((r) => r.status === "PENDING").length === 0 ? (
+              <p className="text-slate-400 text-sm">Brak oczekujących wniosków.</p>
+            ) : (
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {driverRequests
+                  .filter((r) => r.status === "PENDING")
+                  .map((req) => (
+                    <div key={req.id} className="bg-slate-900 border border-slate-700 p-3 rounded-lg text-sm">
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold text-amber-300">
+                          {req.type === "URLOP"
+                            ? "🏖 Urlop"
+                            : req.type === "DODATKOWA_SLUZBA"
+                            ? "➕ Dodatkowa służba"
+                            : req.type === "STALY_POJAZD"
+                            ? "🚌 Stały pojazd"
+                            : req.type === "ZMIANA_ETATU"
+                            ? "📅 Zmiana etatu"
+                            : "❌ Anulowanie służby"}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded font-bold bg-yellow-900/60 text-yellow-300">
+                          Oczekuje na zarząd
+                        </span>
                       </div>
-                    </div>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded font-bold ${
-                        def.status === "NOWE"
-                          ? "bg-rose-900/60 text-rose-300"
-                          : def.status === "WARSZTAT"
-                          ? "bg-amber-900/60 text-amber-300"
-                          : "bg-emerald-900/60 text-emerald-300"
-                      }`}
-                    >
-                      {def.status === "NOWE" ? "Zgłoszona" : def.status === "WARSZTAT" ? "W naprawie" : "Naprawiona"}
-                    </span>
-                  </div>
-                  <p className="text-slate-300 mt-1 text-xs">{def.description}</p>
-                  {(def.defectType || def.workshopStart || def.adminNotes) && (
-                    <div className="mt-2 pt-2 border-t border-slate-800 text-[11px] space-y-0.5 text-amber-300/90">
-                      {def.defectType && <div>Kategoria usterki: <b>{def.defectType}</b></div>}
-                      {def.workshopStart && (
-                        <div>
-                          Warsztat: {new Date(def.workshopStart).toLocaleDateString()}
-                          {def.workshopEnd ? ` do ${new Date(def.workshopEnd).toLocaleDateString()}` : ""}
+                      <p className="text-slate-300 mt-1 text-xs">{req.reason}</p>
+                      {req.dateStart && (
+                        <div className="text-[11px] text-slate-400 mt-1">
+                          Termin: {new Date(req.dateStart).toLocaleDateString("pl-PL")}
+                          {req.dateEnd ? ` do ${new Date(req.dateEnd).toLocaleDateString("pl-PL")}` : ""}
                         </div>
                       )}
-                      {def.adminNotes && <div className="text-slate-300">Notatka zarządu: {def.adminNotes}</div>}
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Historia wniosków */}
+          <div className="border-t border-slate-700 pt-4">
+            <h4 className="text-sm font-bold text-slate-300 mb-2 flex items-center justify-between">
+              <span>📜 Historia wniosków (rozpatrzone)</span>
+              <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-slate-300 font-mono">
+                {driverRequests.filter((r) => r.status !== "PENDING").length}
+              </span>
+            </h4>
+            {driverRequests.filter((r) => r.status !== "PENDING").length === 0 ? (
+              <p className="text-slate-500 text-xs">Brak historii wniosków.</p>
+            ) : (
+              <div className="space-y-2 max-h-52 overflow-y-auto">
+                {driverRequests
+                  .filter((r) => r.status !== "PENDING")
+                  .map((req) => (
+                    <div key={req.id} className="bg-slate-900/70 border border-slate-800 p-2.5 rounded-lg text-xs">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="font-semibold text-slate-200">
+                          {req.type === "URLOP"
+                            ? "🏖 Urlop"
+                            : req.type === "DODATKOWA_SLUZBA"
+                            ? "➕ Dodatkowa służba"
+                            : req.type === "STALY_POJAZD"
+                            ? "🚌 Stały pojazd"
+                            : req.type === "ZMIANA_ETATU"
+                            ? "📅 Zmiana etatu"
+                            : "❌ Anulowanie służby"}
+                        </span>
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                            req.status === "ACCEPTED"
+                              ? "bg-emerald-900/60 text-emerald-300 border border-emerald-700/50"
+                              : "bg-red-900/60 text-red-300 border border-red-700/50"
+                          }`}
+                        >
+                          {req.status === "ACCEPTED" ? "Zaakceptowany" : "Odrzucony"}
+                        </span>
+                      </div>
+                      <p className="text-slate-400 mt-1">{req.reason}</p>
+                      {req.responseNotes && (
+                        <div className="text-amber-400/90 mt-1">Notatka zarządu: {req.responseNotes}</div>
+                      )}
+                      <div className="text-[10px] text-slate-500 mt-1">
+                        Złożono: {new Date(req.createdAt).toLocaleDateString("pl-PL")}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Zgłoszenia techniczne: Aktywne i Historia */}
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-6">
+          <div>
+            <h3 className="text-xl font-bold mb-3 text-slate-200 flex items-center justify-between">
+              <span>Aktywne zgłoszenia usterek</span>
+              <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-rose-400 font-mono">
+                {vehicleDefects.filter((d) => d.status === "NOWE" || d.status === "WARSZTAT").length}
+              </span>
+            </h3>
+            {vehicleDefects.filter((d) => d.status === "NOWE" || d.status === "WARSZTAT").length === 0 ? (
+              <p className="text-slate-400 text-sm">Brak aktywnych usterek w toku.</p>
+            ) : (
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {vehicleDefects
+                  .filter((d) => d.status === "NOWE" || d.status === "WARSZTAT")
+                  .map((def) => (
+                    <div key={def.id} className="bg-slate-900 border border-slate-700 p-3 rounded-lg text-sm">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <span className="font-bold text-rose-300">{def.title}</span>
+                          <div className="text-xs text-slate-400">
+                            Pojazd: #{def.vehicle.fleetNumber} ({def.vehicle.model})
+                          </div>
+                        </div>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded font-bold ${
+                            def.status === "NOWE"
+                              ? "bg-rose-900/60 text-rose-300 border border-rose-700/50"
+                              : "bg-amber-900/60 text-amber-300 border border-amber-700/50"
+                          }`}
+                        >
+                          {def.status === "NOWE" ? "Zgłoszona" : "W naprawie"}
+                        </span>
+                      </div>
+                      <p className="text-slate-300 mt-1 text-xs">{def.description}</p>
+                      {def.adminNotes && (
+                        <div className="text-amber-400/90 text-xs mt-1">Notatka warsztatu: {def.adminNotes}</div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Historia usterek */}
+          <div className="border-t border-slate-700 pt-4">
+            <h4 className="text-sm font-bold text-slate-300 mb-2 flex items-center justify-between">
+              <span>🔧 Historia zgłoszeń technicznych</span>
+              <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-slate-300 font-mono">
+                {vehicleDefects.filter((d) => d.status === "NAPRAWIONE" || d.status === "ODRZUCONE").length}
+              </span>
+            </h4>
+            {vehicleDefects.filter((d) => d.status === "NAPRAWIONE" || d.status === "ODRZUCONE").length === 0 ? (
+              <p className="text-slate-500 text-xs">Brak naprawionych usterek w historii.</p>
+            ) : (
+              <div className="space-y-2 max-h-52 overflow-y-auto">
+                {vehicleDefects
+                  .filter((d) => d.status === "NAPRAWIONE" || d.status === "ODRZUCONE")
+                  .map((def) => (
+                    <div key={def.id} className="bg-slate-900/70 border border-slate-800 p-2.5 rounded-lg text-xs">
+                      <div className="flex justify-between items-center gap-2">
+                        <div>
+                          <span className="font-semibold text-slate-200">{def.title}</span>
+                          <span className="text-slate-500 ml-1.5">#{def.vehicle.fleetNumber}</span>
+                        </div>
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                            def.status === "NAPRAWIONE"
+                              ? "bg-emerald-900/60 text-emerald-300 border border-emerald-700/50"
+                              : "bg-slate-800 text-slate-400"
+                          }`}
+                        >
+                          {def.status === "NAPRAWIONE" ? "Naprawiona" : "Odrzucona"}
+                        </span>
+                      </div>
+                      {def.adminNotes && (
+                        <div className="text-slate-400 mt-1">Rozwiązanie: {def.adminNotes}</div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </div>

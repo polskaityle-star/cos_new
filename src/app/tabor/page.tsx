@@ -1,24 +1,51 @@
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function FleetPage({ searchParams }: { searchParams: Promise<{ carrier?: string }> }) {
   const { carrier: carrierFilter } = await searchParams;
+  const session = await getServerSession(authOptions);
+
+  const isDriver = session?.user?.role === "KIEROWCA";
+  const driverCarrier = isDriver ? session?.user?.carrier : null;
+
+  // Jeśli użytkownik jest kierowcą, ograniczamy tabor wyłącznie do jego przewoźnika
+  const effectiveCarrier = driverCarrier || carrierFilter;
   
   const vehicles = await prisma.vehicle.findMany({
-    where: carrierFilter ? { carrier: carrierFilter } : undefined,
+    where: effectiveCarrier ? { carrier: effectiveCarrier } : undefined,
     orderBy: { fleetNumber: 'asc' }
   });
 
   return (
     <div className="space-y-8">
-      <h1 className="text-4xl font-bold mb-6">Nasz Tabor</h1>
-      
-      <div className="flex gap-4 mb-8">
-        <a href="/tabor" className={`px-4 py-2 rounded-lg border ${!carrierFilter ? 'bg-slate-700 border-slate-600' : 'border-slate-700 hover:bg-slate-800'}`}>Wszystkie</a>
-        <a href="/tabor?carrier=VMPK" className={`px-4 py-2 rounded-lg border ${carrierFilter === 'VMPK' ? 'bg-[#E31837] border-red-500' : 'border-slate-700 hover:bg-slate-800'}`}>Tylko VMPK</a>
-        <a href="/tabor?carrier=VBP" className={`px-4 py-2 rounded-lg border ${carrierFilter === 'VBP' ? 'bg-[#005A9C] border-blue-500' : 'border-slate-700 hover:bg-slate-800'}`}>Tylko VBP</a>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700 pb-4">
+        <div>
+          <h1 className="text-4xl font-extrabold text-amber-400">🚌 Nasz Tabor</h1>
+          <p className="text-sm text-slate-300 mt-1">
+            {isDriver
+              ? `Jako kierowca ${driverCarrier} masz dostęp wyłącznie do taboru swojego przewoźnika.`
+              : "Baza pojazdów autobusowych przewoźników VZTM Kielce."}
+          </p>
+        </div>
       </div>
+      
+      {!isDriver && (
+        <div className="flex gap-4 mb-8">
+          <a href="/tabor" className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${!carrierFilter ? 'bg-slate-700 border-slate-600 text-white' : 'border-slate-700 hover:bg-slate-800 text-slate-300'}`}>Wszystkie</a>
+          <a href="/tabor?carrier=VMPK" className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${carrierFilter === 'VMPK' ? 'bg-[#E31837] border-red-500 text-white' : 'border-slate-700 hover:bg-slate-800 text-slate-300'}`}>Tylko VMPK</a>
+          <a href="/tabor?carrier=VBP" className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${carrierFilter === 'VBP' ? 'bg-[#005A9C] border-blue-500 text-white' : 'border-slate-700 hover:bg-slate-800 text-slate-300'}`}>Tylko VBP</a>
+        </div>
+      )}
+
+      {isDriver && (
+        <div className="bg-slate-800/80 border border-slate-700 p-3 rounded-lg text-xs text-slate-300 flex items-center justify-between">
+          <span>Przewoźnik przypisany do Twojego etatu: <b className="text-amber-400">{driverCarrier}</b></span>
+          <span className="text-[11px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">Dostęp ograniczony do {driverCarrier}</span>
+        </div>
+      )}
 
       {vehicles.length === 0 ? (
         <div className="bg-slate-800 p-6 rounded-lg text-center text-slate-400">
