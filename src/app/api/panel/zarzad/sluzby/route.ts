@@ -15,6 +15,7 @@ export async function POST(req: Request) {
   const formData = await req.formData();
   const userId = formData.get("userId") as string;
   const lineId = formData.get("lineId") as string;
+  const vehicleId = formData.get("vehicleId") as string;
   const dateStr = formData.get("date") as string;
   const brigade = formData.get("brigade") as string;
 
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
       data: {
         userId,
         lineId,
+        vehicleId: vehicleId || null,
         date: new Date(dateStr),
         brigade: brigade || null
       }

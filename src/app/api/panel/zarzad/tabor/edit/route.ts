@@ -21,6 +21,7 @@ export async function POST(req: Request) {
   const registration = formData.get("registration") as string;
   const fleetNumber = formData.get("fleetNumber") as string;
   const status = formData.get("status") as string;
+  const mileageStr = formData.get("mileage") as string;
   const imageFile = formData.get("image") as File | null;
 
   let newImageUrl: string | undefined = undefined;
@@ -36,8 +37,11 @@ export async function POST(req: Request) {
       }
       fs.writeFileSync(path.join(uploadDir, fileName), buffer);
       newImageUrl = `/uploads/vehicles/${fileName}`;
-    } catch (e) {
-      console.error("Failed to save updated vehicle image:", e);
+    } catch {
+      // Fallback dla serverless (np. Vercel)
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      const mime = imageFile.type || "image/jpeg";
+      newImageUrl = `data:${mime};base64,${buffer.toString("base64")}`;
     }
   }
 
@@ -49,6 +53,13 @@ export async function POST(req: Request) {
       fleetNumber,
       status: status || "SPRAWNY"
     };
+
+    if (mileageStr !== null && mileageStr !== undefined && mileageStr !== "") {
+      const parsedMileage = parseInt(mileageStr);
+      if (!isNaN(parsedMileage)) {
+        updateData.mileage = parsedMileage;
+      }
+    }
 
     if (newImageUrl) {
       updateData.imageUrl = newImageUrl;

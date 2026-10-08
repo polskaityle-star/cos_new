@@ -101,8 +101,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Raport dla tej służby już istnieje" }, { status: 400 });
     }
 
-    // Tworzenie raportu i aktualizacja statusu służby
-    await prisma.$transaction([
+    // Tworzenie raportu i aktualizacja statusu służby oraz przebiegu pojazdu
+    const transactions: any[] = [
       prisma.report.create({
         data: {
           dutyId,
@@ -117,10 +117,22 @@ export async function POST(req: Request) {
         where: { id: dutyId },
         data: { status: "COMPLETED" }
       })
-    ]);
+    ];
+
+    if (duty.vehicleId && endMileage > 0) {
+      transactions.push(
+        prisma.vehicle.update({
+          where: { id: duty.vehicleId },
+          data: { mileage: endMileage }
+        })
+      );
+    }
+
+    await prisma.$transaction(transactions);
 
     revalidatePath("/panel/kierowca");
     revalidatePath("/panel/zarzad");
+    revalidatePath("/tabor");
 
     return NextResponse.json({ message: "Raport został wysłany." }, { status: 201 });
   } catch (error) {

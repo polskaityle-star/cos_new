@@ -19,6 +19,8 @@ export async function POST(req: Request) {
   const model = formData.get("model") as string;
   const registration = formData.get("registration") as string;
   const fleetNumber = formData.get("fleetNumber") as string;
+  const mileageStr = formData.get("mileage") as string;
+  const mileage = parseInt(mileageStr || "0");
   const imageFile = formData.get("image") as File | null;
 
   let imageUrl: string | null = null;
@@ -49,6 +51,7 @@ export async function POST(req: Request) {
         model,
         registration,
         fleetNumber,
+        mileage: isNaN(mileage) ? 0 : mileage,
         imageUrl: imageUrl || null
       }
     });

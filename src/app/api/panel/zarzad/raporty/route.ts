@@ -21,10 +21,19 @@ export async function POST(req: Request) {
   }
 
   if (action === "accept") {
-    await prisma.report.update({
+    const updatedReport = await prisma.report.update({
       where: { id: reportId },
-      data: { status: "ACCEPTED" }
+      data: { status: "ACCEPTED" },
+      include: { duty: true }
     });
+
+    if (updatedReport.duty?.vehicleId && updatedReport.endMileage > 0) {
+      await prisma.vehicle.update({
+        where: { id: updatedReport.duty.vehicleId },
+        data: { mileage: updatedReport.endMileage }
+      });
+      revalidatePath("/tabor");
+    }
   } else if (action === "reject") {
     await prisma.report.update({
       where: { id: reportId },
@@ -34,5 +43,6 @@ export async function POST(req: Request) {
 
   revalidatePath("/panel/zarzad");
   revalidatePath("/panel/kierowca");
+  revalidatePath("/tabor");
   redirect("/panel/zarzad");
 }

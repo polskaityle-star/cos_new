@@ -55,6 +55,7 @@ export default async function AdminPanel() {
       include: {
         user: true,
         line: true,
+        vehicle: true,
         report: true,
       },
       orderBy: { date: "desc" },
@@ -514,7 +515,7 @@ export default async function AdminPanel() {
           {/* Dodaj pojazd ze zdjęciem */}
           <form action="/api/panel/zarzad/tabor" method="POST" encType="multipart/form-data" className="space-y-3 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
             <h3 className="font-semibold text-white text-sm">➕ Dodaj Nowy Pojazd</h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               <select name="carrier" required className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white">
                 <option value="">Wybierz przewoźnika</option>
                 <option value="VMPK">VMPK</option>
@@ -523,6 +524,7 @@ export default async function AdminPanel() {
               <input type="text" name="fleetNumber" placeholder="Nr taborowy (np. #103)" required className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
               <input type="text" name="model" placeholder="Model (np. Solaris Urbino 12)" required className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
               <input type="text" name="registration" placeholder="Rejestracja (np. TK 99999)" required className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+              <input type="number" name="mileage" placeholder="Przebieg [km] (np. 145000)" defaultValue="0" className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">📷 Zdjęcie pojazdu [JPG, PNG, WEBP]</label>
@@ -565,9 +567,13 @@ export default async function AdminPanel() {
                       <option value="KASACJA">Kasacja</option>
                     </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <input type="text" name="model" defaultValue={veh.model} required className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Model" />
                     <input type="text" name="registration" defaultValue={veh.registration} required className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Rejestracja" />
+                    <input type="number" name="mileage" defaultValue={veh.mileage || 0} placeholder="Przebieg [km]" className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Przebieg pojazdu [km]" />
+                  </div>
+                  <div className="text-[11px] text-emerald-400 font-mono">
+                    Aktualny przebieg / postęp: <b>{(veh.mileage || 0).toLocaleString()} km</b>
                   </div>
                   <div>
                     <label className="block text-[11px] text-slate-400 mb-0.5">Zmień / wgraj nowe zdjęcie pojazdu:</label>
@@ -732,7 +738,7 @@ export default async function AdminPanel() {
         {/* Formularz wydawania */}
         <form action="/api/panel/zarzad/sluzby" method="POST" className="space-y-4 bg-slate-900 p-5 rounded-lg border border-slate-700 mb-6">
           <h3 className="font-semibold text-white text-sm">📅 Przydziel Nową Służbę</h3>
-          <div className="grid md:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-5 gap-3">
             <div>
               <label className="block text-xs text-slate-400 mb-1">Kierowca *</label>
               <select name="userId" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
@@ -751,6 +757,17 @@ export default async function AdminPanel() {
                 {allLines.map((line) => (
                   <option key={line.id} value={line.id}>
                     Linia {line.number}{line.directions ? ` (${line.directions})` : (line.startStop ? ` (${line.startStop} - ${line.endStop})` : "")}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Pojazd z taboru</label>
+              <select name="vehicleId" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white">
+                <option value="">Wybierz Pojazd (opcjonalnie)</option>
+                {allVehicles.map((veh) => (
+                  <option key={veh.id} value={veh.id}>
+                    {veh.fleetNumber} ({veh.model}) - {(veh.mileage || 0).toLocaleString()} km
                   </option>
                 ))}
               </select>
@@ -788,6 +805,11 @@ export default async function AdminPanel() {
                     {duty.brigade && (
                       <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
                         Brygada: {duty.brigade}
+                      </span>
+                    )}
+                    {duty.vehicle && (
+                      <span className="bg-blue-900/50 text-blue-300 border border-blue-600/40 text-xs px-2 py-0.5 rounded font-bold">
+                        🚌 {duty.vehicle.fleetNumber} ({duty.vehicle.model}) &bull; {(duty.vehicle.mileage || 0).toLocaleString()} km
                       </span>
                     )}
                     <span className="text-slate-400">&bull;</span>

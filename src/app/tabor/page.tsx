@@ -62,6 +62,12 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
                   <div className="text-xs text-slate-400 uppercase tracking-wider">Rejestracja</div>
                   <div className="font-mono text-sm bg-white text-black px-2 py-0.5 rounded inline-block border border-gray-400">{veh.registration}</div>
                 </div>
+                <div className="flex justify-between items-center pt-2 border-t border-slate-700/60">
+                  <span className="text-xs text-slate-400 uppercase tracking-wider">Przebieg / Postęp</span>
+                  <span className="text-sm font-bold font-mono text-emerald-400">
+                    {(veh.mileage || 0).toLocaleString()} km
+                  </span>
+                </div>
               </div>
             </div>
           ))}

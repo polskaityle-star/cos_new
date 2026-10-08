@@ -20,7 +20,7 @@ export default async function DriverPanel() {
   const [duties, driverRequests, vehicleDefects, allVehicles, allLines] = await Promise.all([
     prisma.duty.findMany({
       where: { userId: session.user.id },
-      include: { line: true, report: true },
+      include: { line: true, vehicle: true, report: true },
       orderBy: { date: "desc" },
     }),
     prisma.driverRequest.findMany({
@@ -118,6 +118,14 @@ export default async function DriverPanel() {
                     {duty.brigade && (
                       <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2.5 py-1 rounded font-mono font-bold">
                         Brygada: {duty.brigade}
+                      </span>
+                    )}
+                    {duty.vehicle && (
+                      <span className="bg-cyan-950/70 text-cyan-300 border border-cyan-700/50 text-xs px-2.5 py-1 rounded font-semibold flex items-center gap-1.5">
+                        🚌 #{duty.vehicle.fleetNumber} ({duty.vehicle.model})
+                        <span className="text-cyan-400 font-mono text-[11px] bg-cyan-900/50 px-1.5 py-0.5 rounded">
+                          {duty.vehicle.mileage} km
+                        </span>
                       </span>
                     )}
                     <span
