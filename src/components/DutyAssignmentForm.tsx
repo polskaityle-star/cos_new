@@ -32,8 +32,11 @@ interface BrigadeItem {
   lineId: string;
   brigadeNumber: string;
   carrier?: string | null;
+  brigadeType?: string | null;
   startTime?: string | null;
   endTime?: string | null;
+  startTime2?: string | null;
+  endTime2?: string | null;
   line?: { number: string; carrier?: string | null } | null;
 }
 
@@ -244,12 +247,20 @@ export default function DutyAssignmentForm({
             className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white focus:border-amber-500"
           />
           <datalist id="duty-brigades-datalist">
-            {filteredBrigades.map((b) => (
-              <option key={b.id} value={b.brigadeNumber}>
-                {b.line?.number ? `Linia ${b.line.number} - ` : ""}{b.brigadeNumber}
-                {b.startTime ? ` (${b.startTime} - ${b.endTime || ""})` : ""}
-              </option>
-            ))}
+            {filteredBrigades.map((b) => {
+              const isPeak = b.brigadeType === "SZCZYTOWA" || Boolean(b.startTime2 || b.endTime2);
+              return (
+                <option key={b.id} value={b.brigadeNumber}>
+                  {b.line?.number ? `Linia ${b.line.number} - ` : ""}{b.brigadeNumber}
+                  {isPeak ? " [SZCZYTOWA]" : ""}
+                  {isPeak && (b.startTime || b.startTime2)
+                    ? ` (I: ${b.startTime || "—"}-${b.endTime || "—"}, II: ${b.startTime2 || "—"}-${b.endTime2 || "—"})`
+                    : b.startTime
+                    ? ` (${b.startTime} - ${b.endTime || ""})`
+                    : ""}
+                </option>
+              );
+            })}
           </datalist>
         </div>
 

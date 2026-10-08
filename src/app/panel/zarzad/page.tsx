@@ -7,6 +7,7 @@ import ReportFileList from "@/components/ReportFileList";
 import LiveClock from "@/components/LiveClock";
 import DutyAssignmentForm from "@/components/DutyAssignmentForm";
 import BrigadeCreationForm from "@/components/BrigadeCreationForm";
+import BrigadeEditCard from "@/components/BrigadeEditCard";
 import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
 import {
   canAccessManagementPanel,
@@ -312,7 +313,7 @@ export default async function AdminPanel({
             </span>
           </div>
           <p className="text-slate-400 text-sm">
-            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.3.5.0)
+            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.3.6.0)
           </p>
         </div>
         <div className="flex flex-col md:items-end gap-3">
@@ -1231,93 +1232,7 @@ export default async function AdminPanel({
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {brigadeSchedules.map((b) => (
-                <div key={b.id} className="bg-slate-900 border border-slate-700 p-4 rounded-lg text-sm space-y-3">
-                  <form action="/api/panel/zarzad/brygady/edit" method="POST" className="space-y-3">
-                    <input type="hidden" name="id" value={b.id} />
-                    
-                    <div className="grid md:grid-cols-5 gap-2">
-                      <div>
-                        <label className="text-[10px] text-slate-400 block">Linia:</label>
-                        <select name="lineId" defaultValue={b.lineId} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
-                          {allLines.map((l) => (
-                            <option key={l.id} value={l.id}>Linia {l.number}{l.carrier ? ` [${l.carrier}]` : ""}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-slate-400 block">Przewoźnik:</label>
-                        <select name="carrier" defaultValue={b.carrier || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
-                          <option value="">Domyślny</option>
-                          <option value="VMPK">VMPK</option>
-                          <option value="VBP">VBP</option>
-                        </select>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-0.5">
-                          <label className="text-[10px] text-slate-400 block">Brygada:</label>
-                          <span className={`text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded border ${getDayBadgeClass(b.brigadeNumber, b.notes)}`}>
-                            {getDayLabel(b.brigadeNumber, b.notes)}
-                          </span>
-                        </div>
-                        <input type="text" name="brigadeNumber" defaultValue={b.brigadeNumber} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-slate-400 block">Godzina Wyjazdu (opcjonalnie):</label>
-                        <input type="time" name="startTime" defaultValue={b.startTime || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-slate-400 block">Godzina Zjazdu (opcjonalnie):</label>
-                        <input type="time" name="endTime" defaultValue={b.endTime || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] text-slate-400 mb-0.5">Godzina 1. przystanku:</label>
-                        <input type="time" name="firstStopDeparture" defaultValue={b.firstStopDeparture || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-400 mb-0.5">Godzina ostatniego przystanku:</label>
-                        <input type="time" name="lastStopArrival" defaultValue={b.lastStopArrival || ""} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce wyjazdu / startu:</label>
-                        <input type="text" name="startLocation" defaultValue={b.startLocation || ""} placeholder="Start" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce zjazdu / końca:</label>
-                        <input type="text" name="endLocation" defaultValue={b.endLocation || ""} placeholder="Koniec" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] text-slate-400 mb-0.5">Przesiadki kierowców / podmiany:</label>
-                        <input type="text" name="driverChanges" defaultValue={b.driverChanges || ""} placeholder="Przesiadki kierowców" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-400 mb-0.5">Dodatkowe uwagi:</label>
-                        <input type="text" name="notes" defaultValue={b.notes || ""} placeholder="Uwagi" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-1 border-t border-slate-800">
-                      <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
-                        Zapisz zmiany
-                      </button>
-                      <button
-                        type="submit"
-                        formAction={`/api/panel/zarzad/brygady/delete?id=${b.id}`}
-                        className="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded text-xs font-semibold"
-                      >
-                        🗑 Usuń brygadę
-                      </button>
-                    </div>
-                  </form>
-                </div>
+                <BrigadeEditCard key={b.id} brigade={b} lines={allLines} />
               ))}
             </div>
           )}
@@ -1360,9 +1275,12 @@ export default async function AdminPanel({
               lineId: b.lineId,
               brigadeNumber: b.brigadeNumber,
               carrier: b.carrier,
+              brigadeType: b.brigadeType,
               startTime: b.startTime,
               endTime: b.endTime,
-              line: { number: b.line.number, carrier: b.line.carrier },
+              startTime2: b.startTime2,
+              endTime2: b.endTime2,
+              line: { number: b.line?.number || "", carrier: b.line?.carrier || null },
             }))}
             prefill={{
               driverId: prefillDriver,

@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json(
     {
-      version: "0.3.5.0",
-      release: "0.3.5.0-beta",
+      version: "0.3.6.0",
+      release: "0.3.6.0-beta",
       status: "online",
       deployedAt: new Date().toISOString(),
     },

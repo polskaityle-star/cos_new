@@ -2,7 +2,14 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
+import {
+  sortBrigades,
+  getDayLabel,
+  getDayBadgeClass,
+  isPeakBrigade,
+  getBrigadeTypeLabel,
+  getBrigadeTypeBadgeClass,
+} from "@/lib/brigades";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +116,8 @@ export default async function BrigadesPage({
               <tbody className="divide-y divide-slate-700">
                 {schedules.map((item) => {
                   const carrierName = item.carrier || item.line?.carrier || "VMPK";
+                  const isPeak = isPeakBrigade(item);
+
                   const startLoc = item.startLocation || "";
                   const endLoc = item.endLocation || "";
                   const wyjazdFormatted = !startLoc
@@ -126,20 +135,46 @@ export default async function BrigadesPage({
                         ? endLoc.replace(" / ", " - ")
                         : `${endLoc} - Zajezdnia ${carrierName}`;
 
+                  const startLoc2 = item.startLocation2 || "";
+                  const endLoc2 = item.endLocation2 || "";
+                  const wyjazd2Formatted = !startLoc2
+                    ? "—"
+                    : startLoc2.includes(" - ")
+                      ? startLoc2
+                      : startLoc2.includes(" / ")
+                        ? startLoc2.replace(" / ", " - ")
+                        : `Zajezdnia ${carrierName} - ${startLoc2}`;
+                  const zjazd2Formatted = !endLoc2
+                    ? "—"
+                    : endLoc2.includes(" - ")
+                      ? endLoc2
+                      : endLoc2.includes(" / ")
+                        ? endLoc2.replace(" / ", " - ")
+                        : `${endLoc2} - Zajezdnia ${carrierName}`;
+
                   return (
-                    <tr key={item.id} className="hover:bg-slate-750 transition-colors">
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-slate-750 transition-colors ${
+                        isPeak ? "bg-purple-950/15" : ""
+                      }`}
+                    >
                       <td className="py-3.5 px-4 font-black text-amber-400 text-base whitespace-nowrap">
                         <span>Linia {item.line?.number || "—"}</span>
                         {(item.carrier || item.line?.carrier) && (
-                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold border ${
-                            (item.carrier || item.line?.carrier) === "VBP" ? "bg-blue-900/60 text-blue-300 border-blue-600/40" : "bg-red-900/60 text-amber-300 border-red-600/40"
-                          }`}>
+                          <span
+                            className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                              (item.carrier || item.line?.carrier) === "VBP"
+                                ? "bg-blue-900/60 text-blue-300 border-blue-600/40"
+                                : "bg-red-900/60 text-amber-300 border-red-600/40"
+                            }`}
+                          >
                             {item.carrier || item.line?.carrier}
                           </span>
                         )}
                       </td>
                       <td className="py-3.5 px-4 font-mono font-bold text-white">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <span>{item.brigadeNumber}</span>
                           <span
                             className={`text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full border ${getDayBadgeClass(
@@ -149,54 +184,125 @@ export default async function BrigadesPage({
                           >
                             {getDayLabel(item.brigadeNumber, item.notes)}
                           </span>
+                          <span
+                            className={`text-[9px] font-sans font-bold px-2 py-0.5 rounded border ${getBrigadeTypeBadgeClass(
+                              item
+                            )}`}
+                          >
+                            {isPeak ? "⚡ Szczytowa" : "🚌 Normalna"}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="text-xs space-y-1">
-                          <div>
-                            <span className="text-slate-400">Wyjazd:</span>{" "}
-                            <b className="font-mono text-emerald-300">{item.startTime || "—"}</b>
+                        {isPeak ? (
+                          <div className="text-xs space-y-1.5 font-mono">
+                            <div className="bg-purple-900/40 px-2 py-1 rounded border border-purple-800/40">
+                              <span className="text-purple-300 font-sans text-[10px] block font-bold">
+                                I (Szczyt poranny):
+                              </span>
+                              <div>
+                                <span className="text-slate-400 font-sans">Wyjazd:</span>{" "}
+                                <b className="text-emerald-300">{item.startTime || "—"}</b>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 font-sans">Zjazd:</span>{" "}
+                                <b className="text-amber-300">{item.endTime || "—"}</b>
+                              </div>
+                            </div>
+                            <div className="bg-purple-900/40 px-2 py-1 rounded border border-purple-800/40">
+                              <span className="text-purple-300 font-sans text-[10px] block font-bold">
+                                II (Szczyt popołudniowy):
+                              </span>
+                              <div>
+                                <span className="text-slate-400 font-sans">Wyjazd:</span>{" "}
+                                <b className="text-emerald-300">{item.startTime2 || "—"}</b>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 font-sans">Zjazd:</span>{" "}
+                                <b className="text-amber-300">{item.endTime2 || "—"}</b>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-slate-400">Zjazd:</span>{" "}
-                            <b className="font-mono text-amber-300">{item.endTime || "—"}</b>
+                        ) : (
+                          <div className="text-xs space-y-1">
+                            <div>
+                              <span className="text-slate-400">Wyjazd:</span>{" "}
+                              <b className="font-mono text-emerald-300">{item.startTime || "—"}</b>
+                            </div>
+                            <div>
+                              <span className="text-slate-400">Zjazd:</span>{" "}
+                              <b className="font-mono text-amber-300">{item.endTime || "—"}</b>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 text-xs text-slate-200">
-                        <div className="space-y-1">
-                          <div>
-                            <span className="text-slate-400">1. przystanek:</span>{" "}
-                            <span className="font-mono text-cyan-300 font-semibold">{item.firstStopDeparture || "—"}</span>
+                        {isPeak ? (
+                          <div className="space-y-1.5 font-mono text-xs">
+                            <div className="bg-slate-900/60 p-1.5 rounded border border-slate-700/60">
+                              <span className="text-purple-300 font-sans text-[10px] block font-bold">I zmiana:</span>
+                              <div><span className="text-slate-400 font-sans">1.:</span> <span className="text-cyan-300 font-semibold">{item.firstStopDeparture || "—"}</span></div>
+                              <div><span className="text-slate-400 font-sans">Ost.:</span> <span className="text-cyan-300 font-semibold">{item.lastStopArrival || "—"}</span></div>
+                            </div>
+                            <div className="bg-slate-900/60 p-1.5 rounded border border-slate-700/60">
+                              <span className="text-purple-300 font-sans text-[10px] block font-bold">II zmiana:</span>
+                              <div><span className="text-slate-400 font-sans">1.:</span> <span className="text-cyan-300 font-semibold">{item.firstStopDeparture2 || "—"}</span></div>
+                              <div><span className="text-slate-400 font-sans">Ost.:</span> <span className="text-cyan-300 font-semibold">{item.lastStopArrival2 || "—"}</span></div>
+                            </div>
                           </div>
-                          <div>
-                            <span className="text-slate-400">Ost. przystanek:</span>{" "}
-                            <span className="font-mono text-cyan-300 font-semibold">{item.lastStopArrival || "—"}</span>
+                        ) : (
+                          <div className="space-y-1">
+                            <div>
+                              <span className="text-slate-400">1. przystanek:</span>{" "}
+                              <span className="font-mono text-cyan-300 font-semibold">{item.firstStopDeparture || "—"}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400">Ost. przystanek:</span>{" "}
+                              <span className="font-mono text-cyan-300 font-semibold">{item.lastStopArrival || "—"}</span>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </td>
                       <td className="py-3.5 px-4 text-slate-200">
-                        <div className="text-xs font-semibold">
-                          <span className="text-slate-400 font-normal">Wyjazd:</span> {wyjazdFormatted}
-                        </div>
-                        <div className="text-xs font-semibold mt-0.5">
-                          <span className="text-slate-400 font-normal">Zjazd:</span> {zjazdFormatted}
-                        </div>
+                        {isPeak ? (
+                          <div className="text-xs space-y-1.5">
+                            <div className="bg-slate-900/60 p-1.5 rounded border border-slate-700/60">
+                              <span className="text-purple-300 text-[10px] block font-bold">I zmiana:</span>
+                              <div><span className="text-slate-400 font-normal">Wyjazd:</span> {wyjazdFormatted}</div>
+                              <div><span className="text-slate-400 font-normal">Zjazd:</span> {zjazdFormatted}</div>
+                            </div>
+                            <div className="bg-slate-900/60 p-1.5 rounded border border-slate-700/60">
+                              <span className="text-purple-300 text-[10px] block font-bold">II zmiana:</span>
+                              <div><span className="text-slate-400 font-normal">Wyjazd:</span> {wyjazd2Formatted}</div>
+                              <div><span className="text-slate-400 font-normal">Zjazd:</span> {zjazd2Formatted}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="text-xs font-semibold">
+                              <span className="text-slate-400 font-normal">Wyjazd:</span> {wyjazdFormatted}
+                            </div>
+                            <div className="text-xs font-semibold mt-0.5">
+                              <span className="text-slate-400 font-normal">Zjazd:</span> {zjazdFormatted}
+                            </div>
+                          </>
+                        )}
                       </td>
-                    <td className="py-3.5 px-4 text-slate-300">
-                      {item.driverChanges ? (
-                        <span className="bg-blue-900/40 border border-blue-600/40 text-blue-200 px-2.5 py-1 rounded text-xs block">
-                          🔄 {item.driverChanges}
-                        </span>
-                      ) : (
-                        <span className="text-slate-500 text-xs">Bez przesiadki na trasie</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-400 text-xs">
-                      {item.notes || "-"}
-                    </td>
-                  </tr>
-                )})}
+                      <td className="py-3.5 px-4 text-slate-300">
+                        {item.driverChanges ? (
+                          <span className="bg-blue-900/40 border border-blue-600/40 text-blue-200 px-2.5 py-1 rounded text-xs block">
+                            🔄 {item.driverChanges}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-xs">Bez przesiadki na trasie</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-400 text-xs">
+                        {item.notes || "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

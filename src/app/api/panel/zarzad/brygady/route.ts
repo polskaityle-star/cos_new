@@ -17,12 +17,22 @@ export async function POST(req: Request) {
   const lineId = formData.get("lineId") as string;
   const carrier = (formData.get("carrier") as string) || null;
   const brigadeNumber = formData.get("brigadeNumber") as string;
+  const brigadeType = (formData.get("brigadeType") as string) || "NORMALNA";
   const startTime = formData.get("startTime") as string;
   const endTime = formData.get("endTime") as string;
   const firstStopDeparture = (formData.get("firstStopDeparture") as string) || null;
   const lastStopArrival = (formData.get("lastStopArrival") as string) || null;
   const startLocation = formData.get("startLocation") as string;
   const endLocation = formData.get("endLocation") as string;
+
+  // Pola dla brygady szczytowej (II wyjazd i zjazd)
+  const startTime2 = formData.get("startTime2") as string;
+  const endTime2 = formData.get("endTime2") as string;
+  const firstStopDeparture2 = (formData.get("firstStopDeparture2") as string) || null;
+  const lastStopArrival2 = (formData.get("lastStopArrival2") as string) || null;
+  const startLocation2 = formData.get("startLocation2") as string;
+  const endLocation2 = formData.get("endLocation2") as string;
+
   const driverChanges = formData.get("driverChanges") as string;
   const notes = formData.get("notes") as string;
 
@@ -31,6 +41,7 @@ export async function POST(req: Request) {
       data: {
         lineId,
         carrier: carrier || null,
+        brigadeType: brigadeType || "NORMALNA",
         brigadeNumber,
         startTime: startTime || "",
         endTime: endTime || "",
@@ -38,6 +49,12 @@ export async function POST(req: Request) {
         lastStopArrival,
         startLocation: startLocation || "",
         endLocation: endLocation || "",
+        startTime2: startTime2 || "",
+        endTime2: endTime2 || "",
+        firstStopDeparture2,
+        lastStopArrival2,
+        startLocation2: startLocation2 || "",
+        endLocation2: endLocation2 || "",
         driverChanges: driverChanges || null,
         notes: notes || null,
       }

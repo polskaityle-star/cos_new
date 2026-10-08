@@ -1,7 +1,7 @@
 # 🚍 VZTM Kielce – Oficjalny Poradnik Użytkownika i Dokumentacja Systemu
 
 Witaj w oficjalnym przewodniku po systemie **VZTM Kielce** (Wirtualny Zarząd Transportu Miejskiego w Kielcach – wirtualna firma dla symulatora OMSI 2).  
-Wersja systemu: **0.3.5.0** (BETA).
+Wersja systemu: **0.3.6.0** (BETA).
 
 System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-czerwone) oraz **VBP Tour Regio Kielce** (malowanie niebieskie), organizację taboru, rozkłady brygad, grafik służb, zgłaszanie usterek warsztatowych, składanie wniosków pracowniczych oraz weryfikację raportów z tras.
 
@@ -25,11 +25,11 @@ System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-c
    - [Zarządzanie Personelem i zmiana ról](#zarządzanie-personelem-i-zmiana-ról)
    - [Dedykowani przewoźnicy dla Linii i Brygad](#dedykowani-przewoźnicy-dla-linii-i-brygad)
    - [Układanie grafiku, blokada urlopowa i walidacja dni/przewoźników](#układanie-grafiku-blokada-urlopowa-i-walidacja-dniprzewoźników)
-   - [Wykaz brygad (Godziny wyjazdu, zjazdu, przystanków)](#wykaz-brygad)
+   - [Wykaz brygad (Brygady normalne oraz szczytowe z dwoma wyjazdami/zjazdami)](#wykaz-brygad)
    - [Weryfikacja raportów i przeliczanie licznika taboru](#weryfikacja-raportów-i-licznik-taboru)
    - [Historia zgłoszeń technicznych i wniosków](#historia-zgłoszeń-technicznych-i-wniosków)
 5. [Funkcje wizualne i techniczne](#-funkcje-wizualne-i-techniczne)
-6. [Historia zmian – Wersja 0.3.5.0](#-historia-zmian--wersja-0350)
+6. [Historia zmian – Wersja 0.3.6.0](#-historia-zmian--wersja-0360)
 7. [Historia wcześniejszych wydań](#-historia-wcześniejszych-wydań)
 
 ---
@@ -202,25 +202,40 @@ W formularzu tworzenia i edycji brygady dostępne są precyzyjne pola:
 
 ---
 
-## 🚀 Historia zmian – Wersja 0.3.5.0
- 
-Wydanie **0.3.5.0** wprowadza kluczowe usprawnienia separacji przewoźników, intuicyjną obsługę wniosków grafiku i zgłoszeń warsztatowych oraz gruntowne poprawki wizualne motywu jasnego:
- 
-1. **Dedykowany Wykaz Brygad dla VBP:** Kierowcy VBP Tour Regio w wykazie brygad widzą wyłącznie linie i harmonogramy dedykowane ich przewoźnikowi (całkowita blokada wglądu w brygady VMPK).
-2. **Szybkie zarządzanie usterkami i historia napraw:** Zgłoszenia techniczne po zatwierdzeniu, skierowaniu na warsztat lub odrzuceniu natychmiast znikają z listy aktywnej i trafiają do historii zgłoszeń technicznych. Dodano dedykowany przycisk `✅ Ustaw jako naprawione`.
-3. **Płynna akceptacja wniosku o dodatkową służbę (Auto-prefill):** Kliknięcie „Zatwierdź i ułóż w grafiku” przy wniosku o dodatkową służbę natychmiast przenosi dyspozytora do formularza grafiku z automatycznie uzupełnionym kierowcą, datą oraz wybranym przez niego autobusem – dyspozytor wybiera jedynie linię i brygadę, a wniosek zostaje oznaczony jako Zaakceptowany.
-4. **Dynamiczne filtrowanie grafiku według przewoźnika:** Po wyborze kierowcy VBP formularz grafiku natychmiast dynamicznie zawęża listę linii, brygad oraz taboru wyłącznie do VBP (analogicznie dla kierowców VMPK).
-5. **Opcjonalne godziny wyjazdu i zjazdu:** Pola godziny wyjazdu z zajezdni i zjazdu na zajezdnię w wykazie brygad stały się opcjonalne, nie blokując tworzenia brygad o uproszczonym harmonogramie.
-6. **Gruntowna naprawa motywu jasnego (Light Theme):** Wyeliminowano błędy niewidocznego tekstu na ciemnych tłach, naprawiono kontrasty formularzy, tabel, kart służb i bocznych okien modalnych.
-7. **Obowiązkowy pojazd z taboru w grafiku:** Pole wyboru autobusu przy przydzielaniu służby w grafiku stało się wymagane (`required`), zapobiegając przydzielaniu służb bez pojazdu.
-8. **Opcjonalna uwaga do służby:** Dodano opcjonalne pole na uwagi/dyspozycje dyspozytorskie przy planowaniu służby dla kierowcy.
-9. **Uproszczona i przejrzysta karta przydzielonej służby:** Z kart przydzielonych służb usunięto rozbudowane podglądy brygady (godziny, przystanki początkowe/końcowe, wyjazdy, zjazdy, przesiadki) – pozostawiono kluczowe informacje: Linię, Brygadę, Pojazd oraz ewentualną Uwagę.
-10. **Automatyczny wybór przewoźnika brygady:** Przy tworzeniu nowej brygady, wybór linii przypisanej do konkretnego przewoźnika (np. VMPK lub VBP) automatycznie ustawia odpowiedniego operatora w polu przewoźnika brygady.
-11. **Aktualizacja wersji 0.3.5.0:** Wdrożenie nowej wersji w kodzie, pasku nawigacyjnym, stopce, panelu zarządzania, API oraz dokumentacji.
- 
+## 🚀 Historia zmian – Wersja 0.3.6.0
+
+Wydanie **0.3.6.0** wprowadza obsługę brygad szczytowych (dwurazowych) z dwoma niezależnymi wyjazdami i zjazdami oraz nową architekturę zarządzania brygadami:
+
+1. **Wybór typu brygady – Normalna vs Szczytowa:**
+   - W formularzu tworzenia brygad oraz w edycji istniejących wpisów dodano wybór typu:
+     - 🚌 **Normalna (całodzienna):** jeden wyjazd rano i jeden zjazd do zajezdni.
+     - ⚡ **Szczytowa (dwa wyjazdy i zjazdy):** obsługa szczytu porannego oraz szczytu popołudniowego z przerwą międzyszczytową.
+2. **Dwa niezależne wyjazdy i zjazdy dla brygad szczytowych:**
+   - **I Wyjazd i Zjazd (Szczyt poranny):** Godzina wyjazdu I, godzina zjazdu I, 1. przystanek I, ostatni przystanek I, miejsce wyjazdu I, miejsce zjazdu I.
+   - **II Wyjazd i Zjazd (Szczyt popołudniowy):** Godzina wyjazdu II, godzina zjazdu II, 1. przystanek II, ostatni przystanek II, miejsce wyjazdu II, miejsce zjazdu II.
+3. **Komponent edycji brygad `BrigadeEditCard`:**
+   - W Panelu Zarządu każda brygada posiada interaktywną kartę z możliwością łatwego przełączenia typu brygady (Normalna &harr; Szczytowa) oraz edycji parametrów obu szczytów.
+4. **Prezentacja brygad szczytowych w Wykazie Brygad i Panelu Kierowcy:**
+   - Dedykowane plakietki `⚡ Szczytowa` oraz `🚌 Normalna`.
+   - Czytelne, wielopoziomowe sekcje dla I i II zmiany z wyjazdami, zjazdami, przystankami i trasami.
+5. **Wyróżnienie brygad szczytowych przy układaniu grafiku:**
+   - Podpowiedzi brygad w formularzu wydawania służb (`DutyAssignmentForm`) informują dyspozytora o typie szczytowym oraz prezentują godziny obu szczytów (np. `[SZCZYTOWA] (I: 05:20-09:00, II: 13:40-17:20)`).
+6. **Aktualizacja wersji do 0.3.6.0:** Pełne wdrożenie oznaczenia wersji 0.3.6.0 w całym systemie i dokumentacji.
+
 ---
- 
+
 ## 📜 Historia wcześniejszych wydań
+
+### Wersja 0.3.5.0
+- Dedykowany wykaz brygad dla przewoźnika VBP (brak dostępu do brygad VMPK).
+- Automatyczne archiwizowanie rozwiązanych zgłoszeń technicznych w historii oraz przycisk „Ustaw jako naprawione”.
+- Płynna akceptacja wniosku o dodatkową służbę (auto-prefill kierowcy, daty i wozu w grafiku).
+- Dynamiczne filtrowanie linii, brygad i taboru w grafiku według przewoźnika kierowcy.
+- Opcjonalne godziny wyjazdu i zjazdu oraz opcjonalna notatka dyspozytorska.
+- Gruntowna naprawa kontrastów w motywie jasnym (Light Theme).
+- Wymagany pojazd z taboru przy przydzielaniu służby.
+- Uproszczona karta przydzielonej służby (Linia, Brygada, Pojazd, Uwagi).
+- Automatyczny wybór przewoźnika brygady na podstawie wybranej linii.
  
 ### Wersja 0.3.2.0
 - Wybór preferowanego pojazdu we wniosku o dodatkową służbę.

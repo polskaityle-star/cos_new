@@ -25,7 +25,7 @@ export default function Navbar() {
           </span>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-1.5 py-0.2 rounded text-[11px] font-mono font-bold tracking-normal shadow-xs">
-              v0.3.5.0
+              v0.3.6.0
             </span>
             <span className="text-[10px] text-slate-300 font-medium">BETA</span>
           </div>

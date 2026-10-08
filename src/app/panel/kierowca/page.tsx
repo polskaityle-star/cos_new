@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
+import { sortBrigades, getDayLabel, getDayBadgeClass, isPeakBrigade, getBrigadeTypeBadgeClass } from "@/lib/brigades";
 import { getRoleLabel, getRoleBadgeClass, canAccessManagementPanel } from "@/lib/roles";
 import DriverEtatModal from "@/components/DriverEtatModal";
 import AvatarManager from "@/components/AvatarManager";
@@ -295,46 +295,112 @@ export default async function DriverPanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700/60 bg-slate-900/40">
-                {brigadeSchedules.map((b) => (
-                  <tr key={b.id} className="hover:bg-slate-800/60 transition-colors">
-                    <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
-                      Linia {b.line.number}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
-                          {b.brigadeNumber}
-                        </span>
-                        <span
-                          className={`text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full border ${getDayBadgeClass(
-                            b.brigadeNumber,
-                            b.notes
-                          )}`}
-                        >
-                          {getDayLabel(b.brigadeNumber, b.notes)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-emerald-400 font-bold whitespace-nowrap text-xs">
-                      <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime || "—"}</div>
-                      <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime || "—"}</div>
-                    </td>
-                    <td className="py-3 px-4 text-xs text-slate-300 font-mono">
-                      <div><span className="text-slate-400 font-sans">1. przystanek:</span> {b.firstStopDeparture || "—"}</div>
-                      <div><span className="text-slate-400 font-sans">Ost. przystanek:</span> {b.lastStopArrival || "—"}</div>
-                    </td>
-                    <td className="py-3 px-4 text-xs text-slate-300">
-                      <div><b>Wyjazd:</b> {b.startLocation}</div>
-                      <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation}</div>
-                    </td>
-                    <td className="py-3 px-4 text-xs text-slate-300">
-                      {b.driverChanges || <span className="text-slate-500 italic">Brak przesiadek</span>}
-                    </td>
-                    <td className="py-3 px-4 text-xs text-slate-400">
-                      {b.notes || <span className="text-slate-600">-</span>}
-                    </td>
-                  </tr>
-                ))}
+                {brigadeSchedules.map((b) => {
+                  const isPeak = isPeakBrigade(b);
+                  return (
+                    <tr
+                      key={b.id}
+                      className={`hover:bg-slate-800/60 transition-colors ${
+                        isPeak ? "bg-purple-950/15" : ""
+                      }`}
+                    >
+                      <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
+                        Linia {b.line?.number}
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
+                            {b.brigadeNumber}
+                          </span>
+                          <span
+                            className={`text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full border ${getDayBadgeClass(
+                              b.brigadeNumber,
+                              b.notes
+                            )}`}
+                          >
+                            {getDayLabel(b.brigadeNumber, b.notes)}
+                          </span>
+                          <span
+                            className={`text-[9px] font-sans font-bold px-2 py-0.5 rounded border ${getBrigadeTypeBadgeClass(
+                              b
+                            )}`}
+                          >
+                            {isPeak ? "⚡ Szczytowa" : "🚌 Normalna"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-emerald-400 font-bold whitespace-nowrap text-xs">
+                        {isPeak ? (
+                          <div className="space-y-1">
+                            <div className="bg-purple-900/40 px-2 py-0.5 rounded border border-purple-800/40">
+                              <span className="text-purple-300 font-sans text-[10px] block font-bold">I zmiana:</span>
+                              <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime || "—"}</div>
+                              <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime || "—"}</div>
+                            </div>
+                            <div className="bg-purple-900/40 px-2 py-0.5 rounded border border-purple-800/40">
+                              <span className="text-purple-300 font-sans text-[10px] block font-bold">II zmiana:</span>
+                              <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime2 || "—"}</div>
+                              <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime2 || "—"}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime || "—"}</div>
+                            <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime || "—"}</div>
+                          </>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-slate-300 font-mono">
+                        {isPeak ? (
+                          <div className="space-y-1">
+                            <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
+                              <span className="text-purple-300 font-sans text-[10px] block font-bold">I:</span>
+                              <div><span className="text-slate-400 font-sans">1.:</span> {b.firstStopDeparture || "—"}</div>
+                              <div><span className="text-slate-400 font-sans">Ost.:</span> {b.lastStopArrival || "—"}</div>
+                            </div>
+                            <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
+                              <span className="text-purple-300 font-sans text-[10px] block font-bold">II:</span>
+                              <div><span className="text-slate-400 font-sans">1.:</span> {b.firstStopDeparture2 || "—"}</div>
+                              <div><span className="text-slate-400 font-sans">Ost.:</span> {b.lastStopArrival2 || "—"}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div><span className="text-slate-400 font-sans">1. przystanek:</span> {b.firstStopDeparture || "—"}</div>
+                            <div><span className="text-slate-400 font-sans">Ost. przystanek:</span> {b.lastStopArrival || "—"}</div>
+                          </>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-slate-300">
+                        {isPeak ? (
+                          <div className="space-y-1">
+                            <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
+                              <span className="text-purple-300 text-[10px] block font-bold">I zmiana:</span>
+                              <div><b>Wyjazd:</b> {b.startLocation || "—"}</div>
+                              <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation || "—"}</div>
+                            </div>
+                            <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
+                              <span className="text-purple-300 text-[10px] block font-bold">II zmiana:</span>
+                              <div><b>Wyjazd:</b> {b.startLocation2 || "—"}</div>
+                              <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation2 || "—"}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div><b>Wyjazd:</b> {b.startLocation || "—"}</div>
+                            <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation || "—"}</div>
+                          </>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-slate-300">
+                        {b.driverChanges || <span className="text-slate-500 italic">Brak przesiadek</span>}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-slate-400">
+                        {b.notes || <span className="text-slate-600">-</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

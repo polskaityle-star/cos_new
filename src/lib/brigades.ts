@@ -3,6 +3,7 @@ export interface BrigadeScheduleLike {
   lineId?: string;
   brigadeNumber: string;
   carrier?: string | null;
+  brigadeType?: string | null; // "NORMALNA" (całodzienna) lub "SZCZYTOWA" (dwurazowa)
   notes?: string | null;
   startTime?: string | null;
   endTime?: string | null;
@@ -10,6 +11,15 @@ export interface BrigadeScheduleLike {
   endLocation?: string | null;
   firstStopDeparture?: string | null;
   lastStopArrival?: string | null;
+
+  // II Wyjazd i Zjazd (dla brygady szczytowej)
+  startTime2?: string | null;
+  endTime2?: string | null;
+  startLocation2?: string | null;
+  endLocation2?: string | null;
+  firstStopDeparture2?: string | null;
+  lastStopArrival2?: string | null;
+
   driverChanges?: string | null;
   line?: {
     id?: string;
@@ -18,6 +28,24 @@ export interface BrigadeScheduleLike {
     [key: string]: any;
   } | null;
   [key: string]: any;
+}
+
+/**
+ * Sprawdza czy brygada jest szczytowa (dwa wyjazdy i zjazdy)
+ */
+export function isPeakBrigade(b?: BrigadeScheduleLike | null): boolean {
+  if (!b) return false;
+  return b.brigadeType === "SZCZYTOWA" || Boolean(b.startTime2 || b.endTime2);
+}
+
+export function getBrigadeTypeLabel(b?: BrigadeScheduleLike | null): string {
+  return isPeakBrigade(b) ? "Szczytowa (2 wyjazdy/zjazdy)" : "Normalna";
+}
+
+export function getBrigadeTypeBadgeClass(b?: BrigadeScheduleLike | null): string {
+  return isPeakBrigade(b)
+    ? "bg-purple-950/70 border-purple-700 text-purple-300"
+    : "bg-sky-950/70 border-sky-700 text-sky-300";
 }
 
 /**

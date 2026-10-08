@@ -58,20 +58,30 @@ model Line {
 }
 
 model BrigadeSchedule {
-  id                 String   @id @default(cuid())
-  lineId             String
-  line               Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
-  carrier            String?  // VMPK, VBP (opcjonalny dedykowany przewoźnik)
-  brigadeNumber      String   // np. "34/1", "Brygada 2"
-  startTime          String?  @default("") // Godzina Wyjazdu (opcjonalna)
-  endTime            String?  @default("") // Godzina Zjazdu (opcjonalna)
-  firstStopDeparture String?  // Godzina pierwszego przystanku (np. "05:30")
-  lastStopArrival    String?  // Godzina ostatniego przystanku (np. "13:20")
-  startLocation      String?  @default("") // np. "Zajezdnia VMPK / Bukówka"
-  endLocation        String?  @default("") // np. "Bukówka / Zajezdnia"
-  driverChanges      String?  // Przesiadki kierowców / podmiany (np. "Przesiadka na Żytniej o 09:30")
-  notes              String?  // Uwagi
-  createdAt          DateTime @default(now())
+  id                  String   @id @default(cuid())
+  lineId              String
+  line                Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  carrier             String?  // VMPK, VBP (opcjonalny dedykowany przewoźnik)
+  brigadeType         String?  @default("NORMALNA") // "NORMALNA" (całodzienna) lub "SZCZYTOWA" (dwurazowa)
+  brigadeNumber       String   // np. "34/1", "Brygada 2"
+  startTime           String?  @default("") // Godzina Wyjazdu I (opcjonalna)
+  endTime             String?  @default("") // Godzina Zjazdu I (opcjonalna)
+  firstStopDeparture  String?  // Godzina pierwszego przystanku I (np. "05:30")
+  lastStopArrival     String?  // Godzina ostatniego przystanku I (np. "13:20")
+  startLocation       String?  @default("") // np. "Zajezdnia VMPK / Bukówka"
+  endLocation         String?  @default("") // np. "Bukówka / Zajezdnia"
+  
+  // Pola dla brygady szczytowej (II wyjazd i zjazd):
+  startTime2          String?  @default("") // Godzina Wyjazdu II (opcjonalna)
+  endTime2            String?  @default("") // Godzina Zjazdu II (opcjonalna)
+  firstStopDeparture2 String?  @default("") // Godzina pierwszego przystanku II
+  lastStopArrival2    String?  @default("") // Godzina ostatniego przystanku II
+  startLocation2      String?  @default("") // Miejsce wyjazdu II
+  endLocation2        String?  @default("") // Miejsce zjazdu II
+
+  driverChanges       String?  // Przesiadki kierowców / podmiany (np. "Przesiadka na Żytniej o 09:30")
+  notes               String?  // Uwagi
+  createdAt           DateTime @default(now())
 }
 
 model Duty {
