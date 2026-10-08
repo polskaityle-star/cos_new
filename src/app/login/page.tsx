@@ -55,35 +55,7 @@ export default function LoginPage() {
       <div className="bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-xl w-full max-w-md">
         <h1 className="text-3xl font-bold mb-6 text-center">Logowanie</h1>
 
-        {/* Pomocnicze domyślne dane logowania */}
-        <div className="bg-slate-900/90 border border-slate-700 p-3.5 rounded-lg text-xs text-slate-300 mb-5 space-y-2">
-          <div className="flex justify-between items-center">
-            <div>
-              <span className="font-bold text-amber-400 block">Konto Administratora:</span>
-              Login: <code className="text-white font-mono bg-slate-800 px-1 py-0.5 rounded">admin</code> | Hasło: <code className="text-white font-mono bg-slate-800 px-1 py-0.5 rounded">admin123</code>
-            </div>
-            <button
-              type="button"
-              onClick={() => { setUsername("admin"); setPassword("admin123"); }}
-              className="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded text-xs font-semibold whitespace-nowrap"
-            >
-              Uzupełnij
-            </button>
-          </div>
-          <div className="flex justify-between items-center pt-2 border-t border-slate-800">
-            <div>
-              <span className="font-bold text-emerald-400 block">Konto Kierowcy:</span>
-              Login: <code className="text-white font-mono bg-slate-800 px-1 py-0.5 rounded">kierowca1</code> | Hasło: <code className="text-white font-mono bg-slate-800 px-1 py-0.5 rounded">kierowca123</code>
-            </div>
-            <button
-              type="button"
-              onClick={() => { setUsername("kierowca1"); setPassword("kierowca123"); }}
-              className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs font-semibold whitespace-nowrap"
-            >
-              Uzupełnij
-            </button>
-          </div>
-        </div>
+
         
         {error && <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded mb-4 text-center text-sm">{error}</div>}
 
