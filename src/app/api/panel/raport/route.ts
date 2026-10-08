@@ -124,15 +124,6 @@ export async function POST(req: Request) {
       })
     ];
 
-    if (duty.vehicleId && endMileage > 0) {
-      transactions.push(
-        prisma.vehicle.update({
-          where: { id: duty.vehicleId },
-          data: { mileage: endMileage }
-        })
-      );
-    }
-
     await prisma.$transaction(transactions);
 
     revalidatePath("/panel/kierowca");

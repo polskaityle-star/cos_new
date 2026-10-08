@@ -21,23 +21,33 @@ export async function POST(req: Request) {
   }
 
   if (action === "accept") {
-    const updatedReport = await prisma.report.update({
+    const existingReport = await prisma.report.findUnique({
       where: { id: reportId },
-      data: { status: "ACCEPTED" },
-      include: { duty: true }
+      include: { duty: true },
     });
 
-    if (updatedReport.duty?.vehicleId && updatedReport.endMileage > 0) {
-      await prisma.vehicle.update({
-        where: { id: updatedReport.duty.vehicleId },
-        data: { mileage: updatedReport.endMileage }
+    if (existingReport && existingReport.status !== "ACCEPTED") {
+      const distance = Math.max(0, existingReport.endMileage - existingReport.startMileage);
+
+      await prisma.report.update({
+        where: { id: reportId },
+        data: { status: "ACCEPTED" },
       });
-      revalidatePath("/tabor");
+
+      if (existingReport.duty?.vehicleId && distance > 0) {
+        await prisma.vehicle.update({
+          where: { id: existingReport.duty.vehicleId },
+          data: {
+            mileage: { increment: distance },
+          },
+        });
+        revalidatePath("/tabor");
+      }
     }
   } else if (action === "reject") {
     await prisma.report.update({
       where: { id: reportId },
-      data: { status: "REJECTED" }
+      data: { status: "REJECTED" },
     });
   }
 

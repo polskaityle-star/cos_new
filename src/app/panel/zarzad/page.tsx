@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import ReportFileList from "@/components/ReportFileList";
 
 export const dynamic = "force-dynamic";
 
@@ -341,50 +342,43 @@ export default async function AdminPanel() {
                     Data służby: {new Date(report.duty.date).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mb-4">
-                  <div>Stan początkowy: <b className="text-emerald-400">{report.startMileage} km</b></div>
-                  <div>Stan końcowy: <b className="text-emerald-400">{report.endMileage} km</b></div>
-                  <div>Dystans: <b className="text-white">{report.endMileage - report.startMileage} km</b></div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+                  <div>Stan początkowy: <b className="text-slate-200">{report.startMileage} km</b></div>
+                  <div>Stan końcowy: <b className="text-slate-200">{report.endMileage} km</b></div>
+                  <div>Dystans z kursu: <b className="text-emerald-400 font-bold">+{Math.max(0, report.endMileage - report.startMileage)} km</b></div>
                   <div>
-                    <a
-                      href={report.startScreenshot}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-emerald-400 hover:underline font-medium"
-                    >
-                      📷 Zobacz Screen Start &rarr;
-                    </a>
-                  </div>
-                  <div>
-                    <a
-                      href={report.endScreenshot}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-emerald-400 hover:underline font-medium"
-                    >
-                      📷 Zobacz Screen Koniec &rarr;
-                    </a>
-                  </div>
-                  <div>
-                    <a
-                      href={report.summaryFile}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-blue-400 hover:underline font-medium"
-                    >
-                      📄 Otwórz Podsumowanie (.txt) &rarr;
-                    </a>
+                    {report.duty.vehicle ? (
+                      <span className="text-cyan-300 text-xs">
+                        Licznik #{report.duty.vehicle.fleetNumber}: <b>{report.duty.vehicle.mileage} km</b>
+                        <span className="text-emerald-400 block text-[11px] font-semibold">
+                          ➔ po akceptacji: {report.duty.vehicle.mileage + Math.max(0, report.endMileage - report.startMileage)} km
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 text-xs">Brak przypisanego pojazdu</span>
+                    )}
                   </div>
                 </div>
-                <div className="flex gap-2">
+
+                {/* Podgląd plików i screenów z lightboxem i bezpośrednimi linkami */}
+                <div className="mb-4">
+                  <ReportFileList
+                    reportId={report.id}
+                    startScreenshot={report.startScreenshot}
+                    endScreenshot={report.endScreenshot}
+                    summaryFile={report.summaryFile}
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
                   <form action={`/api/panel/zarzad/raporty?reportId=${report.id}&action=accept`} method="POST">
-                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors">
-                      Akceptuj Raport
+                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center gap-1.5 shadow">
+                      ✅ Akceptuj Raport (+{Math.max(0, report.endMileage - report.startMileage)} km do licznika)
                     </button>
                   </form>
                   <form action={`/api/panel/zarzad/raporty?reportId=${report.id}&action=reject`} method="POST">
-                    <button type="submit" className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
-                      Odrzuć Raport
+                    <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold transition-colors">
+                      ✕ Odrzuć Raport
                     </button>
                   </form>
                 </div>
