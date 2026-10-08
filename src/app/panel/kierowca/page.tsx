@@ -17,7 +17,7 @@ export default async function DriverPanel() {
     redirect("/");
   }
 
-  const [duties, driverRequests, vehicleDefects, allVehicles, allLines] = await Promise.all([
+  const [duties, driverRequests, vehicleDefects, allVehicles, allLines, brigadeSchedules] = await Promise.all([
     prisma.duty.findMany({
       where: { userId: session.user.id },
       include: { line: true, vehicle: true, report: true },
@@ -37,6 +37,10 @@ export default async function DriverPanel() {
     }),
     prisma.line.findMany({
       orderBy: { number: "asc" },
+    }),
+    prisma.brigadeSchedule.findMany({
+      include: { line: true },
+      orderBy: [{ line: { number: "asc" } }, { brigadeNumber: "asc" }],
     }),
   ]);
 
@@ -61,6 +65,12 @@ export default async function DriverPanel() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
+          <Link
+            href="/brygady"
+            className="bg-amber-700/80 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border border-amber-600/60 shadow"
+          >
+            <span>📋 Wykaz Brygad</span>
+          </Link>
           <Link
             href="/"
             className="bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border border-slate-600"
@@ -146,6 +156,33 @@ export default async function DriverPanel() {
                   <div className="text-xs text-slate-400 mt-0.5">
                     Data służby: {new Date(duty.date).toLocaleDateString()}
                   </div>
+
+                  {/* Szczegóły przypisanej brygady */}
+                  {duty.brigade && (() => {
+                    const matched = brigadeSchedules.find(
+                      (b) => b.lineId === duty.lineId && (duty.brigade === b.brigadeNumber || duty.brigade?.includes(b.brigadeNumber) || b.brigadeNumber.includes(duty.brigade!))
+                    );
+                    if (!matched) return null;
+                    return (
+                      <div className="mt-2.5 text-xs bg-slate-950/70 p-2.5 rounded border border-slate-800 text-slate-300 space-y-1">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          <span>⏰ Godziny: <b className="text-amber-300 font-mono">{matched.startTime} - {matched.endTime}</b></span>
+                          <span>📍 Wyjazd: <b className="text-white">{matched.startLocation}</b></span>
+                          <span>🏁 Zjazd: <b className="text-white">{matched.endLocation}</b></span>
+                        </div>
+                        {matched.driverChanges && (
+                          <div className="text-[11px] text-slate-400">
+                            🔄 Przesiadki: <span className="text-slate-300">{matched.driverChanges}</span>
+                          </div>
+                        )}
+                        {matched.notes && (
+                          <div className="text-[11px] text-amber-400/90">
+                            ℹ️ Uwagi: <span>{matched.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -170,6 +207,72 @@ export default async function DriverPanel() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      {/* 📋 Wykaz Brygad (Harmonogram dla Kierowców) */}
+      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2 text-amber-400">
+              <span>📋 Wykaz Brygad i Harmonogram Odjazdów ({brigadeSchedules.length})</span>
+            </h2>
+            <p className="text-slate-400 text-xs mt-1">
+              Sprawdź godziny wyjazdów, zjazdów do zajezdni oraz zaplanowane punkty przesiadek dla wszystkich linii i brygad.
+            </p>
+          </div>
+          <Link
+            href="/brygady"
+            className="bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow transition-colors self-start md:self-auto"
+          >
+            <span>Pełny wykaz z filtrowaniem linii &rarr;</span>
+          </Link>
+        </div>
+
+        {brigadeSchedules.length === 0 ? (
+          <p className="text-slate-400 text-sm">Brak zdefiniowanych brygad w systemie.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-slate-700">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-900/90 text-xs text-slate-300 uppercase tracking-wider border-b border-slate-700">
+                <tr>
+                  <th className="py-3 px-4">Linia</th>
+                  <th className="py-3 px-4">Brygada</th>
+                  <th className="py-3 px-4">Godziny</th>
+                  <th className="py-3 px-4">Trasa / Wyjazd ➔ Zjazd</th>
+                  <th className="py-3 px-4">Przesiadki kierowców</th>
+                  <th className="py-3 px-4">Uwagi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/60 bg-slate-900/40">
+                {brigadeSchedules.map((b) => (
+                  <tr key={b.id} className="hover:bg-slate-800/60 transition-colors">
+                    <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
+                      Linia {b.line.number}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
+                        {b.brigadeNumber}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-emerald-400 font-bold whitespace-nowrap text-xs">
+                      {b.startTime} - {b.endTime}
+                    </td>
+                    <td className="py-3 px-4 text-xs text-slate-300">
+                      <div><b>Start:</b> {b.startLocation}</div>
+                      <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation}</div>
+                    </td>
+                    <td className="py-3 px-4 text-xs text-slate-300">
+                      {b.driverChanges || <span className="text-slate-500 italic">Brak przesiadek</span>}
+                    </td>
+                    <td className="py-3 px-4 text-xs text-slate-400">
+                      {b.notes || <span className="text-slate-600">-</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </section>

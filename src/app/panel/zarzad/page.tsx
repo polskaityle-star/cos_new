@@ -462,11 +462,28 @@ export default async function AdminPanel() {
           <form action="/api/panel/zarzad/linie" method="POST" className="space-y-3 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
             <h3 className="font-semibold text-white text-sm">➕ Dodaj Nową Linię</h3>
             <div>
-              <input type="text" name="number" placeholder="Numer (np. 34)" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+              <label className="block text-xs text-slate-400 mb-1">Numer linii *</label>
+              <input type="text" name="number" placeholder="np. 34" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <input type="text" name="directions" placeholder="Kierunki (np. A: Bukówka, B: Wichrowa)" className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
-              <input type="text" name="brigades" placeholder="Brygady (np. 1, 2, 3, 4)" className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Kierunki trasy / warianty</label>
+                <input type="text" name="directions" placeholder="np. A: Bukówka, B: Wichrowa" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Dostępne brygady</label>
+                <input type="text" name="brigades" placeholder="np. 1, 2, 3, 4" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Przystanek startowy (opcjonalnie)</label>
+                <input type="text" name="startStop" placeholder="np. Bukówka" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Przystanek końcowy (opcjonalnie)</label>
+                <input type="text" name="endStop" placeholder="np. Wichrowa" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs outline-none text-white" />
+              </div>
             </div>
             <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded text-sm transition-colors">
               Zapisz nową linię
@@ -481,9 +498,18 @@ export default async function AdminPanel() {
                 <form action="/api/panel/zarzad/linie/edit" method="POST" className="space-y-2">
                   <input type="hidden" name="id" value={line.id} />
                   <div className="grid grid-cols-3 gap-2">
-                    <input type="text" name="number" defaultValue={line.number} required className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Numer linii" placeholder="Numer linii" />
-                    <input type="text" name="directions" defaultValue={line.directions || ""} placeholder="Kierunki trasy" className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    <input type="text" name="brigades" defaultValue={line.brigades || ""} placeholder="Brygady (np. 1, 2)" className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Numer linii:</label>
+                      <input type="text" name="number" defaultValue={line.number} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Numer linii" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Kierunki trasy:</label>
+                      <input type="text" name="directions" defaultValue={line.directions || ""} placeholder="Kierunki" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Brygady:</label>
+                      <input type="text" name="brigades" defaultValue={line.brigades || ""} placeholder="np. 1, 2" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                    </div>
                   </div>
                   <div className="flex justify-between items-center pt-1">
                     <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
@@ -510,16 +536,39 @@ export default async function AdminPanel() {
           {/* Dodaj pojazd ze zdjęciem */}
           <form action="/api/panel/zarzad/tabor" method="POST" encType="multipart/form-data" className="space-y-3 mb-6 bg-slate-900 p-4 rounded-lg border border-slate-700">
             <h3 className="font-semibold text-white text-sm">➕ Dodaj Nowy Pojazd</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              <select name="carrier" required className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white">
-                <option value="">Wybierz przewoźnika</option>
-                <option value="VMPK">VMPK</option>
-                <option value="VBP">VBP</option>
-              </select>
-              <input type="text" name="fleetNumber" placeholder="Nr taborowy (np. #103)" required className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
-              <input type="text" name="model" placeholder="Model (np. Solaris Urbino 12)" required className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
-              <input type="text" name="registration" placeholder="Rejestracja (np. TK 99999)" required className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
-              <input type="number" name="mileage" placeholder="Przebieg [km] (np. 145000)" defaultValue="0" className="bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Przewoźnik *</label>
+                <select name="carrier" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white">
+                  <option value="">Wybierz przewoźnika</option>
+                  <option value="VMPK">VMPK</option>
+                  <option value="VBP">VBP</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Numer taborowy *</label>
+                <input type="text" name="fleetNumber" placeholder="np. #103" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Model pojazdu *</label>
+                <input type="text" name="model" placeholder="np. Solaris Urbino 12" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Numer rejestracyjny *</label>
+                <input type="text" name="registration" placeholder="np. TK 99999" required className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Początkowy stan licznika [km]</label>
+                <input type="number" name="mileage" placeholder="np. 145000" defaultValue="0" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Status techniczny</label>
+                <select name="status" defaultValue="SPRAWNY" className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-sm outline-none text-white">
+                  <option value="SPRAWNY">Sprawny</option>
+                  <option value="WARSZTAT">Warsztat</option>
+                  <option value="KASACJA">Wyłączony / Kasacja</option>
+                </select>
+              </div>
             </div>
             <div>
               <label className="block text-xs text-slate-400 mb-1">📷 Zdjęcie pojazdu [JPG, PNG, WEBP]</label>
@@ -551,21 +600,39 @@ export default async function AdminPanel() {
                   )}
 
                   <div className="grid grid-cols-3 gap-2">
-                    <select name="carrier" defaultValue={veh.carrier} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
-                      <option value="VMPK">VMPK</option>
-                      <option value="VBP">VBP</option>
-                    </select>
-                    <input type="text" name="fleetNumber" defaultValue={veh.fleetNumber} required className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Nr taborowy" />
-                    <select name="status" defaultValue={veh.status} className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
-                      <option value="SPRAWNY">Sprawny</option>
-                      <option value="WARSZTAT">Warsztat</option>
-                      <option value="KASACJA">Kasacja</option>
-                    </select>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Przewoźnik:</label>
+                      <select name="carrier" defaultValue={veh.carrier} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
+                        <option value="VMPK">VMPK</option>
+                        <option value="VBP">VBP</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Nr taborowy:</label>
+                      <input type="text" name="fleetNumber" defaultValue={veh.fleetNumber} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Nr taborowy" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Status:</label>
+                      <select name="status" defaultValue={veh.status} className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white">
+                        <option value="SPRAWNY">Sprawny</option>
+                        <option value="WARSZTAT">Warsztat</option>
+                        <option value="KASACJA">Kasacja</option>
+                      </select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <input type="text" name="model" defaultValue={veh.model} required className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Model" />
-                    <input type="text" name="registration" defaultValue={veh.registration} required className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Rejestracja" />
-                    <input type="number" name="mileage" defaultValue={veh.mileage || 0} placeholder="Przebieg [km]" className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Przebieg pojazdu [km]" />
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Model pojazdu:</label>
+                      <input type="text" name="model" defaultValue={veh.model} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Model" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Rejestracja:</label>
+                      <input type="text" name="registration" defaultValue={veh.registration} required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Rejestracja" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Stan licznika [km]:</label>
+                      <input type="number" name="mileage" defaultValue={veh.mileage || 0} placeholder="Przebieg [km]" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" title="Przebieg pojazdu [km]" />
+                    </div>
                   </div>
                   <div className="text-[11px] text-emerald-400 font-mono">
                     Aktualny przebieg / postęp: <b>{(veh.mileage || 0).toLocaleString()} km</b>
@@ -698,13 +765,25 @@ export default async function AdminPanel() {
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-2">
-                    <input type="text" name="startLocation" defaultValue={b.startLocation} placeholder="Start" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    <input type="text" name="endLocation" defaultValue={b.endLocation} placeholder="Koniec" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce startu / wyjazdu:</label>
+                      <input type="text" name="startLocation" defaultValue={b.startLocation} placeholder="Start" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Miejsce zjazdu / końca:</label>
+                      <input type="text" name="endLocation" defaultValue={b.endLocation} placeholder="Koniec" required className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                    </div>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-2">
-                    <input type="text" name="driverChanges" defaultValue={b.driverChanges || ""} placeholder="Przesiadki kierowców" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
-                    <input type="text" name="notes" defaultValue={b.notes || ""} placeholder="Uwagi" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Przesiadki kierowców / podmiany:</label>
+                      <input type="text" name="driverChanges" defaultValue={b.driverChanges || ""} placeholder="Przesiadki kierowców" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-0.5">Dodatkowe uwagi:</label>
+                      <input type="text" name="notes" defaultValue={b.notes || ""} placeholder="Uwagi" className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white" />
+                    </div>
                   </div>
 
                   <div className="flex justify-between items-center pt-1 border-t border-slate-800">
