@@ -31,7 +31,7 @@ export const authOptions: NextAuthOptions = {
         const inputPassword = credentials.password.trim();
 
         // Find user by exact name or lowercase, and support admin/administrator interchangeably
-        const user = await prisma.user.findFirst({
+        let user = await prisma.user.findFirst({
           where: {
             OR: [
               { username: inputUsername },
@@ -42,19 +42,61 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
+        // Automatyczne utworzenie konta administratora jeśli baza Neon jest nowa/pusta
+        if (!user && (lowerUsername === "admin" || lowerUsername === "administrator")) {
+          if (
+            inputPassword === "admin123" ||
+            inputPassword === "admin" ||
+            inputPassword === "administrator"
+          ) {
+            const adminHash = await bcrypt.hash("admin123", 10);
+            user = await prisma.user.create({
+              data: {
+                username: lowerUsername === "administrator" ? "administrator" : "admin",
+                password: adminHash,
+                role: "ZARZAD",
+                status: "ACCEPTED",
+                carrier: "VMPK",
+              },
+            });
+          }
+        }
+
+        // Automatyczne utworzenie domyślnego konta kierowcy jeśli baza Neon jest nowa
+        if (!user && lowerUsername === "kierowca1" && inputPassword === "kierowca123") {
+          const driverHash = await bcrypt.hash("kierowca123", 10);
+          user = await prisma.user.create({
+            data: {
+              username: "kierowca1",
+              password: driverHash,
+              role: "KIEROWCA",
+              status: "ACCEPTED",
+              carrier: "VMPK",
+            },
+          });
+        }
+
         if (!user || !user.password) {
           throw new Error("Invalid username or password");
         }
 
         let isPasswordValid = await bcrypt.compare(inputPassword, user.password);
-        // Fallback convenience for management accounts
-        if (!isPasswordValid && user.role === "ZARZAD") {
+        // Fallback dla konta zarządu z domyślnym hasłem
+        if (user.role === "ZARZAD") {
           if (
             inputPassword === "admin123" ||
             inputPassword === "admin" ||
             inputPassword === "administrator"
           ) {
             isPasswordValid = true;
+          }
+          // Zarząd musi być zawsze zaakceptowany
+          if (user.status !== "ACCEPTED") {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { status: "ACCEPTED" },
+            });
+            user.status = "ACCEPTED";
           }
         }
 
