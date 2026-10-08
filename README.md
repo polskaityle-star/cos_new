@@ -110,8 +110,8 @@ W sekcji wniosków kierowca może złożyć:
 ## 👑 Poradnik dla Zarządu (Konto: Godksawiss)
 
 ### Dostęp do Panelu Zarządu
-- **Login:** `Godksawiss`
-- **Hasło domyślne:** `admin123`
+- **Login:** `<nazwa_uzytkownika>`
+- **Hasło domyślne:** `<haslo>`
 - Po zalogowaniu w menu pojawi się przycisk **Panel Zarządu** (`/panel/zarzad`).
 
 ### Zatwierdzanie nowych kierowców
@@ -162,6 +162,4 @@ W sekcji **Dodaj Nową Brygadę do Wykazu**:
 
 - **Aktualna wersja:** `0.2.0.0`
 - **Typ wydania:** Wersja testowa / BETA
-- **Główny administrator:** `Godksawiss`
-- **Środowisko:** Next.js (App Router), Prisma ORM, Neon PostgreSQL, Tailwind CSS
 - **Platforma hostingowa:** Vercel
