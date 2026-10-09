@@ -74,6 +74,30 @@ async function main() {
     line34 = await prisma.line.findFirst({ where: { number: "34" } });
   }
 
+  // Ensure Night Lines N1 and N2 exist (Wymóg 4.1)
+  const lineN1 = await prisma.line.findFirst({ where: { number: "N1" } });
+  if (!lineN1) {
+    await prisma.line.create({
+      data: {
+        number: "N1",
+        startStop: "Dworzec Autobusowy",
+        endStop: "Ślichowice",
+        directions: "Dworzec Autobusowy - Ślichowice (Linia Nocna)",
+      },
+    });
+  }
+  const lineN2 = await prisma.line.findFirst({ where: { number: "N2" } });
+  if (!lineN2) {
+    await prisma.line.create({
+      data: {
+        number: "N2",
+        startStop: "Bukówka",
+        endStop: "Cedzyna / Domaszowice",
+        directions: "Bukówka - Cedzyna (Linia Nocna)",
+      },
+    });
+  }
+
   // 4. Vehicles
   const vehicleCount = await prisma.vehicle.count();
   if (vehicleCount === 0) {

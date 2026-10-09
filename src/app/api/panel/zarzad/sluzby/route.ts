@@ -20,6 +20,7 @@ export async function POST(req: Request) {
   const vehicleId = formData.get("vehicleId") as string;
   const dateStr = formData.get("date") as string;
   const brigade = formData.get("brigade") as string;
+  const shift = formData.get("shift") as string;
   const notes = formData.get("notes") as string;
   const requestId = formData.get("requestId") as string;
 
@@ -110,13 +111,21 @@ export async function POST(req: Request) {
       }
     }
 
+    let finalBrigade = brigade ? brigade.trim() : "";
+    if (finalBrigade && shift) {
+      if (!finalBrigade.includes("Zmiana")) {
+        finalBrigade = `${finalBrigade}/${shift}`;
+      }
+    }
+
     await prisma.duty.create({
       data: {
         userId,
         lineId,
         vehicleId: vehicleId || null,
         date: dutyDate,
-        brigade: brigade || null,
+        brigade: finalBrigade || null,
+        shift: shift || null,
         notes: notes || null,
       },
     });

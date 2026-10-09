@@ -21,11 +21,10 @@ export default function VBPPage() {
         </div>
         <div className="bg-slate-800 p-8 rounded-xl border border-slate-700">
           <h2 className="text-2xl font-bold text-white mb-4">Nasza Flota</h2>
-          <p className="text-slate-300 mb-4">
+          <p className="text-slate-300">
             Inwestujemy w nowoczesny tabor. Nasze pojazdy to komfortowe, klimatyzowane autobusy
             najnowszych generacji.
           </p>
-          <a href="/tabor?carrier=VBP" className="text-[#005A9C] font-semibold hover:underline">Zobacz tabor VBP &rarr;</a>
         </div>
       </div>
     </div>

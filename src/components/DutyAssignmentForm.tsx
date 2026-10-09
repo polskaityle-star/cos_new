@@ -65,6 +65,7 @@ export default function DutyAssignmentForm({
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(prefill?.vehicleId || "");
   const [selectedDate, setSelectedDate] = useState<string>(prefill?.date || "");
   const [selectedBrigade, setSelectedBrigade] = useState<string>("");
+  const [selectedShift, setSelectedShift] = useState<string>("1 Zmiana");
   const [notes, setNotes] = useState<string>("");
 
   // Znajdź wybranego kierowcę
@@ -190,8 +191,16 @@ export default function DutyAssignmentForm({
             name="lineId"
             value={selectedLineId}
             onChange={(e) => {
-              setSelectedLineId(e.target.value);
+              const newLineId = e.target.value;
+              setSelectedLineId(newLineId);
               setSelectedBrigade("");
+              const line = lines.find((l) => l.id === newLineId);
+              if (line) {
+                const num = line.number.toUpperCase();
+                if (num.startsWith("N") || num === "N1" || num === "N2") {
+                  setSelectedShift("3 Zmiana");
+                }
+              }
             }}
             required
             className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white focus:border-amber-500"
@@ -232,10 +241,28 @@ export default function DutyAssignmentForm({
           </select>
         </div>
 
-        {/* 4. Brygada - filtrowana pod linię i przewoźnika (Wymóg 4) */}
+        {/* 4. Zmiana (Wyjazd / Podmiana-Przesiadka / Nocna) */}
         <div>
           <label className="block text-xs font-semibold text-slate-300 mb-1">
-            Brygada / Nazwa brygady
+            Zmiana służby *
+          </label>
+          <select
+            name="shift"
+            value={selectedShift}
+            onChange={(e) => setSelectedShift(e.target.value)}
+            required
+            className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white focus:border-amber-500"
+          >
+            <option value="1 Zmiana">1 Zmiana (Wyjazd)</option>
+            <option value="2 Zmiana">2 Zmiana (Podmiana / Przesiadka)</option>
+            <option value="3 Zmiana">3 Zmiana (Nocna - np. N1, N2)</option>
+          </select>
+        </div>
+
+        {/* 5. Brygada - filtrowana pod linię i przewoźnika (bez godzin) */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1">
+            Brygada
           </label>
           <input
             type="text"
@@ -243,7 +270,7 @@ export default function DutyAssignmentForm({
             value={selectedBrigade}
             onChange={(e) => setSelectedBrigade(e.target.value)}
             list="duty-brigades-datalist"
-            placeholder="np. 34/2 - dni robocze"
+            placeholder="np. 2/1 - Dni robocze"
             className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white focus:border-amber-500"
           />
           <datalist id="duty-brigades-datalist">
@@ -253,18 +280,18 @@ export default function DutyAssignmentForm({
                 <option key={b.id} value={b.brigadeNumber}>
                   {b.line?.number ? `Linia ${b.line.number} - ` : ""}{b.brigadeNumber}
                   {isPeak ? " [SZCZYTOWA]" : ""}
-                  {isPeak && (b.startTime || b.startTime2)
-                    ? ` (I: ${b.startTime || "—"}-${b.endTime || "—"}, II: ${b.startTime2 || "—"}-${b.endTime2 || "—"})`
-                    : b.startTime
-                    ? ` (${b.startTime} - ${b.endTime || ""})`
-                    : ""}
                 </option>
               );
             })}
           </datalist>
+          {selectedBrigade && (
+            <span className="text-[10px] text-amber-300 mt-1 block truncate font-mono">
+              Zapis: {selectedBrigade.includes("Zmiana") ? selectedBrigade : `${selectedBrigade}/${selectedShift}`}
+            </span>
+          )}
         </div>
 
-        {/* 5. Data służby */}
+        {/* 6. Data służby */}
         <div>
           <label className="block text-xs font-semibold text-slate-300 mb-1">
             Data służby *

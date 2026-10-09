@@ -35,10 +35,23 @@ export default function DriverRequestForm({
   availableVehicles: VehicleItem[];
 }) {
   const [type, setType] = useState<
-    "URLOP" | "DODATKOWA_SLUZBA" | "ANULOWANIE_SLUZBY" | "STALY_POJAZD" | "ZMIANA_STALEGO_POJAZDU" | "USUNIECIE_STALEGO_POJAZDU" | "ZMIANA_ETATU"
+    "URLOP" | "DODATKOWA_SLUZBA" | "ANULOWANIE_SLUZBY" | "STALY_POJAZD" | "ZMIANA_STALEGO_POJAZDU" | "USUNIECIE_STALEGO_POJAZDU" | "ZMIANA_ETATU" | "ODWIESZENIE"
   >("URLOP");
   const [selectedDays, setSelectedDays] = useState<string[]>(["PN", "WT", "SR", "CZ", "PT"]);
   const [etatError, setEtatError] = useState("");
+  const [urlopStart, setUrlopStart] = useState("");
+  const [urlopEnd, setUrlopEnd] = useState("");
+
+  const getUrlopDays = () => {
+    if (!urlopStart || !urlopEnd) return 0;
+    const start = new Date(urlopStart);
+    const end = new Date(urlopEnd);
+    const diffTime = end.getTime() - start.getTime();
+    if (diffTime < 0) return -1;
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  };
+  const urlopDays = getUrlopDays();
+  const isUrlopTooLong = urlopDays > 14;
 
   const toggleDay = (dayId: string) => {
     setEtatError("");
@@ -71,10 +84,11 @@ export default function DriverRequestForm({
           <option value="ZMIANA_STALEGO_POJAZDU">🔄 Wniosek o zmianę stałego pojazdu</option>
           <option value="USUNIECIE_STALEGO_POJAZDU">🗑️ Wniosek o usunięcie stałego pojazdu (rezygnacja)</option>
           <option value="ZMIANA_ETATU">📅 Wniosek o zmianę etatu (dni pracy)</option>
+          <option value="ODWIESZENIE">🔓 Wniosek o odwieszenie konta (po 10 niezaliczonych służbach)</option>
         </select>
       </div>
 
-      {/* URLOP: tylko daty, data poczatkowa (dla urlopu) */}
+      {/* URLOP: max 14 dni */}
       {type === "URLOP" && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -85,6 +99,8 @@ export default function DriverRequestForm({
               <input
                 type="date"
                 name="dateStart"
+                value={urlopStart}
+                onChange={(e) => setUrlopStart(e.target.value)}
                 required
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm"
               />
@@ -96,11 +112,33 @@ export default function DriverRequestForm({
               <input
                 type="date"
                 name="dateEnd"
+                value={urlopEnd}
+                onChange={(e) => setUrlopEnd(e.target.value)}
                 required
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm"
               />
             </div>
           </div>
+
+          {urlopDays > 0 && (
+            <div className={`p-2.5 rounded-lg border text-xs font-medium ${
+              isUrlopTooLong
+                ? "bg-red-950/70 border-red-500 text-red-200"
+                : "bg-emerald-950/60 border-emerald-600/50 text-emerald-200"
+            }`}>
+              {isUrlopTooLong ? (
+                <div>
+                  <b className="block text-sm mb-1 text-red-300">⚠️ Wybrano {urlopDays} dni urlopu (maksymalnie 14 dni)!</b>
+                  Zgodnie z regulaminem, urlop przez wniosek może wynosić maksymalnie 14 dni. Jeśli potrzebujesz dłuższego urlopu, napisz bezpośrednio wiadomość do Zarządu w sekcji Kontakt lub Wiadomości.
+                </div>
+              ) : (
+                <div>
+                  <span>Długość urlopu: <b className="text-white">{urlopDays} {urlopDays === 1 ? "dzień" : "dni"}</b> (maks. 14 dni).</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
               Powód / uwagi (opcjonalnie)
@@ -335,14 +373,49 @@ export default function DriverRequestForm({
           </div>
 
           <input type="hidden" name="details" value={selectedDays.join(",")} />
-          <input type="hidden" name="reason" value={`Wniosek o zmianę etatu na dni: ${selectedDays.join(", ")}`} />
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Powód zmiany etatu *
+            </label>
+            <textarea
+              name="reason"
+              required
+              rows={2}
+              placeholder="Podaj powód zmiany etatu (pole obowiązkowe)..."
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm resize-none"
+            ></textarea>
+          </div>
+        </div>
+      )}
+
+      {/* ODWIESZENIE: wniosek o odwieszenie konta po 10 niezaliczonych służbach */}
+      {type === "ODWIESZENIE" && (
+        <div className="space-y-4">
+          <div className="bg-red-950/40 border border-red-600/50 p-4 rounded-lg text-red-200 text-xs">
+            <span className="font-bold block text-sm mb-1 text-white">⚠️ Wniosek o odwieszenie konta kierowcy</span>
+            Twoje konto zostało zawieszone z powodu 10 lub więcej niezaliczonych służb (Twój stały pojazd został zwolniony, etat pozostaje bez zmian). 
+            Złóż poniższy wniosek, aby Zarząd lub Sprawdzający mógł odwiesić Twoje uprawnienia do realizowania służb.
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Uzasadnienie / Wyjaśnienie nieobecności *
+            </label>
+            <textarea
+              name="reason"
+              required
+              rows={3}
+              placeholder="Wyjaśnij przyczyny nieobecności i zadeklaruj chęć powrotu do jazdy..."
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-amber-500 text-slate-100 text-sm resize-none"
+            ></textarea>
+          </div>
+          <input type="hidden" name="details" value="ODWIESZENIE_KONTA" />
         </div>
       )}
 
       <button
         type="submit"
-        disabled={type === "ZMIANA_ETATU" && selectedDays.length > 6}
-        className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-bold py-2.5 rounded-lg shadow transition-colors text-sm"
+        disabled={(type === "ZMIANA_ETATU" && selectedDays.length > 6) || (type === "URLOP" && isUrlopTooLong)}
+        className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-bold py-2.5 rounded-lg shadow transition-colors text-sm cursor-pointer"
       >
         Wyślij wniosek do Zarządu
       </button>

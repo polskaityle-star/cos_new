@@ -25,6 +25,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Brak typu wniosku" }, { status: 400 });
   }
 
+  // Weryfikacja urlopu (maksymalnie 14 dni)
+  if (type === "URLOP") {
+    if (!dateStartStr || !dateEndStr) {
+      return NextResponse.json({ message: "Daty urlopu są wymagane" }, { status: 400 });
+    }
+    const start = new Date(dateStartStr);
+    const end = new Date(dateEndStr);
+    const diffDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    if (diffDays > 14) {
+      return NextResponse.json(
+        { message: "Urlop przez wniosek może wynosić maksymalnie 14 dni. W przypadku dłuższego urlopu skontaktuj się z Zarządem przez wiadomość." },
+        { status: 400 }
+      );
+    }
+  }
+
+  // Weryfikacja powodu dla wniosku o zmianę etatu
+  if (type === "ZMIANA_ETATU" && (!reason || reason.trim().length === 0)) {
+    return NextResponse.json({ message: "Powód zmiany etatu jest wymagany." }, { status: 400 });
+  }
+
+  // Weryfikacja wniosku o odwieszenie konta
+  if (type === "ODWIESZENIE" && (!reason || reason.trim().length === 0)) {
+    return NextResponse.json({ message: "Uzasadnienie wniosku o odwieszenie konta jest wymagane." }, { status: 400 });
+  }
+
   if (type === "DODATKOWA_SLUZBA" && vehicleId) {
     const veh = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
     if (veh) {
@@ -41,6 +67,7 @@ export async function POST(req: Request) {
     else if (type === "ZMIANA_STALEGO_POJAZDU") finalReason = "Wniosek o zmianę stałego pojazdu";
     else if (type === "USUNIECIE_STALEGO_POJAZDU") finalReason = "Wniosek o usunięcie stałego pojazdu (rezygnacja)";
     else if (type === "ZMIANA_ETATU") finalReason = "Wniosek o zmianę etatu (dni pracy)";
+    else if (type === "ODWIESZENIE") finalReason = "Wniosek o odwieszenie konta";
     else if (type === "ANULOWANIE_SLUZBY") finalReason = "Prośba o anulowanie służby";
     else if (type === "URLOP") finalReason = "Wniosek o urlop wypoczynkowy";
     else finalReason = "Brak uzasadnienia";

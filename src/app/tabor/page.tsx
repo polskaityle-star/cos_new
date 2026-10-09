@@ -8,11 +8,12 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
   const { carrier: carrierFilter } = await searchParams;
   const session = await getServerSession(authOptions);
 
-  const isDriver = session?.user?.role === "KIEROWCA";
+  const isOwner = session?.user?.role === "WLASCICIEL" || session?.user?.role === "ZARZAD" || session?.user?.username === "Godksawiss";
+  const isDriver = session?.user?.role === "KIEROWCA" && !isOwner;
   const driverCarrier = isDriver ? session?.user?.carrier : null;
 
-  // Jeśli użytkownik jest kierowcą, ograniczamy tabor wyłącznie do jego przewoźnika
-  const effectiveCarrier = driverCarrier || carrierFilter;
+  // Jeśli użytkownik jest zwykłym kierowcą, ograniczamy tabor do jego przewoźnika. Właściciel widzi wszystko.
+  const effectiveCarrier = isOwner ? carrierFilter : (driverCarrier || carrierFilter);
   
   const vehicles = await prisma.vehicle.findMany({
     where: effectiveCarrier ? { carrier: effectiveCarrier } : undefined,

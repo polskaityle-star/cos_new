@@ -22,26 +22,29 @@ model User {
   workingDays       String?         // Etat - wybrane dni tygodnia (np. PN,WT,SR,CZ,PT)
   assignedVehicleId String?         // Stały pojazd
   assignedVehicle   Vehicle?        @relation("AssignedVehicle", fields: [assignedVehicleId], references: [id], onDelete: SetNull)
+  suspended         Boolean         @default(false)
   createdAt         DateTime        @default(now())
   duties            Duty[]
   driverRequests    DriverRequest[]
   vehicleDefects    VehicleDefect[]
+  notifications     DriverNotification[]
 }
 
 model Vehicle {
-  id            String          @id @default(cuid())
-  carrier       String          // VMPK, VBP
-  model         String
-  registration  String          @unique
-  fleetNumber   String
-  status        String          @default("SPRAWNY") // SPRAWNY, WARSZTAT, KASACJA
-  imageUrl      String?         // Ścieżka do zdjęcia PNG/JPG
-  year          Int?
-  capacity      String?
-  mileage       Int             @default(0) // Przebieg / progress pojazdu w km
-  defects       VehicleDefect[]
-  duties        Duty[]
-  assignedUsers User[]          @relation("AssignedVehicle")
+  id                String          @id @default(cuid())
+  carrier           String          // VMPK, VBP
+  model             String
+  registration      String          @unique
+  fleetNumber       String
+  status            String          @default("SPRAWNY") // SPRAWNY, WARSZTAT, KASACJA
+  imageUrl          String?         // Ścieżka do zdjęcia PNG/JPG
+  year              Int?
+  capacity          String?
+  mileage           Int             @default(0) // Przebieg / progress pojazdu w km
+  defects           VehicleDefect[]
+  duties            Duty[]
+  replacementDuties Duty[]          @relation("ReplacementVehicle")
+  assignedUsers     User[]          @relation("AssignedVehicle")
 }
 
 model Line {
@@ -85,18 +88,21 @@ model BrigadeSchedule {
 }
 
 model Duty {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lineId    String
-  line      Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
-  vehicleId String?
-  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  date      DateTime
-  brigade   String?  // np. "34/2 - dni robocze"
-  notes     String?  // Opcjonalne uwagi do służby
-  status    String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
-  report    Report?
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lineId               String
+  line                 Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  vehicleId            String?
+  vehicle              Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  replacementVehicleId String?
+  replacementVehicle   Vehicle? @relation("ReplacementVehicle", fields: [replacementVehicleId], references: [id], onDelete: SetNull)
+  date                 DateTime
+  brigade              String?  // np. "34/2 - dni robocze/1 Zmiana"
+  shift                String?  // "1 Zmiana", "2 Zmiana", "3 Zmiana"
+  notes                String?  // Opcjonalne uwagi do służby
+  status               String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, MISSED
+  report               Report?
 }
 
 model Report {
@@ -116,7 +122,7 @@ model DriverRequest {
   id            String    @id @default(cuid())
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          String    // DODATKOWA_SLUZBA, ANULOWANIE_SLUZBY, URLOP, STALY_POJAZD, ZMIANA_ETATU
+  type          String    // DODATKOWA_SLUZBA, ANULOWANIE_SLUZBY, URLOP, STALY_POJAZD, ZMIANA_ETATU, ODWIESZENIE
   reason        String?   // Opcjonalne uzasadnienie
   dateStart     DateTime?
   dateEnd       DateTime?
@@ -153,4 +159,15 @@ model ContactMessage {
   reply     String?   // Odpowiedź Zarządu
   repliedAt DateTime? // Data odpowiedzi
   createdAt DateTime  @default(now())
+}
+
+model DriverNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender    String   // np. "Zarząd", "Dyspozytor [D1]", "Godksawiss [W1]"
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

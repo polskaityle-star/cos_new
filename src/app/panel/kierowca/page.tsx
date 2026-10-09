@@ -18,14 +18,14 @@ export default async function DriverPanel() {
     redirect("/login");
   }
 
-  const [currentUser, duties, driverRequests, vehicleDefects, allVehicles, allLines, rawBrigadeSchedules] = await Promise.all([
+  const [currentUser, duties, driverRequests, vehicleDefects, allVehicles, allLines, rawBrigadeSchedules, driverNotifications] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       include: { assignedVehicle: true },
     }),
     prisma.duty.findMany({
       where: { userId: session.user.id },
-      include: { line: true, vehicle: true, report: true },
+      include: { line: true, vehicle: true, replacementVehicle: true, report: true },
       orderBy: { date: "desc" },
     }),
     prisma.driverRequest.findMany({
@@ -47,10 +47,16 @@ export default async function DriverPanel() {
       include: { line: true },
       orderBy: [{ line: { number: "asc" } }, { brigadeNumber: "asc" }],
     }),
+    prisma.driverNotification.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
+  const isOwner = currentUser?.role === "WLASCICIEL" || session.user.role === "WLASCICIEL" || currentUser?.username === "Godksawiss" || session.user.username === "Godksawiss";
   const driverCarrier = currentUser?.carrier || session.user.carrier;
   const filteredBrigades = rawBrigadeSchedules.filter((b) => {
+    if (isOwner) return true;
     if (!driverCarrier) return true;
     if (b.carrier) return b.carrier === driverCarrier;
     if (b.line?.carrier) return b.line.carrier === driverCarrier;
@@ -58,9 +64,39 @@ export default async function DriverPanel() {
   });
   const brigadeSchedules = sortBrigades(filteredBrigades);
 
-  const availableVehicles = driverCarrier
+  // Wymóg 1: Właściciel ma pełną widoczność taboru (VBP i VMPK)
+  const availableVehicles = isOwner
+    ? allVehicles
+    : driverCarrier
     ? allVehicles.filter((v) => v.carrier === driverCarrier)
     : allVehicles;
+
+  // Wymóg 5: Niezaliczone służby (data z przeszłości bez zatwierdzonego raportu)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const unfulfilledDuties = duties.filter((d) => {
+    const dDate = new Date(d.date);
+    if (dDate < today) {
+      const isCompleted = d.status === "COMPLETED" && d.report?.status === "ACCEPTED";
+      return !isCompleted;
+    }
+    return false;
+  });
+  const unfulfilledCount = unfulfilledDuties.length;
+
+  // Wymóg 5: Przy 10 niezaliczonych służbach konto zostaje zawieszone, a stały pojazd odebrany (etat bez zmian)
+  let isSuspended = currentUser?.suspended || unfulfilledCount >= 10;
+  if (unfulfilledCount >= 10 && (!currentUser?.suspended || currentUser?.assignedVehicleId)) {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        suspended: true,
+        assignedVehicleId: null,
+      },
+    });
+    isSuspended = true;
+  }
 
   const scheduledDuties = duties.filter((d) => d.status === "SCHEDULED");
   const completedDuties = duties.filter((d) => d.status === "COMPLETED");
@@ -143,11 +179,100 @@ export default async function DriverPanel() {
         </div>
       </div>
 
+      {/* Ostrzeżenia o niezaliczonych służbach / zawieszeniu konta (Wymóg 5) */}
+      {isSuspended ? (
+        <div className="bg-red-950/80 border-2 border-red-600 p-5 rounded-2xl text-red-200 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-white font-extrabold text-lg">
+              <span className="text-2xl">🚫</span> KONTO KIEROWCY ZAWIESZONE ({unfulfilledCount} niezaliczonych służb)
+            </div>
+            <p className="text-xs text-red-300">
+              Przekroczono limit 10 niezaliczonych służb. Zgodnie z regulaminem Twój stały pojazd został zwolniony (Twój etat pozostaje bez zmian).
+              Aby odblokować możliwość wykonywania służb, musisz złożyć <b>Wniosek o odwieszenie konta</b> do Zarządu.
+            </p>
+          </div>
+          <a
+            href="#wnioski-kierowcy"
+            className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2.5 rounded-lg text-xs whitespace-nowrap transition-colors shadow-lg cursor-pointer"
+          >
+            Złóż wniosek o odwieszenie &darr;
+          </a>
+        </div>
+      ) : unfulfilledCount >= 5 ? (
+        <div className="bg-amber-950/80 border-2 border-amber-600 p-5 rounded-2xl text-amber-200 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-white font-bold text-base">
+              <span className="text-2xl">⚠️</span> OSTRZEŻENIE: Masz {unfulfilledCount} niezaliczonych służb!
+            </div>
+            <p className="text-xs text-amber-300">
+              Zalecamy jak najszybsze nadrobienie zaległości poprzez złożenie <b>Wniosku o dodatkową służbę</b>.
+              Pamiętaj: przy 10 niezaliczonych służbach konto zostanie automatycznie zawieszone i utracisz stały pojazd!
+            </p>
+          </div>
+          <a
+            href="#wnioski-kierowcy"
+            className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-lg text-xs whitespace-nowrap transition-colors shadow-lg cursor-pointer"
+          >
+            Złóż wniosek o dodatkową służbę &darr;
+          </a>
+        </div>
+      ) : null}
+
+      {/* 📨 Wiadomości od Zarządu (Wymóg 9) */}
+      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold flex items-center gap-2 text-sky-400">
+            <span>📨 Wiadomości od Zarządu ({driverNotifications.length})</span>
+          </h2>
+          {driverNotifications.filter((n) => !n.read).length > 0 && (
+            <span className="bg-sky-500 text-white font-bold text-xs px-2.5 py-0.5 rounded-full animate-pulse">
+              Nowe: {driverNotifications.filter((n) => !n.read).length}
+            </span>
+          )}
+        </div>
+
+        {driverNotifications.length === 0 ? (
+          <p className="text-slate-400 text-sm">Brak wiadomości od dyspozytorni lub Zarządu.</p>
+        ) : (
+          <div className="space-y-3">
+            {driverNotifications.map((notif) => (
+              <div
+                key={notif.id}
+                className={`p-4 rounded-lg border transition-all ${
+                  notif.read
+                    ? "bg-slate-900/60 border-slate-800 text-slate-300"
+                    : "bg-sky-950/40 border-sky-600/60 text-sky-100 shadow-md"
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-white">{notif.title}</span>
+                    <span className="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded border border-slate-700 font-mono">
+                      Od: {notif.sender}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    {new Date(notif.createdAt).toLocaleString("pl-PL")}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">{notif.message}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Podsumowanie postępów kierowcy */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow flex flex-col justify-between">
           <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Zrealizowane służby</span>
           <div className="text-2xl font-black text-emerald-400 mt-2">{completedDuties.length} / {duties.length}</div>
+        </div>
+        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow flex flex-col justify-between">
+          <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Niezaliczone służby</span>
+          <div className={`text-2xl font-black mt-2 ${unfulfilledCount >= 10 ? "text-red-400" : unfulfilledCount >= 5 ? "text-amber-400" : "text-slate-300"}`}>
+            {unfulfilledCount}
+          </div>
         </div>
         <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow flex flex-col justify-between">
           <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Przejechany dystans</span>
@@ -212,6 +337,15 @@ export default async function DriverPanel() {
                   {duty.notes && (
                     <div className="mt-2 text-xs bg-slate-950/60 p-2 rounded border border-slate-800 text-amber-300">
                       ℹ️ <b>Uwagi do służby:</b> {duty.notes}
+                    </div>
+                  )}
+
+                  {duty.replacementVehicle && (
+                    <div className="mt-2 text-xs bg-purple-950/80 border border-purple-500/60 p-2.5 rounded-lg text-purple-200 flex items-center gap-2">
+                      <span className="text-base">🔄</span>
+                      <div>
+                        <b className="text-white">Wóz zastępczy (awaria pojazdu):</b> #{duty.replacementVehicle.fleetNumber} ({duty.replacementVehicle.model}) [{duty.replacementVehicle.registration}]
+                      </div>
                     </div>
                   )}
                 </div>
@@ -489,7 +623,7 @@ export default async function DriverPanel() {
       </section>
 
       {/* Wnioski Kierowcy i Zgłaszanie Awarii */}
-      <div className="grid lg:grid-cols-2 gap-8">
+      <div className="grid lg:grid-cols-2 gap-8" id="wnioski-kierowcy">
         <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-amber-400">
             <span>📝 Złóż wniosek do Zarządu</span>

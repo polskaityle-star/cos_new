@@ -151,3 +151,9 @@ export function canManageUsers(role?: string | null): boolean {
   const normRole = role.toUpperCase();
   return ["WLASCICIEL", "ZARZAD"].includes(normRole);
 }
+
+export function canAssignReplacementVehicle(role?: string | null): boolean {
+  if (!role) return false;
+  const normRole = role.toUpperCase();
+  return ["WLASCICIEL", "ZARZAD", "MECHANIK", "SPRAWDZAJACY", "DYSPOZYTOR"].includes(normRole);
+}

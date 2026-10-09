@@ -1,7 +1,7 @@
 # 🚍 VZTM Kielce – Oficjalny Poradnik Użytkownika i Dokumentacja Systemu
 
 Witaj w oficjalnym przewodniku po systemie **VZTM Kielce** (Wirtualny Zarząd Transportu Miejskiego w Kielcach – wirtualna firma dla symulatora OMSI 2).  
-Wersja systemu: **0.3.6.0** (BETA).
+Wersja systemu: **0.4.0.0** (BETA).
 
 System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-czerwone) oraz **VBP Tour Regio Kielce** (malowanie niebieskie), organizację taboru, rozkłady brygad, grafik służb, zgłaszanie usterek warsztatowych, składanie wniosków pracowniczych oraz weryfikację raportów z tras.
 
@@ -9,28 +9,23 @@ System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-c
 
 ## 📑 Spis treści
 1. [Struktura ról i numery służbowe](#-struktura-ról-i-numery-służbowe)
-2. [Rejestracja i rekrutacja kierowcy](#-rejestracja-i-rekrutacja-kierowcy)
+2. [Rejestracja, rekrutacja i zmiana hasła](#-rejestracja-rekrutacja-i-zmiana-hasła)
 3. [Poradnik dla Kierowcy (Panel Kierowcy)](#-poradnik-dla-kierowcy)
    - [Profil, awatar i numer służbowy](#profil-awatar-i-numer-służbowy)
-   - [Wybór etatu (Limit 6/7)](#wybór-etatu-limit-67)
-   - [Wgląd do taboru swojego przewoźnika](#wgląd-do-taboru-swojego-przewoźnika)
-   - [Odbiór służby, szczegóły brygady i blokada raportów](#odbiór-służby-szczegóły-brygady-i-blokada-raportów)
-   - [Wykonywanie i raportowanie służby](#wykonywanie-i-raportowanie-służby)
-   - [Wnioski pracownicze (Urlopy, Stały wóz, Zmiana, Rezygnacja, Etat)](#wnioski-pracownicze)
+   - [Wybór etatu (Limit 6/7) i zmiana etatu](#wybór-etatu-limit-67-i-zmiana-etatu)
+   - [System niezaliczonych służb (Ostrzeżenia i Zawieszenie)](#system-niezaliczonych-służb-ostrzeżenia-i-zawieszenie)
+   - [Wgląd do taboru](#wgląd-do-taboru)
+   - [Odbiór służby, wóz zastępczy i blokada raportów](#odbiór-służby-wóz-zastępczy-i-blokada-raportów)
+   - [Wnioski pracownicze (Urlopy do 14 dni, Stały wóz, Odwieszenie)](#wnioski-pracownicze)
+   - [Powiadomienia i wiadomości od Zarządu](#powiadomienia-i-wiadomości-od-zarządu)
    - [Zgłoszenia techniczne i warsztat](#zgłoszenia-techniczne-i-warsztat)
 4. [Poradnik dla Zarządu i Kadry Kierowniczej](#-poradnik-dla-kadry-kierowniczej)
-   - [Konto Główne Właściciela: Godksawiss](#konto-główne-właściciela-godksawiss)
-   - [Karta profilowa ze statystykami i zegarem LiveClock](#karta-profilowa-ze-statystykami-i-zegarem-liveclock)
-   - [Uprawnienia poszczególnych ról](#uprawnienia-poszczególnych-ról)
-   - [Zarządzanie Personelem i zmiana ról](#zarządzanie-personelem-i-zmiana-ról)
-   - [Dedykowani przewoźnicy dla Linii i Brygad](#dedykowani-przewoźnicy-dla-linii-i-brygad)
-   - [Układanie grafiku, blokada urlopowa i walidacja dni/przewoźników](#układanie-grafiku-blokada-urlopowa-i-walidacja-dniprzewoźników)
-   - [Wykaz brygad (Brygady normalne oraz szczytowe z dwoma wyjazdami/zjazdami)](#wykaz-brygad)
-   - [Weryfikacja raportów i przeliczanie licznika taboru](#weryfikacja-raportów-i-licznik-taboru)
-   - [Historia zgłoszeń technicznych i wniosków](#historia-zgłoszeń-technicznych-i-wniosków)
-5. [Funkcje wizualne i techniczne](#-funkcje-wizualne-i-techniczne)
-6. [Historia zmian – Wersja 0.3.6.0](#-historia-zmian--wersja-0360)
-7. [Historia wcześniejszych wydań](#-historia-wcześniejszych-wydań)
+   - [Konto Główne Właściciela: Godksawiss i pełna widoczność taboru](#konto-główne-właściciela-godksawiss)
+   - [Wozy zastępcze przy awarii na trasie](#wozy-zastępcze-przy-awarii-na-trasie)
+   - [Wysyłanie bezpośrednich wiadomości do kierowców](#wysyłanie-bezpośrednich-wiadomości-do-kierowców)
+   - [Układanie grafiku ze zmianami (1, 2, 3 Zmiana, linie nocne N1 i N2)](#układanie-grafiku-ze-zmianami)
+5. [Historia zmian – Wersja 0.4.0.0](#-historia-zmian--wersja-0400)
+6. [Historia wcześniejszych wydań](#-historia-wcześniejszych-wydań)
 
 ---
 
@@ -202,29 +197,46 @@ W formularzu tworzenia i edycji brygady dostępne są precyzyjne pola:
 
 ---
 
-## 🚀 Historia zmian – Wersja 0.3.6.0
+## 🚀 Historia zmian – Wersja 0.4.0.0
 
-Wydanie **0.3.6.0** wprowadza obsługę brygad szczytowych (dwurazowych) z dwoma niezależnymi wyjazdami i zjazdami oraz nową architekturę zarządzania brygadami:
+Wydanie **0.4.0.0** wprowadza kompleksowy pakiet usprawnień organizacyjnych, technicznych i dyspozytorskich:
 
-1. **Wybór typu brygady – Normalna vs Szczytowa:**
-   - W formularzu tworzenia brygad oraz w edycji istniejących wpisów dodano wybór typu:
-     - 🚌 **Normalna (całodzienna):** jeden wyjazd rano i jeden zjazd do zajezdni.
-     - ⚡ **Szczytowa (dwa wyjazdy i zjazdy):** obsługa szczytu porannego oraz szczytu popołudniowego z przerwą międzyszczytową.
-2. **Dwa niezależne wyjazdy i zjazdy dla brygad szczytowych:**
-   - **I Wyjazd i Zjazd (Szczyt poranny):** Godzina wyjazdu I, godzina zjazdu I, 1. przystanek I, ostatni przystanek I, miejsce wyjazdu I, miejsce zjazdu I.
-   - **II Wyjazd i Zjazd (Szczyt popołudniowy):** Godzina wyjazdu II, godzina zjazdu II, 1. przystanek II, ostatni przystanek II, miejsce wyjazdu II, miejsce zjazdu II.
-3. **Komponent edycji brygad `BrigadeEditCard`:**
-   - W Panelu Zarządu każda brygada posiada interaktywną kartę z możliwością łatwego przełączenia typu brygady (Normalna &harr; Szczytowa) oraz edycji parametrów obu szczytów.
-4. **Prezentacja brygad szczytowych w Wykazie Brygad i Panelu Kierowcy:**
-   - Dedykowane plakietki `⚡ Szczytowa` oraz `🚌 Normalna`.
-   - Czytelne, wielopoziomowe sekcje dla I i II zmiany z wyjazdami, zjazdami, przystankami i trasami.
-5. **Wyróżnienie brygad szczytowych przy układaniu grafiku:**
-   - Podpowiedzi brygad w formularzu wydawania służb (`DutyAssignmentForm`) informują dyspozytora o typie szczytowym oraz prezentują godziny obu szczytów (np. `[SZCZYTOWA] (I: 05:20-09:00, II: 13:40-17:20)`).
-6. **Aktualizacja wersji do 0.3.6.0:** Pełne wdrożenie oznaczenia wersji 0.3.6.0 w całym systemie i dokumentacji.
+1. **Pełna widoczność taboru dla Właściciela:**
+   - Właściciel (`Godksawiss` oraz rola `WLASCICIEL` / `ZARZAD`) posiada pełny wgląd do wszystkich pojazdów – zarówno floty VBP, jak i VMPK na podstronie `/tabor`, w Panelu Kierowcy oraz w Panelu Zarządu.
+2. **Obowiązkowy powód we wniosku o zmianę etatu:**
+   - Formularz wniosku o zmianę etatu (`ZMIANA_ETATU`) wymaga podania konkretnego uzasadnienia w dedykowanym polu tekstowym (walidacja frontendowa i backendowa).
+3. **Limit urlopu do maksymalnie 14 dni:**
+   - Wniosek o urlop wypoczynkowy (`URLOP`) dopuszcza maksymalnie 14 dni roboczych. Przy próbie wyboru dłuższego okresu system blokuje wysłanie formularza z informacją o konieczności bezpośredniego kontaktu z Zarządem przez wiadomość.
+4. **Wybór zmiany i formatowanie brygad przy przydzielaniu służby:**
+   - W formularzu przydziału służby (`DutyAssignmentForm`) dodano wybór zmiany:
+     - **1 Zmiana** (Wyjazd)
+     - **2 Zmiana** (Podmiana / Przesiadka)
+     - **3 Zmiana** (Nocna)
+   - Automatyczny zapis brygady w formacie np. `2/1 - Dni robocze/1 Zmiana` bez podawania surowych godzin.
+5. **Obsługa linii nocnych N1 i N2:**
+   - Linie nocne `N1` oraz `N2` są automatycznie powiązane z **3 Zmianą** w formularzu grafiku.
+6. **System ostrzeżeń i zawieszeń przy niezaliczonych służbach:**
+   - **5 niezaliczonych służb:** W Panelu Kierowcy wyświetla się pomarańczowy baner ostrzegawczy z wezwaniem do nadrobienia zaległości poprzez *Wniosek o dodatkową służbę*.
+   - **10 niezaliczonych służb:** Automatyczne zawieszenie konta (`suspended: true`), utrata stałego pojazdu (zwolnienie do puli ogólnej), etat pozostaje bez zmian. Kierowca otrzymuje czerwony baner z instrukcją złożenia *Wniosku o odwieszenie konta* (`ODWIESZENIE`).
+7. **Wyznaczanie wozu zastępczego przy awarii na trasie:**
+   - Mechanik (`M`) oraz Sprawdzający (`S`) (jak również Dyspozytor i Właściciel) mogą przypisać pojazd zastępczy (`replacementVehicle`) do zaplanowanej służby w razie wystąpienia awarii autobusu. Kierowca otrzymuje natychmiastowe powiadomienie oraz oznaczenie wozu zastępczego na karcie służby.
+8. **Usunięcie przycisku „Zobacz Tabor” z podstron przewoźników:**
+   - Usunięto niepotrzebne przyciski „Zobacz tabor” z podstron `/vbp` oraz `/vmpk`.
+9. **Dopracowanie paska nawigacji w trybie jasnym:**
+   - Wyeliminowano problem nieczytelnego tekstu w jasnym motywie dzięki wymuszeniu pełnego kontrastu dla całego paska nawigacyjnego, profilowego i przycisków.
+10. **Wysyłanie bezpośrednich wiadomości do kierowcy:**
+    - Zarząd może przesłać bezpośrednią dyspozycję lub wiadomość do wybranego kierowcy (`DriverNotification`), która natychmiast wyświetla się w dedykowanej sekcji Panelu Kierowcy.
+11. **Zmiana hasła bezpośrednio na stronie logowania:**
+    - Na stronie `/login` dodano zakładkę *Zmiana hasła* umożliwiającą bezpieczną zmianę hasła po weryfikacji starego hasła przez API.
 
 ---
 
 ## 📜 Historia wcześniejszych wydań
+
+### Wersja 0.3.6.0
+- Obsługa brygad szczytowych (dwurazowych) z dwoma wyjazdami i zjazdami.
+- Komponent edycji brygad `BrigadeEditCard`.
+- Prezentacja obu szczytów w wykazie brygad i grafiku kierowcy.
 
 ### Wersja 0.3.5.0
 - Dedykowany wykaz brygad dla przewoźnika VBP (brak dostępu do brygad VMPK).

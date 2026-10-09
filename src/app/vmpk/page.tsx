@@ -20,11 +20,10 @@ export default function VMPKPage() {
         </div>
         <div className="bg-slate-800 p-8 rounded-xl border border-slate-700">
           <h2 className="text-2xl font-bold text-[#FFC627] mb-4">Nasza Flota</h2>
-          <p className="text-slate-300 mb-4">
+          <p className="text-slate-300">
             Posiadamy zróżnicowany tabor miejski, od standardowych 12-metrowych autobusów, 
             aż po wielkopojemne przegubowce.
           </p>
-          <a href="/tabor?carrier=VMPK" className="text-[#E31837] font-semibold hover:underline">Zobacz tabor VMPK &rarr;</a>
         </div>
       </div>
     </div>

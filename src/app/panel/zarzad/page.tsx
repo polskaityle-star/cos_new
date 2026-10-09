@@ -16,6 +16,7 @@ import {
   canManageFleet,
   canManageRequests,
   canManageUsers,
+  canAssignReplacementVehicle,
   getRoleLabel,
   getRoleBadgeClass,
   ROLES,
@@ -65,6 +66,7 @@ export default async function AdminPanel({
   const canFleet = canManageFleet(userRole);
   const canDuties = canManageDuties(userRole);
   const canReqs = canManageRequests(userRole);
+  const canReplaceVeh = canAssignReplacementVehicle(userRole);
 
   const [
     currentDbUser,
@@ -118,6 +120,7 @@ export default async function AdminPanel({
         user: true,
         line: true,
         vehicle: true,
+        replacementVehicle: true,
         report: true,
       },
       orderBy: { date: "desc" },
@@ -313,7 +316,7 @@ export default async function AdminPanel({
             </span>
           </div>
           <p className="text-slate-400 text-sm">
-            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.3.6.0)
+            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.4.0.0)
           </p>
         </div>
         <div className="flex flex-col md:items-end gap-3">
@@ -537,6 +540,8 @@ export default async function AdminPanel({
                               ? "🗑️ Rezygnacja ze stałego pojazdu"
                               : req.type === "ZMIANA_ETATU"
                               ? "📅 Zmiana etatu"
+                              : req.type === "ODWIESZENIE"
+                              ? "🔓 Wniosek o odwieszenie konta"
                               : "❌ Anulowanie służby"}
                           </span>
                         </div>
@@ -555,6 +560,12 @@ export default async function AdminPanel({
                           </div>
                         )}
 
+                        {req.type === "ODWIESZENIE" && (
+                          <div className="text-xs text-red-300 font-semibold bg-red-950/60 p-2 rounded border border-red-800/40">
+                            🔓 Pracownik wnosi o odwieszenie konta (zawieszonego po 10 niezaliczonych służbach). Zaakceptowanie odblokuje kierowcę.
+                          </div>
+                        )}
+
                         {req.type === "USUNIECIE_STALEGO_POJAZDU" && (
                           <div className="text-xs text-amber-300 font-semibold bg-amber-950/60 p-2 rounded border border-amber-800/40">
                             🗑️ Pracownik prosi o usunięcie stałego pojazdu i powrót do puli rotacyjnej.
@@ -567,7 +578,7 @@ export default async function AdminPanel({
                           </div>
                         )}
 
-                        {req.details && !vehicleInfo && req.type !== "ZMIANA_ETATU" && req.type !== "USUNIECIE_STALEGO_POJAZDU" && (
+                        {req.details && !vehicleInfo && req.type !== "ZMIANA_ETATU" && req.type !== "USUNIECIE_STALEGO_POJAZDU" && req.type !== "ODWIESZENIE" && (
                           <div className="text-xs text-slate-400">Szczegóły: {req.details}</div>
                         )}
                       </div>
@@ -629,6 +640,8 @@ export default async function AdminPanel({
                             ? "🗑️ Rezygnacja ze stałego pojazdu"
                             : hReq.type === "ZMIANA_ETATU"
                             ? "📅 Zmiana etatu"
+                            : hReq.type === "ODWIESZENIE"
+                            ? "🔓 Odwieszenie konta"
                             : "❌ Anulowanie służby"}
                         </span>
                         <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
@@ -974,6 +987,70 @@ export default async function AdminPanel({
         )}
       </section>
 
+      {/* 6.5. Wyślij Wiadomość do Kierowcy (Wymóg 9) */}
+      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+        <h2 className="text-2xl font-bold mb-2 text-sky-400 flex items-center gap-2">
+          <span>📨 Wyślij Wiadomość do Kierowcy / Pracownika</span>
+        </h2>
+        <p className="text-xs text-slate-400 mb-4">
+          Wiadomość pojawi się bezpośrednio w panelu kierowcy w dedykowanej sekcji powiadomień zarządu.
+        </p>
+
+        <form action="/api/panel/zarzad/wiadomosci/kierowca" method="POST" className="bg-slate-900/80 p-5 rounded-lg border border-slate-700 space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Wybierz odbiorcę (kierowcę) *
+              </label>
+              <select
+                name="userId"
+                required
+                className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-xs text-white outline-none focus:border-sky-500"
+              >
+                <option value="">-- Wybierz pracownika --</option>
+                {activeUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.badgeNumber ? `[${u.badgeNumber}] ` : ""}{u.username} [{u.carrier || "Brak"}] ({getRoleLabel(u.role)})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Tytuł wiadomości *
+              </label>
+              <input
+                type="text"
+                name="title"
+                required
+                placeholder="np. Informacja o zmianie trasy, Podmiana wozu, Wezwanie"
+                className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-xs text-white outline-none focus:border-sky-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              Treść wiadomości / dyspozycji *
+            </label>
+            <textarea
+              name="message"
+              required
+              rows={3}
+              placeholder="Wpisz treść dyspozycji lub wiadomości dla kierowcy..."
+              className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-xs text-white outline-none focus:border-sky-500 resize-none"
+            ></textarea>
+          </div>
+
+          <button
+            type="submit"
+            className="bg-sky-600 hover:bg-sky-500 text-white font-bold px-5 py-2.5 rounded-lg text-xs transition-colors shadow flex items-center gap-2 cursor-pointer"
+          >
+            <span>✉️ Wyślij wiadomość do kierowcy</span>
+          </button>
+        </form>
+      </section>
+
       {/* 7. Zarządzanie Liniami i Taborem */}
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Zarządzanie Liniami */}
@@ -1311,6 +1388,11 @@ export default async function AdminPanel({
                           🚌 {duty.vehicle.fleetNumber} ({duty.vehicle.model}) &bull; {(duty.vehicle.mileage || 0).toLocaleString()} km
                         </span>
                       )}
+                      {duty.replacementVehicle && (
+                        <span className="bg-purple-900/60 text-purple-300 border border-purple-500/50 text-xs px-2 py-0.5 rounded font-bold">
+                          🔄 Wóz zastępczy: #{duty.replacementVehicle.fleetNumber} ({duty.replacementVehicle.model})
+                        </span>
+                      )}
                       <span className="text-slate-400">&bull;</span>
                       <span className="font-semibold text-emerald-400">
                         {duty.user.badgeNumber ? `[${duty.user.badgeNumber}] ` : ""}{duty.user.username} ({duty.user.carrier})
@@ -1326,6 +1408,42 @@ export default async function AdminPanel({
                       <div className="mt-1.5 text-xs text-amber-300">
                         ℹ️ <b>Uwagi:</b> {duty.notes}
                       </div>
+                    )}
+                    {canReplaceVeh && (
+                      <details className="mt-2 text-xs bg-slate-950/70 p-2.5 rounded border border-slate-800">
+                        <summary className="cursor-pointer text-purple-400 font-bold hover:underline flex items-center gap-1.5">
+                          <span>🔄 {duty.replacementVehicle ? "Zmień / Wycofaj wóz zastępczy" : "Wyznacz wóz zastępczy (awaria pojazdu)"}</span>
+                        </summary>
+                        <form action="/api/panel/zarzad/woz-zastepczy" method="POST" className="mt-2 flex flex-wrap items-center gap-2">
+                          <input type="hidden" name="dutyId" value={duty.id} />
+                          <select
+                            name="replacementVehicleId"
+                            defaultValue={duty.replacementVehicleId || ""}
+                            className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
+                          >
+                            <option value="">-- Brak (Wycofaj wóz zastępczy) --</option>
+                            {allVehicles
+                              .filter((v) => !duty.user?.carrier || v.carrier === duty.user.carrier)
+                              .map((v) => (
+                                <option key={v.id} value={v.id}>
+                                  #{v.fleetNumber} {v.model} ({v.registration}) [{v.carrier}]
+                                </option>
+                              ))}
+                          </select>
+                          <input
+                            type="text"
+                            name="reason"
+                            placeholder="Powód podmiany (np. awaria drzwi)"
+                            className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
+                          />
+                          <button
+                            type="submit"
+                            className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors shadow cursor-pointer"
+                          >
+                            Zatwierdź wóz zastępczy
+                          </button>
+                        </form>
+                      </details>
                     )}
                   </div>
                   <div>

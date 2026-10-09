@@ -59,6 +59,14 @@ export async function POST(req: Request) {
       });
     }
 
+    // 2.1 Jeśli to wniosek o odwieszenie konta, odblokowujemy kierowcę
+    if (driverReq.type === "ODWIESZENIE") {
+      await prisma.user.update({
+        where: { id: driverReq.userId },
+        data: { suspended: false },
+      });
+    }
+
     // 3. Jeśli to było anulowanie służby i podano ID służby, usuwamy służbę z grafiku (Wymóg 15)
     if (driverReq.type === "ANULOWANIE_SLUZBY" && driverReq.dutyId) {
       try {
