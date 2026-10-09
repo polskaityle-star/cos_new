@@ -23,36 +23,10 @@ export default function LoginPage() {
   const [cpError, setCpError] = useState("");
   const [cpLoading, setCpLoading] = useState(false);
 
-  // Stan resetu administratora
-  const [resetMsg, setResetMsg] = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
-
-  const handleAdminReset = async () => {
-    setResetLoading(true);
-    setResetMsg("");
-    setError("");
-    try {
-      const res = await fetch("/api/auth/reset-admin", { method: "POST" });
-      const data = await res.json();
-      if (res.ok) {
-        setUsername("Godksawiss");
-        setPassword("admin123");
-        setResetMsg(data.message || "Hasło konta administratora zostało pomyślnie zresetowane do: admin123. Dane logowania zostały uzupełnione!");
-      } else {
-        setError(data.message || "Błąd podczas resetowania konta administratora.");
-      }
-    } catch {
-      setError("Nie udało się połączyć z serwerem.");
-    } finally {
-      setResetLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setResetMsg("");
 
     try {
       const res = await signIn("credentials", {
@@ -69,7 +43,7 @@ export default function LoginPage() {
         ) {
           setError("Twoje konto oczekuje na zatwierdzenie przez Zarząd lub zostało odrzucone.");
         } else {
-          setError("Nieprawidłowa nazwa użytkownika lub hasło. Jeśli jesteś administratorem, skorzystaj z opcji poniżej.");
+          setError("Nieprawidłowa nazwa użytkownika lub hasło.");
         }
         setLoading(false);
       } else {
@@ -206,12 +180,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            {resetMsg && (
-              <div className="bg-emerald-500/20 border border-emerald-500 text-emerald-200 p-3 rounded mb-4 text-center text-sm">
-                {resetMsg}
-              </div>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm text-slate-300">Nazwa Użytkownika / Nick</label>
@@ -257,44 +225,6 @@ export default function LoginPage() {
                 {loading ? "Logowanie..." : "Zaloguj się"}
               </button>
             </form>
-
-            {/* Pomoc logowania dla Administratora / Właściciela */}
-            <div className="mt-5 pt-4 border-t border-slate-700/80">
-              <div className="bg-slate-900/90 p-3.5 rounded-lg border border-amber-500/30 text-xs text-slate-300 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-amber-400 flex items-center gap-1.5">
-                    👑 Logowanie Administratora (Godksawiss)
-                  </span>
-                </div>
-                <p className="text-slate-400 leading-relaxed text-[11px]">
-                  Login: <strong className="text-white">Godksawiss</strong> (lub <strong className="text-white">admin</strong> / <strong className="text-white">administrator</strong>)
-                  <br />
-                  Hasło domyślne: <strong className="text-white">admin123</strong>
-                </p>
-
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUsername("Godksawiss");
-                      setPassword("admin123");
-                      setError("");
-                    }}
-                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 border border-amber-500/40 px-2 py-1.5 rounded transition-colors font-medium text-center cursor-pointer text-[11px]"
-                  >
-                    Wpisz dane (Godksawiss)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAdminReset}
-                    disabled={resetLoading}
-                    className="flex-1 bg-amber-600/25 hover:bg-amber-600/45 text-amber-200 border border-amber-500/50 px-2 py-1.5 rounded transition-colors font-medium text-center cursor-pointer disabled:opacity-50 text-[11px]"
-                  >
-                    {resetLoading ? "Resetowanie..." : "Resetuj hasło do admin123"}
-                  </button>
-                </div>
-              </div>
-            </div>
           </>
         ) : (
           <>
