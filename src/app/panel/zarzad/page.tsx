@@ -42,7 +42,12 @@ export default async function AdminPanel({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !canAccessManagementPanel(session.user.role)) {
+  if (!session || !session.user) {
+    redirect("/");
+  }
+
+  const userName = (session.user as any)?.username || "";
+  if (!canAccessManagementPanel(session.user.role, userName)) {
     redirect("/");
   }
 
@@ -61,12 +66,12 @@ export default async function AdminPanel({
   } = resolvedParams;
 
   const userRole = session.user.role || "KIEROWCA";
-  const canUsers = canManageUsers(userRole);
-  const canLines = canManageLines(userRole);
-  const canFleet = canManageFleet(userRole);
-  const canDuties = canManageDuties(userRole);
-  const canReqs = canManageRequests(userRole);
-  const canReplaceVeh = canAssignReplacementVehicle(userRole);
+  const canUsers = canManageUsers(userRole, userName);
+  const canLines = canManageLines(userRole, userName);
+  const canFleet = canManageFleet(userRole, userName);
+  const canDuties = canManageDuties(userRole, userName);
+  const canReqs = canManageRequests(userRole, userName);
+  const canReplaceVeh = canAssignReplacementVehicle(userRole, userName);
 
   const [
     currentDbUser,

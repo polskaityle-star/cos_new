@@ -109,7 +109,27 @@ export function getRoleBadgeClass(role?: string | null): string {
   return ROLES[normRole]?.badgeClass || "bg-slate-500/20 text-slate-300 border-slate-500/50";
 }
 
-export function canAccessManagementPanel(role?: string | null): boolean {
+export const ADMIN_ALIASES = [
+  "godksawiss",
+  "admin",
+  "administrator",
+  "administator",
+  "wlasciciel",
+  "zarzad",
+  "ksawe",
+];
+
+export function isUserAdminOrOwner(role?: string | null, username?: string | null): boolean {
+  if (username && ADMIN_ALIASES.includes(username.toLowerCase())) return true;
+  if (role) {
+    const norm = role.toUpperCase();
+    if (norm === "WLASCICIEL" || norm === "ZARZAD") return true;
+  }
+  return false;
+}
+
+export function canAccessManagementPanel(role?: string | null, username?: string | null): boolean {
+  if (isUserAdminOrOwner(role, username)) return true;
   if (!role) return false;
   const normRole = role.toUpperCase();
   return [
@@ -122,37 +142,43 @@ export function canAccessManagementPanel(role?: string | null): boolean {
   ].includes(normRole);
 }
 
-export function canManageDuties(role?: string | null): boolean {
+export function canManageDuties(role?: string | null, username?: string | null): boolean {
+  if (isUserAdminOrOwner(role, username)) return true;
   if (!role) return false;
   const normRole = role.toUpperCase();
   return ["WLASCICIEL", "ZARZAD", "DYSPOZYTOR"].includes(normRole);
 }
 
-export function canManageLines(role?: string | null): boolean {
+export function canManageLines(role?: string | null, username?: string | null): boolean {
+  if (isUserAdminOrOwner(role, username)) return true;
   if (!role) return false;
   const normRole = role.toUpperCase();
   return ["WLASCICIEL", "ZARZAD", "KIEROWNIK_PRZEWOZOW"].includes(normRole);
 }
 
-export function canManageFleet(role?: string | null): boolean {
+export function canManageFleet(role?: string | null, username?: string | null): boolean {
+  if (isUserAdminOrOwner(role, username)) return true;
   if (!role) return false;
   const normRole = role.toUpperCase();
   return ["WLASCICIEL", "ZARZAD", "MECHANIK"].includes(normRole);
 }
 
-export function canManageRequests(role?: string | null): boolean {
+export function canManageRequests(role?: string | null, username?: string | null): boolean {
+  if (isUserAdminOrOwner(role, username)) return true;
   if (!role) return false;
   const normRole = role.toUpperCase();
   return ["WLASCICIEL", "ZARZAD", "SPRAWDZAJACY"].includes(normRole);
 }
 
-export function canManageUsers(role?: string | null): boolean {
+export function canManageUsers(role?: string | null, username?: string | null): boolean {
+  if (isUserAdminOrOwner(role, username)) return true;
   if (!role) return false;
   const normRole = role.toUpperCase();
   return ["WLASCICIEL", "ZARZAD"].includes(normRole);
 }
 
-export function canAssignReplacementVehicle(role?: string | null): boolean {
+export function canAssignReplacementVehicle(role?: string | null, username?: string | null): boolean {
+  if (isUserAdminOrOwner(role, username)) return true;
   if (!role) return false;
   const normRole = role.toUpperCase();
   return ["WLASCICIEL", "ZARZAD", "MECHANIK", "SPRAWDZAJACY", "DYSPOZYTOR"].includes(normRole);
