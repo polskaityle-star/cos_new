@@ -7,7 +7,7 @@ export default function Home() {
         <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3.5 py-1 rounded-full text-xs font-mono font-bold shadow-xs">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span>Wersja systemu:</span>
-          <span className="underline font-extrabold">v0.4.0.0</span>
+          <span className="underline font-extrabold">v0.4.5.0</span>
         </div>
         <h1 className="text-5xl font-extrabold tracking-tight">Witaj w VZTM Kielce</h1>
         <p className="text-lg text-slate-300">

@@ -199,7 +199,11 @@ export default function DutyAssignmentForm({
                 const num = line.number.toUpperCase();
                 if (num.startsWith("N") || num === "N1" || num === "N2") {
                   setSelectedShift("3 Zmiana");
+                } else {
+                  setSelectedShift("1 Zmiana");
                 }
+              } else {
+                setSelectedShift("1 Zmiana");
               }
             }}
             required
@@ -241,22 +245,39 @@ export default function DutyAssignmentForm({
           </select>
         </div>
 
-        {/* 4. Zmiana (Wyjazd / Podmiana-Przesiadka / Nocna) */}
+        {/* 4. Zmiana (Wyjazd / Podmiana-Przesiadka dla linii dziennych, 3 Zmiana dla linii nocnych) */}
         <div>
           <label className="block text-xs font-semibold text-slate-300 mb-1">
             Zmiana służby *
           </label>
-          <select
-            name="shift"
-            value={selectedShift}
-            onChange={(e) => setSelectedShift(e.target.value)}
-            required
-            className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white focus:border-amber-500"
-          >
-            <option value="1 Zmiana">1 Zmiana (Wyjazd)</option>
-            <option value="2 Zmiana">2 Zmiana (Podmiana / Przesiadka)</option>
-            <option value="3 Zmiana">3 Zmiana (Nocna - np. N1, N2)</option>
-          </select>
+          {(() => {
+            const curLine = lines.find((l) => l.id === selectedLineId);
+            const isNight = Boolean(
+              curLine &&
+                (curLine.number.toUpperCase().startsWith("N") ||
+                  curLine.number.toUpperCase().includes("N1") ||
+                  curLine.number.toUpperCase().includes("N2"))
+            );
+
+            return (
+              <select
+                name="shift"
+                value={selectedShift}
+                onChange={(e) => setSelectedShift(e.target.value)}
+                required
+                className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white focus:border-amber-500"
+              >
+                {isNight ? (
+                  <option value="3 Zmiana">3 Zmiana (Nocna)</option>
+                ) : (
+                  <>
+                    <option value="1 Zmiana">1 Zmiana (Wyjazd)</option>
+                    <option value="2 Zmiana">2 Zmiana (Podmiana / Przesiadka)</option>
+                  </>
+                )}
+              </select>
+            );
+          })()}
         </div>
 
         {/* 5. Brygada - filtrowana pod linię i przewoźnika (bez godzin) */}
@@ -320,6 +341,25 @@ export default function DutyAssignmentForm({
           placeholder="np. Dodatkowa służba z wniosku, obsługa wariantu nocnego"
           className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-xs outline-none text-white focus:border-amber-500"
         />
+      </div>
+
+      {/* 7. Oznaczenie służby dodatkowej (Wymóg 11: odrabianie niezaliczonych służb) */}
+      <div className="flex items-center justify-between gap-3 bg-slate-800/60 p-2.5 rounded border border-slate-700">
+        <label className="inline-flex items-center gap-2 text-xs text-amber-300 font-semibold cursor-pointer">
+          <input
+            type="checkbox"
+            name="isExtra"
+            value="true"
+            defaultChecked={Boolean(prefill?.requestId)}
+            className="rounded border-slate-600 text-amber-500 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+          />
+          <span>⭐ Służba dodatkowa (odrabia niezaliczone służby w profilu kierowcy)</span>
+        </label>
+        {prefill?.requestId && (
+          <span className="text-[10px] bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded font-bold">
+            Z wniosku o dodatkową służbę
+          </span>
+        )}
       </div>
 
       <button

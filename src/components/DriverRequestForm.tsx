@@ -30,13 +30,15 @@ const ETAT_DAYS = [
 export default function DriverRequestForm({
   scheduledDuties,
   availableVehicles,
+  canReinstate = false,
 }: {
   scheduledDuties: ScheduledDuty[];
   availableVehicles: VehicleItem[];
+  canReinstate?: boolean;
 }) {
   const [type, setType] = useState<
     "URLOP" | "DODATKOWA_SLUZBA" | "ANULOWANIE_SLUZBY" | "STALY_POJAZD" | "ZMIANA_STALEGO_POJAZDU" | "USUNIECIE_STALEGO_POJAZDU" | "ZMIANA_ETATU" | "ODWIESZENIE"
-  >("URLOP");
+  >(canReinstate ? "ODWIESZENIE" : "URLOP");
   const [selectedDays, setSelectedDays] = useState<string[]>(["PN", "WT", "SR", "CZ", "PT"]);
   const [etatError, setEtatError] = useState("");
   const [urlopStart, setUrlopStart] = useState("");
@@ -84,7 +86,9 @@ export default function DriverRequestForm({
           <option value="ZMIANA_STALEGO_POJAZDU">🔄 Wniosek o zmianę stałego pojazdu</option>
           <option value="USUNIECIE_STALEGO_POJAZDU">🗑️ Wniosek o usunięcie stałego pojazdu (rezygnacja)</option>
           <option value="ZMIANA_ETATU">📅 Wniosek o zmianę etatu (dni pracy)</option>
-          <option value="ODWIESZENIE">🔓 Wniosek o odwieszenie konta (po 10 niezaliczonych służbach)</option>
+          {canReinstate && (
+            <option value="ODWIESZENIE">🔓 Wniosek o odwieszenie konta (po 10 niezaliczonych służbach)</option>
+          )}
         </select>
       </div>
 

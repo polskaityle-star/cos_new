@@ -101,6 +101,7 @@ model Duty {
   brigade              String?  // np. "34/2 - dni robocze/1 Zmiana"
   shift                String?  // "1 Zmiana", "2 Zmiana", "3 Zmiana"
   notes                String?  // Opcjonalne uwagi do służby
+  isExtra              Boolean  @default(false) // Służba dodatkowa (odrabiająca niezaliczone służby)
   status               String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, MISSED
   report               Report?
 }
@@ -162,12 +163,16 @@ model ContactMessage {
 }
 
 model DriverNotification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sender    String   // np. "Zarząd", "Dyspozytor [D1]", "Godksawiss [W1]"
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender    String    // np. "Zarząd", "Godksawiss (Właściciel)", "kierowca1 (Kierowca)"
   title     String
   message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  read      Boolean   @default(false)
+  direction String    @default("TO_DRIVER") // "TO_DRIVER" (od Zarządu do kierowcy) lub "TO_MANAGEMENT" (od kierowcy do Zarządu)
+  reply     String?   // Treść odpowiedzi
+  repliedAt DateTime? // Data nadesłania odpowiedzi
+  replyBy   String?   // Kto odpowiedział (np. "Godksawiss", "kierowca1")
+  createdAt DateTime  @default(now())
 }

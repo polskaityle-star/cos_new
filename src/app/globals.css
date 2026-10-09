@@ -141,6 +141,94 @@ html[data-theme="light"] [class*="bg-orange-600"] {
   color: #ffffff !important;
 }
 
+/* Banery i alerty (ciemne tła w dark mode zamieniamy na pastelowe czytelne w light mode) */
+html.light [class*="bg-amber-950"],
+html[data-theme="light"] [class*="bg-amber-950"] {
+  background-color: #fef3c7 !important;
+  border-color: #f59e0b !important;
+}
+html.light [class*="bg-emerald-950"],
+html[data-theme="light"] [class*="bg-emerald-950"] {
+  background-color: #d1fae5 !important;
+  border-color: #10b981 !important;
+}
+html.light [class*="bg-red-950"],
+html.light [class*="bg-rose-950"],
+html[data-theme="light"] [class*="bg-red-950"],
+html[data-theme="light"] [class*="bg-rose-950"] {
+  background-color: #fee2e2 !important;
+  border-color: #ef4444 !important;
+}
+html.light [class*="bg-purple-950"],
+html[data-theme="light"] [class*="bg-purple-950"] {
+  background-color: #f3e8ff !important;
+  border-color: #a855f7 !important;
+}
+html.light [class*="bg-cyan-950"],
+html[data-theme="light"] [class*="bg-cyan-950"] {
+  background-color: #cffafe !important;
+  border-color: #06b6d4 !important;
+}
+html.light [class*="bg-blue-950"],
+html[data-theme="light"] [class*="bg-blue-950"] {
+  background-color: #dbeafe !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Kolorowy tekst o wysokim kontraście w trybie jasnym (brak żółci/jasnej zieleni na białym tle) */
+html.light [class*="text-amber-200"],
+html.light [class*="text-amber-300"],
+html[data-theme="light"] [class*="text-amber-200"],
+html[data-theme="light"] [class*="text-amber-300"] {
+  color: #92400e !important;
+}
+html.light [class*="text-amber-400"],
+html[data-theme="light"] [class*="text-amber-400"] {
+  color: #b45309 !important;
+}
+html.light [class*="text-emerald-200"],
+html.light [class*="text-emerald-300"],
+html.light [class*="text-emerald-400"],
+html[data-theme="light"] [class*="text-emerald-200"],
+html[data-theme="light"] [class*="text-emerald-300"],
+html[data-theme="light"] [class*="text-emerald-400"] {
+  color: #047857 !important;
+}
+html.light [class*="text-cyan-200"],
+html.light [class*="text-cyan-300"],
+html.light [class*="text-cyan-400"],
+html[data-theme="light"] [class*="text-cyan-200"],
+html[data-theme="light"] [class*="text-cyan-300"],
+html[data-theme="light"] [class*="text-cyan-400"] {
+  color: #0e7490 !important;
+}
+html.light [class*="text-purple-200"],
+html.light [class*="text-purple-300"],
+html.light [class*="text-purple-400"],
+html[data-theme="light"] [class*="text-purple-200"],
+html[data-theme="light"] [class*="text-purple-300"],
+html[data-theme="light"] [class*="text-purple-400"] {
+  color: #6b21a8 !important;
+}
+html.light [class*="text-red-200"],
+html.light [class*="text-red-300"],
+html.light [class*="text-rose-200"],
+html.light [class*="text-rose-300"],
+html[data-theme="light"] [class*="text-red-200"],
+html[data-theme="light"] [class*="text-red-300"],
+html[data-theme="light"] [class*="text-rose-200"],
+html[data-theme="light"] [class*="text-rose-300"] {
+  color: #b91c1c !important;
+}
+html.light [class*="text-blue-200"],
+html.light [class*="text-blue-300"],
+html.light [class*="text-blue-400"],
+html[data-theme="light"] [class*="text-blue-200"],
+html[data-theme="light"] [class*="text-blue-300"],
+html[data-theme="light"] [class*="text-blue-400"] {
+  color: #1d4ed8 !important;
+}
+
 /* =========================================================
    Pasek nawigacyjny Navbar - zawsze czytelny z pełnym kontrastem
    ========================================================= */

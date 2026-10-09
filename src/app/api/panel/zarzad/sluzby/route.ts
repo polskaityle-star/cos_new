@@ -118,6 +118,8 @@ export async function POST(req: Request) {
       }
     }
 
+    const isExtra = formData.get("isExtra") === "true" || Boolean(requestId);
+
     await prisma.duty.create({
       data: {
         userId,
@@ -127,6 +129,7 @@ export async function POST(req: Request) {
         brigade: finalBrigade || null,
         shift: shift || null,
         notes: notes || null,
+        isExtra,
       },
     });
 

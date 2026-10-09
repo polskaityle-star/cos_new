@@ -1,7 +1,7 @@
 # 🚍 VZTM Kielce – Oficjalny Poradnik Użytkownika i Dokumentacja Systemu
 
 Witaj w oficjalnym przewodniku po systemie **VZTM Kielce** (Wirtualny Zarząd Transportu Miejskiego w Kielcach – wirtualna firma dla symulatora OMSI 2).  
-Wersja systemu: **0.4.0.0** (BETA).
+Wersja systemu: **0.4.5.0** (BETA).
 
 System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-czerwone) oraz **VBP Tour Regio Kielce** (malowanie niebieskie), organizację taboru, rozkłady brygad, grafik służb, zgłaszanie usterek warsztatowych, składanie wniosków pracowniczych oraz weryfikację raportów z tras.
 
@@ -12,19 +12,21 @@ System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-c
 2. [Rejestracja, rekrutacja i zmiana hasła](#-rejestracja-rekrutacja-i-zmiana-hasła)
 3. [Poradnik dla Kierowcy (Panel Kierowcy)](#-poradnik-dla-kierowcy)
    - [Profil, awatar i numer służbowy](#profil-awatar-i-numer-służbowy)
+   - [Zegar i data LiveClock](#zegar-i-data-liveclock)
    - [Wybór etatu (Limit 6/7) i zmiana etatu](#wybór-etatu-limit-67-i-zmiana-etatu)
-   - [System niezaliczonych służb (Ostrzeżenia i Zawieszenie)](#system-niezaliczonych-służb-ostrzeżenia-i-zawieszenie)
+   - [System niezaliczonych służb i odrabianie służbami dodatkowymi](#system-niezaliczonych-służb-i-odrabianie-służbami-dodatkowymi)
    - [Wgląd do taboru](#wgląd-do-taboru)
+   - [Wykaz brygad (przewijana tabela do 4 kolumn)](#wykaz-brygad)
    - [Odbiór służby, wóz zastępczy i blokada raportów](#odbiór-służby-wóz-zastępczy-i-blokada-raportów)
-   - [Wnioski pracownicze (Urlopy do 14 dni, Stały wóz, Odwieszenie)](#wnioski-pracownicze)
-   - [Powiadomienia i wiadomości od Zarządu](#powiadomienia-i-wiadomości-od-zarządu)
+   - [Wnioski pracownicze (w tym odwieszenie przy 10 zaległościach)](#wnioski-pracownicze)
+   - [Dwustronna komunikacja i historia wiadomości](#dwustronna-komunikacja-i-historia-wiadomości)
    - [Zgłoszenia techniczne i warsztat](#zgłoszenia-techniczne-i-warsztat)
 4. [Poradnik dla Zarządu i Kadry Kierowniczej](#-poradnik-dla-kadry-kierowniczej)
    - [Konto Główne Właściciela: Godksawiss i pełna widoczność taboru](#konto-główne-właściciela-godksawiss)
-   - [Wozy zastępcze przy awarii na trasie](#wozy-zastępcze-przy-awarii-na-trasie)
-   - [Wysyłanie bezpośrednich wiadomości do kierowców](#wysyłanie-bezpośrednich-wiadomości-do-kierowców)
+   - [Wozy zastępcze przy zgłoszonej awarii taboru](#wozy-zastępcze-przy-zgłoszonej-awarii-taboru)
+   - [Dwustronna komunikacja z kierowcami i historia wiadomości](#dwustronna-komunikacja-z-kierowcami-i-historia-wiadomości)
    - [Układanie grafiku ze zmianami (1, 2, 3 Zmiana, linie nocne N1 i N2)](#układanie-grafiku-ze-zmianami)
-5. [Historia zmian – Wersja 0.4.0.0](#-historia-zmian--wersja-0400)
+5. [Historia zmian – Wersja 0.4.5.0](#-historia-zmian--wersja-0450)
 6. [Historia wcześniejszych wydań](#-historia-wcześniejszych-wydań)
 
 ---
@@ -194,6 +196,39 @@ W formularzu tworzenia i edycji brygady dostępne są precyzyjne pola:
    - Czas rzeczywisty w języku polskim w Panelu Zarządu.
 4. **Płynna responsywność:**
    - Pełne wsparcie dla urządzeń mobilnych, tabletów i komputerów stacjonarnych.
+
+---
+
+## 🚀 Historia zmian – Wersja 0.4.5.0
+
+Wydanie **0.4.5.0** wprowadza kluczowe rozszerzenia dwustronnej komunikacji, automatyzację bilansu służb, poprawki UI i motywu jasnego oraz powiązanie wozów zastępczych z awariami:
+
+1. **Wniosek o odwieszenie konta ściśle powiązany z 10 niezaliczonymi służbami:**
+   - Opcja `🔓 Wniosek o odwieszenie konta (po 10 niezaliczonych służbach)` w formularzu wniosków kierowcy pojawia się **wyłącznie wtedy**, gdy kierowca przekroczył limit 10 niezaliczonych służb netto lub jego konto zostało zawieszone.
+2. **Poprawki w jasnym motywie (Light Theme):**
+   - Poprawiono kontrast alertów, powiadomień, pól formularzy i badge'y ról na pastelowe tła z ciemnym, wysoce czytelnym tekstem (`#0f172a`, `#78350f`, `#064e3b`, `#831843`), eliminując wszelkie nieczytelne elementy.
+3. **Historia wysyłania wiadomości (Zarząd i Kierowca):**
+   - Panel Zarządu oraz Panel Kierowcy posiadają przejrzyste sekcje historii wysłanych wiadomości z podglądem odbiorcy, treści, daty oraz ewentualnej odpowiedzi.
+4. **Data i godzina w czasie rzeczywistym w Panelu Kierowcy:**
+   - W nagłówku Panelu Kierowcy dodano komponent czasu rzeczywistego `LiveClock` (data z dniem tygodnia oraz zegar z sekundnikiem).
+5. **Dedykowany podział zmian według rodzaju linii:**
+   - **Linie nocne (`N1`, `N2`):** W formularzu wydawania służby wyświetla się **wyłącznie** opcja `3 Zmiana (Nocna)`.
+   - **Linie dzienne:** Wyświetlają się wyłącznie `1 Zmiana (Wyjazd)` oraz `2 Zmiana (Podmiana / Przesiadka)`.
+6. **Wyznaczanie wozu zastępczego ściśle powiązane ze zgłoszeniem awarii:**
+   - Przycisk i formularz wyznaczenia wozu zastępczego pojawiają się bezpośrednio na karcie aktywnego zgłoszenia awarii w warsztacie oraz na służbach z aktywną usterką. Na standardowych, sprawnych służbach opcja podmiany nie zaśmieca widoku.
+7. **Poprawny nagłówek floty dla Właściciela w Panelu Kierowcy:**
+   - Gdy Właściciel wchodzi do Panelu Kierowcy, sekcja taboru wyświetla poprawny tytuł: `🚌 Pełna Flota VZTM (VMPK i VBP - Wszystkie)` zamiast jednostronnego nagłówka VMPK.
+8. **Responsywny wykaz brygad u kierowcy z limitem kolumn:**
+   - Tabela wykazu brygad u kierowcy została zoptymalizowana tak, że w typowym oknie mieści maks. 4 kolumny naraz, a pozostałe kolumny (trasa, przesiadki, uwagi) są dostępne poprzez płynny pasek przesuwania w poziomie (scroll).
+9. **Dwustronna komunikacja kierowcy z zarządem:**
+   - Kierowca może bezpośrednio z Panelu Kierowcy wysłać nową wiadomość lub zapytanie do Zarządu / dyspozytora.
+   - **9.1. Odpowiedzi dwustronne:** Kierowca może odpowiedzieć na dyspozycję otrzymaną od Zarządu, a Zarząd może jednym kliknięciem odpowiedzieć na zapytanie kierowcy.
+10. **Automatyczne niezaliczenie służby z poprzedniego dnia:**
+    - Każda zaplanowana służba z datą z przeszłości (np. służba z 09.10 oceniana w dniu 10.10), która nie posiada zatwierdzonego raportu, jest automatycznie kwalifikowana jako służba niezaliczona.
+11. **Odrabianie niezaliczonych służb przez służby dodatkowe:**
+    - Zrealizowanie dodatkowej służby i zatwierdzenie jej raportu zmniejsza licznik niezaliczonych służb w stosunku 1:1 ($\text{bilans netto} = \max(0, \text{zaległe} - \text{odrobione})$).
+12. **Aktualizacja wersji do 0.4.5.0:**
+    - Oficjalne oznaczenie wydania `v0.4.5.0` w całym systemie i dokumentacji.
 
 ---
 

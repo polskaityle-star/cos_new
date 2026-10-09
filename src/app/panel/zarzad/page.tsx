@@ -82,6 +82,7 @@ export default async function AdminPanel({
     vehicleDefectsHistory,
     contactMessages,
     rawBrigadeSchedules,
+    driverNotifications,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
@@ -156,9 +157,16 @@ export default async function AdminPanel({
       include: { line: true },
       orderBy: [{ line: { number: "asc" } }, { brigadeNumber: "asc" }],
     }),
+    prisma.driverNotification.findMany({
+      include: { user: true },
+      orderBy: { createdAt: "desc" },
+      take: 60,
+    }),
   ]);
 
   const brigadeSchedules = sortBrigades(rawBrigadeSchedules);
+  const receivedDriverMessages = driverNotifications.filter((n) => n.direction === "TO_MANAGEMENT");
+  const sentDriverMessages = driverNotifications.filter((n) => n.direction === "TO_DRIVER");
 
   return (
     <div className="space-y-10 pb-16">
@@ -316,7 +324,7 @@ export default async function AdminPanel({
             </span>
           </div>
           <p className="text-slate-400 text-sm">
-            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.4.0.0)
+            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.4.5.0)
           </p>
         </div>
         <div className="flex flex-col md:items-end gap-3">
@@ -815,6 +823,70 @@ export default async function AdminPanel({
                         </button>
                       </div>
                     </form>
+
+                    {/* Przypisanie wozu zastępczego powiązane ze zgłoszeniem awarii (Wymóg 6) */}
+                    {canReplaceVeh && (() => {
+                      const affectedDuties = allDuties.filter(
+                        (d) => (d.userId === def.userId || d.vehicleId === def.vehicleId) && d.status === "SCHEDULED"
+                      );
+                      return (
+                        <div className="bg-slate-950/70 p-3.5 rounded-lg border border-purple-900/60 space-y-2">
+                          <div className="text-xs font-bold text-purple-300 flex items-center justify-between">
+                            <span>🔄 Wyznacz wóz zastępczy na trasę (dla kierowcy ze zgłoszoną awarią)</span>
+                            <span className="text-[10px] text-slate-400">Aktywne zaplanowane służby: {affectedDuties.length}</span>
+                          </div>
+                          {affectedDuties.length === 0 ? (
+                            <p className="text-[11px] text-slate-400">Kierowca lub pojazd nie ma obecnie aktywnych zaplanowanych służb w grafiku.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {affectedDuties.map((d) => (
+                                <form
+                                  key={d.id}
+                                  action="/api/panel/zarzad/woz-zastepczy"
+                                  method="POST"
+                                  className="flex flex-wrap items-center gap-2 bg-slate-900/90 p-2.5 rounded border border-slate-800 text-xs"
+                                >
+                                  <input type="hidden" name="dutyId" value={d.id} />
+                                  <span className="font-semibold text-white">Linia {d.line.number} (Brygada: {d.brigade || "b/d"}):</span>
+                                  <span className="text-slate-400">Wóz pierwotny: #{d.vehicle?.fleetNumber}</span>
+                                  {d.replacementVehicle && (
+                                    <span className="bg-purple-900/60 text-purple-200 border border-purple-500/50 px-1.5 py-0.5 rounded font-bold">
+                                      Aktualny zastępczy: #{d.replacementVehicle.fleetNumber}
+                                    </span>
+                                  )}
+                                  <select
+                                    name="replacementVehicleId"
+                                    defaultValue={d.replacementVehicleId || ""}
+                                    className="bg-slate-950 border border-slate-700 text-xs rounded px-2 py-1 text-white outline-none focus:border-purple-500"
+                                  >
+                                    <option value="">-- Brak (Wycofaj wóz zastępczy) --</option>
+                                    {allVehicles
+                                      .filter((v) => v.id !== d.vehicleId && (!d.user?.carrier || v.carrier === d.user.carrier))
+                                      .map((v) => (
+                                        <option key={v.id} value={v.id}>
+                                          #{v.fleetNumber} {v.model} ({v.registration}) [{v.carrier}]
+                                        </option>
+                                      ))}
+                                  </select>
+                                  <input
+                                    type="text"
+                                    name="reason"
+                                    placeholder="Powód podmiany"
+                                    className="bg-slate-950 border border-slate-700 text-xs rounded px-2 py-1 text-white outline-none focus:border-purple-500"
+                                  />
+                                  <button
+                                    type="submit"
+                                    className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-3 py-1 rounded text-xs transition-colors shadow cursor-pointer whitespace-nowrap"
+                                  >
+                                    🔄 Zatwierdź wóz zastępczy
+                                  </button>
+                                </form>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -987,68 +1059,188 @@ export default async function AdminPanel({
         )}
       </section>
 
-      {/* 6.5. Wyślij Wiadomość do Kierowcy (Wymóg 9) */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <h2 className="text-2xl font-bold mb-2 text-sky-400 flex items-center gap-2">
-          <span>📨 Wyślij Wiadomość do Kierowcy / Pracownika</span>
-        </h2>
-        <p className="text-xs text-slate-400 mb-4">
-          Wiadomość pojawi się bezpośrednio w panelu kierowcy w dedykowanej sekcji powiadomień zarządu.
-        </p>
-
-        <form action="/api/panel/zarzad/wiadomosci/kierowca" method="POST" className="bg-slate-900/80 p-5 rounded-lg border border-slate-700 space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Wybierz odbiorcę (kierowcę) *
-              </label>
-              <select
-                name="userId"
-                required
-                className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-xs text-white outline-none focus:border-sky-500"
-              >
-                <option value="">-- Wybierz pracownika --</option>
-                {activeUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.badgeNumber ? `[${u.badgeNumber}] ` : ""}{u.username} [{u.carrier || "Brak"}] ({getRoleLabel(u.role)})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Tytuł wiadomości *
-              </label>
-              <input
-                type="text"
-                name="title"
-                required
-                placeholder="np. Informacja o zmianie trasy, Podmiana wozu, Wezwanie"
-                className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-xs text-white outline-none focus:border-sky-500"
-              />
-            </div>
-          </div>
-
+      {/* 6.5. Komunikacja i Wiadomości z Kierowcami (Wymogi 3, 9, 9.1) */}
+      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-6" id="wiadomosci">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-700 pb-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Treść wiadomości / dyspozycji *
-            </label>
-            <textarea
-              name="message"
-              required
-              rows={3}
-              placeholder="Wpisz treść dyspozycji lub wiadomości dla kierowcy..."
-              className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-xs text-white outline-none focus:border-sky-500 resize-none"
-            ></textarea>
+            <h2 className="text-2xl font-bold flex items-center gap-2 text-sky-400">
+              <span>📨 Komunikacja z Kierowcami i Dyspozycje</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Wysyłaj wiadomości do pracowników, odbieraj ich zapytania i odpowiadaj na nie w czasie rzeczywistym.
+            </p>
+          </div>
+          {receivedDriverMessages.filter((m) => !m.reply).length > 0 && (
+            <span className="bg-sky-500 text-white font-bold text-xs px-2.5 py-1 rounded-full animate-pulse self-start sm:self-auto">
+              Oczekujące zapytania: {receivedDriverMessages.filter((m) => !m.reply).length}
+            </span>
+          )}
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Lewa kolumna: Formularz wysyłki nowej wiadomości do kierowcy + Historia wysłanych */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-sky-300">✉️ Nowa wiadomość / dyspozycja do kierowcy</h3>
+            <form action="/api/panel/zarzad/wiadomosci/kierowca" method="POST" className="bg-slate-900/90 p-5 rounded-xl border border-slate-700 space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Wybierz odbiorcę (kierowcę) *
+                  </label>
+                  <select
+                    name="userId"
+                    required
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-sky-500"
+                  >
+                    <option value="">-- Wybierz pracownika --</option>
+                    {activeUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.badgeNumber ? `[${u.badgeNumber}] ` : ""}{u.username} [{u.carrier || "Brak"}] ({getRoleLabel(u.role)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Tytuł wiadomości *
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    required
+                    placeholder="np. Informacja o zmianie trasy, Podmiana wozu, Wezwanie"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-sky-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Treść wiadomości / dyspozycji *
+                  </label>
+                  <textarea
+                    name="message"
+                    required
+                    rows={3}
+                    placeholder="Wpisz treść dyspozycji lub wiadomości dla kierowcy..."
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-sky-500 resize-none"
+                  ></textarea>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="bg-sky-600 hover:bg-sky-500 text-white font-bold px-5 py-2.5 rounded-lg text-xs transition-colors shadow flex items-center gap-2 cursor-pointer"
+              >
+                <span>✉️ Wyślij wiadomość do kierowcy</span>
+              </button>
+            </form>
+
+            {/* Historia wysłanych wiadomości do kierowców */}
+            <div className="space-y-2 pt-2">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                📤 Historia wiadomości wysłanych do Kierowców ({sentDriverMessages.length}):
+              </h4>
+              {sentDriverMessages.length === 0 ? (
+                <p className="text-slate-500 text-xs">Brak wysłanych wiadomości.</p>
+              ) : (
+                <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                  {sentDriverMessages.map((msg) => (
+                    <div key={msg.id} className="bg-slate-900/80 border border-slate-800 p-3 rounded-lg text-xs space-y-1.5">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="font-bold text-white">{msg.title}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {new Date(msg.createdAt).toLocaleString("pl-PL")}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-sky-300">
+                        Do: <b>{msg.user?.username}</b> {msg.user?.badgeNumber ? `[${msg.user.badgeNumber}]` : ""} &bull; Nadawca: {msg.sender}
+                      </div>
+                      <p className="text-slate-300 whitespace-pre-wrap">{msg.message}</p>
+                      {msg.reply && (
+                        <div className="bg-emerald-950/70 border border-emerald-700/60 p-2 rounded text-emerald-200 mt-1 space-y-0.5">
+                          <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-300">
+                            <span>💬 Odpowiedź kierowcy ({msg.replyBy || msg.user?.username}):</span>
+                            {msg.repliedAt && (
+                              <span className="text-[10px] text-slate-400 font-mono font-normal">
+                                {new Date(msg.repliedAt).toLocaleString("pl-PL")}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-white whitespace-pre-wrap">{msg.reply}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <button
-            type="submit"
-            className="bg-sky-600 hover:bg-sky-500 text-white font-bold px-5 py-2.5 rounded-lg text-xs transition-colors shadow flex items-center gap-2 cursor-pointer"
-          >
-            <span>✉️ Wyślij wiadomość do kierowcy</span>
-          </button>
-        </form>
+          {/* Prawa kolumna: Odebrane wiadomości od Kierowców (z możliwością odpowiedzi) */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-amber-300 flex items-center justify-between">
+              <span>📥 Wiadomości i Zapytania od Kierowców ({receivedDriverMessages.length})</span>
+            </h3>
+
+            {receivedDriverMessages.length === 0 ? (
+              <p className="text-slate-400 text-xs bg-slate-900/60 p-4 rounded-lg border border-slate-800">
+                Brak wiadomości nadesłanych przez kierowców.
+              </p>
+            ) : (
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {receivedDriverMessages.map((msg) => (
+                  <div key={msg.id} className="bg-slate-900/90 border border-slate-700 p-4 rounded-xl text-xs space-y-2.5 shadow">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-white">{msg.title}</span>
+                        <span className="bg-amber-950 text-amber-300 border border-amber-600/50 px-2 py-0.5 rounded font-mono text-[10px]">
+                          {msg.user?.username} {msg.user?.badgeNumber ? `[${msg.user.badgeNumber}]` : ""}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {new Date(msg.createdAt).toLocaleString("pl-PL")}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+                      {msg.message}
+                    </p>
+
+                    {msg.reply ? (
+                      <div className="bg-sky-950/70 border border-sky-700/60 p-2.5 rounded-lg text-sky-200 space-y-1">
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-sky-300">
+                          <span>💬 Twoja odpowiedź ({msg.replyBy || "Zarząd"}):</span>
+                          {msg.repliedAt && (
+                            <span className="text-[10px] text-slate-400 font-mono font-normal">
+                              {new Date(msg.repliedAt).toLocaleString("pl-PL")}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-white whitespace-pre-wrap">{msg.reply}</p>
+                      </div>
+                    ) : (
+                      <form action="/api/panel/zarzad/wiadomosci/odpowiedz" method="POST" className="pt-2 border-t border-slate-800 flex flex-wrap sm:flex-nowrap gap-2 items-center">
+                        <input type="hidden" name="notificationId" value={msg.id} />
+                        <input
+                          type="text"
+                          name="replyText"
+                          required
+                          placeholder="Wpisz odpowiedź na zapytanie kierowcy..."
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+                        />
+                        <button
+                          type="submit"
+                          className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs whitespace-nowrap cursor-pointer transition-colors shadow"
+                        >
+                          💬 Odpowiedz
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* 7. Zarządzanie Liniami i Taborem */}
@@ -1409,42 +1601,55 @@ export default async function AdminPanel({
                         ℹ️ <b>Uwagi:</b> {duty.notes}
                       </div>
                     )}
-                    {canReplaceVeh && (
-                      <details className="mt-2 text-xs bg-slate-950/70 p-2.5 rounded border border-slate-800">
-                        <summary className="cursor-pointer text-purple-400 font-bold hover:underline flex items-center gap-1.5">
-                          <span>🔄 {duty.replacementVehicle ? "Zmień / Wycofaj wóz zastępczy" : "Wyznacz wóz zastępczy (awaria pojazdu)"}</span>
-                        </summary>
-                        <form action="/api/panel/zarzad/woz-zastepczy" method="POST" className="mt-2 flex flex-wrap items-center gap-2">
-                          <input type="hidden" name="dutyId" value={duty.id} />
-                          <select
-                            name="replacementVehicleId"
-                            defaultValue={duty.replacementVehicleId || ""}
-                            className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
-                          >
-                            <option value="">-- Brak (Wycofaj wóz zastępczy) --</option>
-                            {allVehicles
-                              .filter((v) => !duty.user?.carrier || v.carrier === duty.user.carrier)
-                              .map((v) => (
-                                <option key={v.id} value={v.id}>
-                                  #{v.fleetNumber} {v.model} ({v.registration}) [{v.carrier}]
-                                </option>
-                              ))}
-                          </select>
-                          <input
-                            type="text"
-                            name="reason"
-                            placeholder="Powód podmiany (np. awaria drzwi)"
-                            className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
-                          />
-                          <button
-                            type="submit"
-                            className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors shadow cursor-pointer"
-                          >
-                            Zatwierdź wóz zastępczy
-                          </button>
-                        </form>
-                      </details>
-                    )}
+                    {canReplaceVeh && (() => {
+                      const hasActiveDefect = vehicleDefects.some(
+                        (vd) => vd.vehicleId === duty.vehicleId || vd.userId === duty.userId
+                      );
+                      const showReplacementOption = Boolean(duty.replacementVehicleId) || hasActiveDefect;
+                      if (!showReplacementOption) return null;
+
+                      return (
+                        <details className="mt-2 text-xs bg-slate-950/70 p-2.5 rounded border border-purple-900/60">
+                          <summary className="cursor-pointer text-purple-400 font-bold hover:underline flex items-center gap-1.5">
+                            <span>🔄 {duty.replacementVehicle ? "Zmień / Wycofaj wóz zastępczy" : "Wyznacz wóz zastępczy (zgłoszona awaria)"}</span>
+                            {hasActiveDefect && (
+                              <span className="bg-rose-950 text-rose-300 border border-rose-600 px-1.5 py-0.2 rounded text-[10px]">
+                                🚨 Zgłoszona awaria
+                              </span>
+                            )}
+                          </summary>
+                          <form action="/api/panel/zarzad/woz-zastepczy" method="POST" className="mt-2 flex flex-wrap items-center gap-2">
+                            <input type="hidden" name="dutyId" value={duty.id} />
+                            <select
+                              name="replacementVehicleId"
+                              defaultValue={duty.replacementVehicleId || ""}
+                              className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
+                            >
+                              <option value="">-- Brak (Wycofaj wóz zastępczy) --</option>
+                              {allVehicles
+                                .filter((v) => !duty.user?.carrier || v.carrier === duty.user.carrier)
+                                .map((v) => (
+                                  <option key={v.id} value={v.id}>
+                                    #{v.fleetNumber} {v.model} ({v.registration}) [{v.carrier}]
+                                  </option>
+                                ))}
+                            </select>
+                            <input
+                              type="text"
+                              name="reason"
+                              placeholder="Powód podmiany (np. awaria drzwi)"
+                              className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
+                            />
+                            <button
+                              type="submit"
+                              className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors shadow cursor-pointer"
+                            >
+                              Zatwierdź wóz zastępczy
+                            </button>
+                          </form>
+                        </details>
+                      );
+                    })()}
                   </div>
                   <div>
                     <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">

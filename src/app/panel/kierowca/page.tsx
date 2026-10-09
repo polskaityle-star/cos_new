@@ -8,6 +8,7 @@ import { getRoleLabel, getRoleBadgeClass, canAccessManagementPanel } from "@/lib
 import DriverEtatModal from "@/components/DriverEtatModal";
 import AvatarManager from "@/components/AvatarManager";
 import DriverRequestForm from "@/components/DriverRequestForm";
+import LiveClock from "@/components/LiveClock";
 
 export const dynamic = "force-dynamic";
 
@@ -71,19 +72,28 @@ export default async function DriverPanel() {
     ? allVehicles.filter((v) => v.carrier === driverCarrier)
     : allVehicles;
 
-  // Wymóg 5: Niezaliczone służby (data z przeszłości bez zatwierdzonego raportu)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Wymóg 10 i 11: Niezaliczone służby (data z przeszłości bez zatwierdzonego raportu)
+  // Służby dodatkowe z zatwierdzonym raportem odliczają się od niezaliczonych służb (1:1)
+  const now = new Date();
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(now);
 
-  const unfulfilledDuties = duties.filter((d) => {
-    const dDate = new Date(d.date);
-    if (dDate < today) {
-      const isCompleted = d.status === "COMPLETED" && d.report?.status === "ACCEPTED";
-      return !isCompleted;
+  const grossMissedDuties = duties.filter((d) => {
+    const dDateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(new Date(d.date));
+    const isExtraDuty = Boolean(d.isExtra || d.notes?.toLowerCase().includes("dodatkow"));
+    if (dDateStr < todayStr && !isExtraDuty) {
+      const isAccepted = d.report?.status === "ACCEPTED";
+      return !isAccepted;
     }
     return false;
   });
-  const unfulfilledCount = unfulfilledDuties.length;
+
+  const compensatedExtraDuties = duties.filter((d) => {
+    const isExtraDuty = Boolean(d.isExtra || d.notes?.toLowerCase().includes("dodatkow"));
+    return isExtraDuty && d.report?.status === "ACCEPTED";
+  });
+
+  const netUnfulfilledCount = Math.max(0, grossMissedDuties.length - compensatedExtraDuties.length);
+  const unfulfilledCount = netUnfulfilledCount;
 
   // Wymóg 5: Przy 10 niezaliczonych służbach konto zostaje zawieszone, a stały pojazd odebrany (etat bez zmian)
   let isSuspended = currentUser?.suspended || unfulfilledCount >= 10;
@@ -156,6 +166,7 @@ export default async function DriverPanel() {
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">
+          <LiveClock />
           <Link
             href="/brygady"
             className="bg-amber-700/80 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border border-amber-600/60 shadow"
@@ -179,16 +190,17 @@ export default async function DriverPanel() {
         </div>
       </div>
 
-      {/* Ostrzeżenia o niezaliczonych służbach / zawieszeniu konta (Wymóg 5) */}
+      {/* Ostrzeżenia o niezaliczonych służbach / zawieszeniu konta (Wymogi 5, 10, 11) */}
       {isSuspended ? (
         <div className="bg-red-950/80 border-2 border-red-600 p-5 rounded-2xl text-red-200 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-white font-extrabold text-lg">
-              <span className="text-2xl">🚫</span> KONTO KIEROWCY ZAWIESZONE ({unfulfilledCount} niezaliczonych służb)
+              <span className="text-2xl">🚫</span> KONTO KIEROWCY ZAWIESZONE ({unfulfilledCount} niezaliczonych służb netto)
             </div>
             <p className="text-xs text-red-300">
-              Przekroczono limit 10 niezaliczonych służb. Zgodnie z regulaminem Twój stały pojazd został zwolniony (Twój etat pozostaje bez zmian).
-              Aby odblokować możliwość wykonywania służb, musisz złożyć <b>Wniosek o odwieszenie konta</b> do Zarządu.
+              Przekroczono limit 10 niezaliczonych służb (Zaległe z przeszłości: {grossMissedDuties.length}, odrobione przez dodatkowe służby: {compensatedExtraDuties.length}).
+              Zgodnie z regulaminem Twój stały pojazd został zwolniony (Twój etat pozostaje bez zmian).
+              Aby odblokować możliwość wykonywania służb, musisz złożyć poniżej <b>Wniosek o odwieszenie konta</b> do Zarządu.
             </p>
           </div>
           <a
@@ -205,8 +217,8 @@ export default async function DriverPanel() {
               <span className="text-2xl">⚠️</span> OSTRZEŻENIE: Masz {unfulfilledCount} niezaliczonych służb!
             </div>
             <p className="text-xs text-amber-300">
-              Zalecamy jak najszybsze nadrobienie zaległości poprzez złożenie <b>Wniosku o dodatkową służbę</b>.
-              Pamiętaj: przy 10 niezaliczonych służbach konto zostanie automatycznie zawieszone i utracisz stały pojazd!
+              Zalecamy jak najszybsze nadrobienie zaległości poprzez złożenie <b>Wniosku o dodatkową służbę</b> (każda zaliczona służba dodatkowa redukuje liczbę zaległości o 1).
+              Zaległe z przeszłości: <b>{grossMissedDuties.length}</b>, odrobione przez służby dodatkowe: <b>{compensatedExtraDuties.length}</b>. Pamiętaj: przy 10 niezaliczonych służbach konto zostanie automatycznie zawieszone!
             </p>
           </div>
           <a
@@ -216,50 +228,187 @@ export default async function DriverPanel() {
             Złóż wniosek o dodatkową służbę &darr;
           </a>
         </div>
+      ) : compensatedExtraDuties.length > 0 && grossMissedDuties.length > 0 ? (
+        <div className="bg-emerald-950/60 border border-emerald-600/70 p-4 rounded-xl text-emerald-200 text-xs flex items-center justify-between gap-4">
+          <span>
+            ℹ️ <b>Status bilansu służb:</b> Zaległe z przeszłości: {grossMissedDuties.length}, odrobione przez zaliczone służby dodatkowe: {compensatedExtraDuties.length} (Pozostało do odrobienia netto: {unfulfilledCount}).
+          </span>
+        </div>
       ) : null}
 
-      {/* 📨 Wiadomości od Zarządu (Wymóg 9) */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold flex items-center gap-2 text-sky-400">
-            <span>📨 Wiadomości od Zarządu ({driverNotifications.length})</span>
-          </h2>
-          {driverNotifications.filter((n) => !n.read).length > 0 && (
-            <span className="bg-sky-500 text-white font-bold text-xs px-2.5 py-0.5 rounded-full animate-pulse">
-              Nowe: {driverNotifications.filter((n) => !n.read).length}
+      {/* 📨 Komunikacja z Zarządem: Otrzymane, Nowe Zapytanie i Historia Wysłanych (Wymogi 3, 9, 9.1) */}
+      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-6" id="wiadomosci">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-700 pb-4">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2 text-sky-400">
+              <span>💬 Komunikacja Kierowcy z Zarządem</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Odbieraj dyspozycje od Zarządu, odpowiadaj na wiadomości oraz przesyłaj własne zapytania do dyspozytorni.
+            </p>
+          </div>
+          {driverNotifications.filter((n) => n.direction !== "TO_MANAGEMENT" && !n.read).length > 0 && (
+            <span className="bg-sky-500 text-white font-bold text-xs px-2.5 py-1 rounded-full animate-pulse self-start sm:self-auto">
+              Nowe wiadomości: {driverNotifications.filter((n) => n.direction !== "TO_MANAGEMENT" && !n.read).length}
             </span>
           )}
         </div>
 
-        {driverNotifications.length === 0 ? (
-          <p className="text-slate-400 text-sm">Brak wiadomości od dyspozytorni lub Zarządu.</p>
-        ) : (
-          <div className="space-y-3">
-            {driverNotifications.map((notif) => (
-              <div
-                key={notif.id}
-                className={`p-4 rounded-lg border transition-all ${
-                  notif.read
-                    ? "bg-slate-900/60 border-slate-800 text-slate-300"
-                    : "bg-sky-950/40 border-sky-600/60 text-sky-100 shadow-md"
-                }`}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white">{notif.title}</span>
-                    <span className="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded border border-slate-700 font-mono">
-                      Od: {notif.sender}
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    {new Date(notif.createdAt).toLocaleString("pl-PL")}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">{notif.message}</p>
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Kolumna Lewa: Wiadomości od Zarządu (z opcją odpowiedzi) */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-sky-300 flex items-center justify-between">
+              <span>📬 Wiadomości od Zarządu ({driverNotifications.filter((n) => n.direction !== "TO_MANAGEMENT").length})</span>
+            </h3>
+
+            {driverNotifications.filter((n) => n.direction !== "TO_MANAGEMENT").length === 0 ? (
+              <p className="text-slate-400 text-xs bg-slate-900/60 p-4 rounded-lg border border-slate-800">
+                Brak wiadomości od dyspozytorni lub Zarządu.
+              </p>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                {driverNotifications
+                  .filter((n) => n.direction !== "TO_MANAGEMENT")
+                  .map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={`p-4 rounded-xl border transition-all space-y-2.5 ${
+                        notif.read
+                          ? "bg-slate-900/60 border-slate-800 text-slate-300"
+                          : "bg-sky-950/40 border-sky-600/60 text-sky-100 shadow-md"
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-white">{notif.title}</span>
+                          <span className="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded border border-slate-700 font-mono">
+                            Od: {notif.sender}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {new Date(notif.createdAt).toLocaleString("pl-PL")}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+                        {notif.message}
+                      </p>
+
+                      {/* Odpowiedź kierowcy */}
+                      {notif.reply ? (
+                        <div className="bg-slate-950/80 border border-slate-700/80 p-2.5 rounded-lg text-xs space-y-1">
+                          <div className="flex items-center justify-between text-[11px] text-emerald-400 font-semibold">
+                            <span>💬 Twoja odpowiedź ({notif.replyBy || "Kierowca"}):</span>
+                            {notif.repliedAt && (
+                              <span className="text-[10px] text-slate-400 font-mono font-normal">
+                                {new Date(notif.repliedAt).toLocaleString("pl-PL")}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-200 whitespace-pre-wrap">{notif.reply}</p>
+                        </div>
+                      ) : (
+                        <form action="/api/panel/kierowca/wiadomosc-odpowiedz" method="POST" className="pt-2 border-t border-slate-800/80 flex flex-wrap sm:flex-nowrap gap-2 items-center">
+                          <input type="hidden" name="notificationId" value={notif.id} />
+                          <input
+                            type="text"
+                            name="replyText"
+                            required
+                            placeholder="Odpowiedz Zarządowi..."
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-sky-500"
+                          />
+                          <button
+                            type="submit"
+                            className="bg-sky-600 hover:bg-sky-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer transition-colors shadow"
+                          >
+                            💬 Odpowiedz
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
+
+          {/* Kolumna Prawa: Formularz wysłania wiadomości do Zarządu + Historia wysłanych */}
+          <div className="space-y-4">
+            <div className="bg-slate-900/90 border border-slate-700 p-4 rounded-xl space-y-3">
+              <h3 className="text-sm font-bold text-amber-300 flex items-center gap-1.5">
+                <span>✉️ Wyślij nową wiadomość / zapytanie do Zarządu</span>
+              </h3>
+              <form action="/api/panel/kierowca/wiadomosc-zarzad" method="POST" className="space-y-3">
+                <div>
+                  <label className="block text-[11px] text-slate-300 mb-1 font-semibold">Tytuł wiadomości *</label>
+                  <input
+                    type="text"
+                    name="title"
+                    required
+                    placeholder="np. Zapytanie o grafik, Zgłoszenie sprawy kadrowej"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-300 mb-1 font-semibold">Treść wiadomości *</label>
+                  <textarea
+                    name="message"
+                    required
+                    rows={3}
+                    placeholder="Wpisz treść pytania lub informacji dla dyspozytora / Zarządu..."
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-amber-500 resize-none"
+                  ></textarea>
+                </div>
+                <button
+                  type="submit"
+                  className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors shadow cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>📨 Wyślij do Zarządu</span>
+                </button>
+              </form>
+            </div>
+
+            {/* Historia wysłanych wiadomości do Zarządu */}
+            {driverNotifications.filter((n) => n.direction === "TO_MANAGEMENT").length > 0 && (
+              <div className="space-y-2 pt-1">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  📤 Historia Twoich wiadomości do Zarządu ({driverNotifications.filter((n) => n.direction === "TO_MANAGEMENT").length}):
+                </h4>
+                <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                  {driverNotifications
+                    .filter((n) => n.direction === "TO_MANAGEMENT")
+                    .map((msg) => (
+                      <div key={msg.id} className="bg-slate-900/80 border border-slate-800 p-3 rounded-lg text-xs space-y-1.5">
+                        <div className="flex justify-between items-center gap-2">
+                          <span className="font-bold text-white">{msg.title}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {new Date(msg.createdAt).toLocaleString("pl-PL")}
+                          </span>
+                        </div>
+                        <p className="text-slate-300 whitespace-pre-wrap">{msg.message}</p>
+                        {msg.reply ? (
+                          <div className="bg-sky-950/70 border border-sky-700/60 p-2.5 rounded text-sky-200 mt-1 space-y-0.5">
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-sky-300">
+                              <span>💬 Odpowiedź Zarządu ({msg.replyBy || "Dyspozytor"}):</span>
+                              {msg.repliedAt && (
+                                <span className="text-[10px] text-slate-400 font-mono font-normal">
+                                  {new Date(msg.repliedAt).toLocaleString("pl-PL")}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-white whitespace-pre-wrap">{msg.reply}</p>
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-amber-400 font-medium">
+                            ⏳ Oczekuje na odpowiedź Zarządu...
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Podsumowanie postępów kierowcy */}
@@ -415,128 +564,134 @@ export default async function DriverPanel() {
         {brigadeSchedules.length === 0 ? (
           <p className="text-slate-400 text-sm">Brak zdefiniowanych brygad w systemie.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-700">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-900/90 text-xs text-slate-300 uppercase tracking-wider border-b border-slate-700">
-                <tr>
-                  <th className="py-3 px-4">Linia</th>
-                  <th className="py-3 px-4">Brygada</th>
-                  <th className="py-3 px-4">Godziny</th>
-                  <th className="py-3 px-4">Przystanki</th>
-                  <th className="py-3 px-4">Trasa / Wyjazd ➔ Zjazd</th>
-                  <th className="py-3 px-4">Przesiadki kierowców</th>
-                  <th className="py-3 px-4">Uwagi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700/60 bg-slate-900/40">
-                {brigadeSchedules.map((b) => {
-                  const isPeak = isPeakBrigade(b);
-                  return (
-                    <tr
-                      key={b.id}
-                      className={`hover:bg-slate-800/60 transition-colors ${
-                        isPeak ? "bg-purple-950/15" : ""
-                      }`}
-                    >
-                      <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
-                        Linia {b.line?.number}
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
-                            {b.brigadeNumber}
-                          </span>
-                          <span
-                            className={`text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full border ${getDayBadgeClass(
-                              b.brigadeNumber,
-                              b.notes
-                            )}`}
-                          >
-                            {getDayLabel(b.brigadeNumber, b.notes)}
-                          </span>
-                          <span
-                            className={`text-[9px] font-sans font-bold px-2 py-0.5 rounded border ${getBrigadeTypeBadgeClass(
-                              b
-                            )}`}
-                          >
-                            {isPeak ? "⚡ Szczytowa" : "🚌 Normalna"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-emerald-400 font-bold whitespace-nowrap text-xs">
-                        {isPeak ? (
-                          <div className="space-y-1">
-                            <div className="bg-purple-900/40 px-2 py-0.5 rounded border border-purple-800/40">
-                              <span className="text-purple-300 font-sans text-[10px] block font-bold">I zmiana:</span>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between text-xs text-slate-400 px-1 gap-1">
+              <span>Wykaz brygad (widok do 4 kolumn):</span>
+              <span className="text-amber-300 font-semibold">↔️ Przesuń tabelę w bok, aby zobaczyć trasę, przesiadki i uwagi</span>
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-slate-700 shadow-inner scrollbar-thin scrollbar-thumb-slate-700">
+              <table className="min-w-[1100px] w-full text-left text-sm">
+                <thead className="bg-slate-900/90 text-xs text-slate-300 uppercase tracking-wider border-b border-slate-700">
+                  <tr>
+                    <th className="py-3 px-4">Linia</th>
+                    <th className="py-3 px-4">Brygada</th>
+                    <th className="py-3 px-4">Godziny</th>
+                    <th className="py-3 px-4">Przystanki</th>
+                    <th className="py-3 px-4">Trasa / Wyjazd ➔ Zjazd</th>
+                    <th className="py-3 px-4">Przesiadki kierowców</th>
+                    <th className="py-3 px-4">Uwagi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/60 bg-slate-900/40">
+                  {brigadeSchedules.map((b) => {
+                    const isPeak = isPeakBrigade(b);
+                    return (
+                      <tr
+                        key={b.id}
+                        className={`hover:bg-slate-800/60 transition-colors ${
+                          isPeak ? "bg-purple-950/15" : ""
+                        }`}
+                      >
+                        <td className="py-3 px-4 font-bold text-white whitespace-nowrap">
+                          Linia {b.line?.number}
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
+                              {b.brigadeNumber}
+                            </span>
+                            <span
+                              className={`text-[10px] font-sans font-semibold px-2 py-0.5 rounded-full border ${getDayBadgeClass(
+                                b.brigadeNumber,
+                                b.notes
+                              )}`}
+                            >
+                              {getDayLabel(b.brigadeNumber, b.notes)}
+                            </span>
+                            <span
+                              className={`text-[9px] font-sans font-bold px-2 py-0.5 rounded border ${getBrigadeTypeBadgeClass(
+                                b
+                              )}`}
+                            >
+                              {isPeak ? "⚡ Szczytowa" : "🚌 Normalna"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-emerald-400 font-bold whitespace-nowrap text-xs">
+                          {isPeak ? (
+                            <div className="space-y-1">
+                              <div className="bg-purple-900/40 px-2 py-0.5 rounded border border-purple-800/40">
+                                <span className="text-purple-300 font-sans text-[10px] block font-bold">I zmiana:</span>
+                                <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime || "—"}</div>
+                                <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime || "—"}</div>
+                              </div>
+                              <div className="bg-purple-900/40 px-2 py-0.5 rounded border border-purple-800/40">
+                                <span className="text-purple-300 font-sans text-[10px] block font-bold">II zmiana:</span>
+                                <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime2 || "—"}</div>
+                                <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime2 || "—"}</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
                               <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime || "—"}</div>
                               <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime || "—"}</div>
+                            </>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-xs text-slate-300 font-mono">
+                          {isPeak ? (
+                            <div className="space-y-1">
+                              <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
+                                <span className="text-purple-300 font-sans text-[10px] block font-bold">I:</span>
+                                <div><span className="text-slate-400 font-sans">1.:</span> {b.firstStopDeparture || "—"}</div>
+                                <div><span className="text-slate-400 font-sans">Ost.:</span> {b.lastStopArrival || "—"}</div>
+                              </div>
+                              <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
+                                <span className="text-purple-300 font-sans text-[10px] block font-bold">II:</span>
+                                <div><span className="text-slate-400 font-sans">1.:</span> {b.firstStopDeparture2 || "—"}</div>
+                                <div><span className="text-slate-400 font-sans">Ost.:</span> {b.lastStopArrival2 || "—"}</div>
+                              </div>
                             </div>
-                            <div className="bg-purple-900/40 px-2 py-0.5 rounded border border-purple-800/40">
-                              <span className="text-purple-300 font-sans text-[10px] block font-bold">II zmiana:</span>
-                              <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime2 || "—"}</div>
-                              <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime2 || "—"}</div>
+                          ) : (
+                            <>
+                              <div><span className="text-slate-400 font-sans">1. przystanek:</span> {b.firstStopDeparture || "—"}</div>
+                              <div><span className="text-slate-400 font-sans">Ost. przystanek:</span> {b.lastStopArrival || "—"}</div>
+                            </>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-xs text-slate-300">
+                          {isPeak ? (
+                            <div className="space-y-1">
+                              <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
+                                <span className="text-purple-300 text-[10px] block font-bold">I zmiana:</span>
+                                <div><b>Wyjazd:</b> {b.startLocation || "—"}</div>
+                                <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation || "—"}</div>
+                              </div>
+                              <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
+                                <span className="text-purple-300 text-[10px] block font-bold">II zmiana:</span>
+                                <div><b>Wyjazd:</b> {b.startLocation2 || "—"}</div>
+                                <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation2 || "—"}</div>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div><span className="text-slate-400 font-normal">Wyjazd:</span> {b.startTime || "—"}</div>
-                            <div><span className="text-slate-400 font-normal">Zjazd:</span> {b.endTime || "—"}</div>
-                          </>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-xs text-slate-300 font-mono">
-                        {isPeak ? (
-                          <div className="space-y-1">
-                            <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
-                              <span className="text-purple-300 font-sans text-[10px] block font-bold">I:</span>
-                              <div><span className="text-slate-400 font-sans">1.:</span> {b.firstStopDeparture || "—"}</div>
-                              <div><span className="text-slate-400 font-sans">Ost.:</span> {b.lastStopArrival || "—"}</div>
-                            </div>
-                            <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
-                              <span className="text-purple-300 font-sans text-[10px] block font-bold">II:</span>
-                              <div><span className="text-slate-400 font-sans">1.:</span> {b.firstStopDeparture2 || "—"}</div>
-                              <div><span className="text-slate-400 font-sans">Ost.:</span> {b.lastStopArrival2 || "—"}</div>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div><span className="text-slate-400 font-sans">1. przystanek:</span> {b.firstStopDeparture || "—"}</div>
-                            <div><span className="text-slate-400 font-sans">Ost. przystanek:</span> {b.lastStopArrival || "—"}</div>
-                          </>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-xs text-slate-300">
-                        {isPeak ? (
-                          <div className="space-y-1">
-                            <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
-                              <span className="text-purple-300 text-[10px] block font-bold">I zmiana:</span>
+                          ) : (
+                            <>
                               <div><b>Wyjazd:</b> {b.startLocation || "—"}</div>
                               <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation || "—"}</div>
-                            </div>
-                            <div className="bg-slate-900/60 p-1 rounded border border-slate-700/60">
-                              <span className="text-purple-300 text-[10px] block font-bold">II zmiana:</span>
-                              <div><b>Wyjazd:</b> {b.startLocation2 || "—"}</div>
-                              <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation2 || "—"}</div>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div><b>Wyjazd:</b> {b.startLocation || "—"}</div>
-                            <div className="text-slate-400"><b>Zjazd:</b> {b.endLocation || "—"}</div>
-                          </>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-xs text-slate-300">
-                        {b.driverChanges || <span className="text-slate-500 italic">Brak przesiadek</span>}
-                      </td>
-                      <td className="py-3 px-4 text-xs text-slate-400">
-                        {b.notes || <span className="text-slate-600">-</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            </>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-xs text-slate-300">
+                          {b.driverChanges || <span className="text-slate-500 italic">Brak przesiadek</span>}
+                        </td>
+                        <td className="py-3 px-4 text-xs text-slate-400">
+                          {b.notes || <span className="text-slate-600">-</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>
@@ -546,10 +701,16 @@ export default async function DriverPanel() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2 text-cyan-400">
-              <span>🚌 Tabor Twojego Przewoźnika ({driverCarrier || "Wszystkie"})</span>
+              <span>
+                {isOwner
+                  ? "🚌 Pełna Flota VZTM (VMPK i VBP - Wszystkie)"
+                  : `🚌 Tabor Twojego Przewoźnika (${driverCarrier || "Wszystkie"})`}
+              </span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Przeglądaj autobusy przypisane do Twojej zajezdni, ich aktualne stany liczników oraz status techniczny.
+              {isOwner
+                ? "Jako Właściciel posiadasz pełny wgląd we wszystkie autobusy w bazach VMPK i VBP oraz ich stan techniczny."
+                : `Przeglądaj autobusy przypisane do Twojej zajezdni (${driverCarrier}), ich aktualne stany liczników oraz status techniczny.`}
             </p>
           </div>
           <span className="text-xs bg-slate-900 border border-slate-700 px-3 py-1 rounded-full text-slate-300 font-mono">
@@ -631,6 +792,7 @@ export default async function DriverPanel() {
           <DriverRequestForm
             scheduledDuties={scheduledDuties}
             availableVehicles={availableVehicles}
+            canReinstate={unfulfilledCount >= 10 || isSuspended}
           />
         </section>
 
@@ -642,7 +804,7 @@ export default async function DriverPanel() {
           <form action="/api/panel/kierowca/usterka" method="POST" className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">
-                Pojazd z taboru ({driverCarrier}) *
+                Pojazd z taboru ({isOwner ? "Wszystkie pojazdy VZTM" : driverCarrier}) *
               </label>
               <select
                 name="vehicleId"
