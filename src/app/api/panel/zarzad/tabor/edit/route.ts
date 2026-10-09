@@ -72,7 +72,19 @@ export async function POST(req: Request) {
       where: { id },
       data: updateData
     });
+
+    if (status === "SPRAWNY") {
+      await prisma.vehicleDefect.updateMany({
+        where: { vehicleId: id, status: { in: ["NOWE", "WARSZTAT"] } },
+        data: {
+          status: "NAPRAWIONE",
+          adminNotes: "Naprawione - pojazd oznaczony jako sprawny w zarządzaniu taborem",
+        },
+      });
+    }
+
     revalidatePath("/tabor");
+    revalidatePath("/panel/kierowca");
     revalidatePath("/panel/zarzad");
   }
 

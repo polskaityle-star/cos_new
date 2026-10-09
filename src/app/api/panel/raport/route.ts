@@ -30,6 +30,45 @@ async function saveUploadFile(file: File, prefix: string): Promise<string> {
   }
 }
 
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ message: "Brak autoryzacji" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const dutyId = searchParams.get("dutyId");
+
+    if (!dutyId) {
+      return NextResponse.json({ message: "Brak dutyId" }, { status: 400 });
+    }
+
+    const duty = await prisma.duty.findUnique({
+      where: { id: dutyId },
+      include: {
+        line: true,
+        vehicle: true,
+        replacementVehicle: true,
+      },
+    });
+
+    if (!duty) {
+      return NextResponse.json({ message: "Służba nie znaleziona" }, { status: 404 });
+    }
+
+    // Check if user is owner of duty or ZARZAD
+    if (duty.userId !== session.user.id && session.user.role !== "ZARZAD") {
+      return NextResponse.json({ message: "Brak uprawnień do tej służby" }, { status: 403 });
+    }
+
+    return NextResponse.json({ duty });
+  } catch (err) {
+    console.error("GET DUTY ERROR", err);
+    return NextResponse.json({ message: "Błąd serwera" }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -46,12 +85,13 @@ export async function POST(req: Request) {
     let startScreenshot = "";
     let endScreenshot = "";
     let summaryFile = "";
+    const depotScreenshotsObj: Record<string, string> = {};
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await req.formData();
       dutyId = formData.get("dutyId") as string;
-      startMileage = parseInt(formData.get("startMileage") as string || "0");
-      endMileage = parseInt(formData.get("endMileage") as string || "0");
+      startMileage = parseInt((formData.get("startMileage") as string) || "0");
+      endMileage = parseInt((formData.get("endMileage") as string) || "0");
 
       const startFile = formData.get("startScreenshotFile") as File | null;
       const endFile = formData.get("endScreenshotFile") as File | null;
@@ -74,6 +114,25 @@ export async function POST(req: Request) {
       } else {
         summaryFile = (formData.get("summaryFile") as string) || "";
       }
+
+      // Opcjonalne screeny z wyjazdu i zjazdu do zajezdni (Wymóg 10)
+      const dep1File = formData.get("depotDep1File") as File | null;
+      const arr1File = formData.get("depotArr1File") as File | null;
+      const dep2File = formData.get("depotDep2File") as File | null;
+      const arr2File = formData.get("depotArr2File") as File | null;
+
+      if (dep1File && dep1File.size > 0) {
+        depotScreenshotsObj.depotDep1 = await saveUploadFile(dep1File, "depot_dep1");
+      }
+      if (arr1File && arr1File.size > 0) {
+        depotScreenshotsObj.depotArr1 = await saveUploadFile(arr1File, "depot_arr1");
+      }
+      if (dep2File && dep2File.size > 0) {
+        depotScreenshotsObj.depotDep2 = await saveUploadFile(dep2File, "depot_dep2");
+      }
+      if (arr2File && arr2File.size > 0) {
+        depotScreenshotsObj.depotArr2 = await saveUploadFile(arr2File, "depot_arr2");
+      }
     } else {
       const body = await req.json();
       dutyId = body.dutyId;
@@ -82,10 +141,13 @@ export async function POST(req: Request) {
       startScreenshot = body.startScreenshot;
       endScreenshot = body.endScreenshot;
       summaryFile = body.summaryFile;
+      if (body.depotScreenshots) {
+        Object.assign(depotScreenshotsObj, body.depotScreenshots);
+      }
     }
 
     if (!dutyId || isNaN(startMileage) || isNaN(endMileage) || !startScreenshot || !endScreenshot || !summaryFile) {
-      return NextResponse.json({ message: "Wszystkie pola i pliki raportu są wymagane." }, { status: 400 });
+      return NextResponse.json({ message: "Wszystkie podstawowe pola i pliki raportu są wymagane." }, { status: 400 });
     }
 
     // Weryfikacja czy służba należy do tego kierowcy i nie ma jeszcze raportu
@@ -106,7 +168,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Raport dla tej służby już istnieje" }, { status: 400 });
     }
 
-    // Blokada raportu dla przyszłych służb (Requirement 7)
+    // Blokada raportu dla przyszłych służb
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const dutyD = new Date(duty.date);
@@ -118,7 +180,11 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Tworzenie raportu i aktualizacja statusu służby oraz przebiegu pojazdu
+    const depotScreenshotsJson = Object.keys(depotScreenshotsObj).length > 0
+      ? JSON.stringify(depotScreenshotsObj)
+      : null;
+
+    // Tworzenie raportu i aktualizacja statusu służby
     const transactions: any[] = [
       prisma.report.create({
         data: {
@@ -127,7 +193,8 @@ export async function POST(req: Request) {
           endMileage,
           startScreenshot,
           endScreenshot,
-          summaryFile
+          summaryFile,
+          depotScreenshots: depotScreenshotsJson,
         }
       }),
       prisma.duty.update({
@@ -142,7 +209,7 @@ export async function POST(req: Request) {
     revalidatePath("/panel/zarzad");
     revalidatePath("/tabor");
 
-    return NextResponse.json({ message: "Raport został wysłany." }, { status: 201 });
+    return NextResponse.json({ message: "Raport został wysłany pomyślnie." }, { status: 201 });
   } catch (error) {
     console.error("REPORT ERROR", error);
     return NextResponse.json({ message: "Błąd serwera podczas zapisywania raportu." }, { status: 500 });

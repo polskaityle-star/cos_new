@@ -134,7 +134,7 @@ export default function DutyAssignmentForm({
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
         <h3 className="font-semibold text-white text-sm flex items-center gap-2">
-          <span>📅 Przydziel Nową Służbę do Grafiku</span>
+          <span>{prefill?.requestId ? "✅ Zatwierdź Służbę z Wniosku" : "📅 Przydziel Nową Służbę do Grafiku"}</span>
         </h3>
         {userCarrier && (
           <span className="text-xs px-2.5 py-0.5 rounded font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
@@ -364,9 +364,9 @@ export default function DutyAssignmentForm({
 
       <button
         type="submit"
-        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded text-sm transition-colors shadow-md"
+        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded text-sm transition-colors shadow-md cursor-pointer"
       >
-        Przydziel służbę do grafiku
+        {prefill?.requestId ? "✓ Zatwierdź" : "Przydziel służbę do grafiku"}
       </button>
     </form>
   );

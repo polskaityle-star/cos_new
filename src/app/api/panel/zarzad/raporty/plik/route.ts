@@ -40,6 +40,12 @@ export async function GET(req: Request) {
     if (type === "start") fileData = report.startScreenshot;
     else if (type === "end") fileData = report.endScreenshot;
     else if (type === "summary") fileData = report.summaryFile;
+    else if (type.startsWith("depot") && report.depotScreenshots) {
+      try {
+        const depotObj = JSON.parse(report.depotScreenshots);
+        fileData = depotObj[type] || "";
+      } catch {}
+    }
 
     if (!fileData) {
       return new Response("Brak zapisanego pliku dla tego typu", { status: 404 });

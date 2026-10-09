@@ -9,13 +9,23 @@ import { canManageFleet } from "@/lib/roles";
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !canManageFleet(session.user.role)) {
+  if (!session || !session.user || !canManageFleet(session.user.role, (session.user as any)?.username)) {
     return NextResponse.json({ message: "Brak uprawnień do zarządzania taborem" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);
   const defectId = searchParams.get("defectId");
-  const actionParam = searchParams.get("newStatus");
+  const actionParam = searchParams.get("newStatus") || searchParams.get("action");
+
+  // Czyszczenie historii napraw (Wymóg 12)
+  if (actionParam === "clear_history") {
+    await prisma.vehicleDefect.deleteMany({
+      where: { status: { in: ["NAPRAWIONE", "ODRZUCONE"] } },
+    });
+    revalidatePath("/panel/zarzad");
+    revalidatePath("/panel/kierowca");
+    return redirect("/panel/zarzad");
+  }
 
   const formData = await req.formData().catch(() => null);
   const formStatus = formData?.get("status") as string;

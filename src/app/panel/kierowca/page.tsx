@@ -8,6 +8,7 @@ import { getRoleLabel, getRoleBadgeClass, canAccessManagementPanel } from "@/lib
 import DriverEtatModal from "@/components/DriverEtatModal";
 import AvatarManager from "@/components/AvatarManager";
 import DriverRequestForm from "@/components/DriverRequestForm";
+import DefectReportForm from "@/components/DefectReportForm";
 import LiveClock from "@/components/LiveClock";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,13 @@ export default async function DriverPanel() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.vehicle.findMany({
+      include: {
+        defects: {
+          where: { status: { in: ["NOWE", "WARSZTAT"] } },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
       orderBy: { fleetNumber: "asc" },
     }),
     prisma.line.findMany({
@@ -776,6 +784,25 @@ export default async function DriverPanel() {
                       {veh.status}
                     </span>
                   </div>
+
+                  {veh.status === "WARSZTAT" && veh.defects && veh.defects.length > 0 && (
+                    <div className="mt-2.5 bg-amber-950/70 border border-amber-500/50 p-2.5 rounded-lg text-xs space-y-1">
+                      <div className="font-bold text-amber-300 flex items-center gap-1.5 text-[11px]">
+                        <span>🛠️ Na warsztacie:</span>
+                        <span className="text-white">{veh.defects[0].title}</span>
+                      </div>
+                      {veh.defects[0].description && (
+                        <p className="text-slate-300 text-[11px] leading-relaxed">
+                          <b className="text-slate-400">Opis usterki:</b> {veh.defects[0].description}
+                        </p>
+                      )}
+                      {veh.defects[0].adminNotes && (
+                        <div className="text-amber-400 text-[11px] font-medium pt-0.5 border-t border-amber-900/40">
+                          <b>Notatka warsztatu:</b> {veh.defects[0].adminNotes}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -796,59 +823,21 @@ export default async function DriverPanel() {
           />
         </section>
 
-        {/* Zgłaszanie Awarii Pojazdu (tylko tabor swojego przewoźnika) */}
+        {/* Zgłaszanie Awarii Pojazdu (ze zdjęciami - Wymóg 6) */}
         <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-rose-400">
             <span>🚨 Zgłoś usterkę / zdarzenie pojazdu</span>
           </h2>
-          <form action="/api/panel/kierowca/usterka" method="POST" className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Pojazd z taboru ({isOwner ? "Wszystkie pojazdy VZTM" : driverCarrier}) *
-              </label>
-              <select
-                name="vehicleId"
-                required
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-rose-500 text-slate-100"
-              >
-                <option value="">-- Wybierz pojazd --</option>
-                {availableVehicles.map((veh) => (
-                  <option key={veh.id} value={veh.id}>
-                    #{veh.fleetNumber} - {veh.model} [{veh.carrier}] ({veh.registration})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Tytuł usterki / Co się stało? *</label>
-              <input
-                type="text"
-                name="title"
-                required
-                placeholder="np. Awaria drzwi II, Stłuczka na pętli, Brak hamulców"
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-rose-500 text-slate-100"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Dokładny opis zdarzenia / uszkodzeń *</label>
-              <textarea
-                name="description"
-                required
-                rows={4}
-                placeholder="Opisz dokładnie kiedy i co się stało oraz jakie są uszkodzenia pojazdu..."
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-rose-500 text-slate-100 resize-none"
-              ></textarea>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-lg shadow transition-colors"
-            >
-              Zgłoś usterkę do dyspozytorni
-            </button>
-          </form>
+          <DefectReportForm
+            availableVehicles={availableVehicles.map((v) => ({
+              id: v.id,
+              fleetNumber: v.fleetNumber,
+              model: v.model,
+              carrier: v.carrier,
+              registration: v.registration,
+            }))}
+            carrierLabel={isOwner ? "Wszystkie pojazdy VZTM" : driverCarrier || "Wszystkie"}
+          />
         </section>
       </div>
 
@@ -896,6 +885,18 @@ export default async function DriverPanel() {
                         <div className="text-[11px] text-slate-400 mt-1">
                           Termin: {new Date(req.dateStart).toLocaleDateString("pl-PL")}
                           {req.dateEnd ? ` do ${new Date(req.dateEnd).toLocaleDateString("pl-PL")}` : ""}
+                        </div>
+                      )}
+                      {req.type === "URLOP" && (
+                        <div className="pt-2 flex justify-end">
+                          <form action={`/api/panel/kierowca/usun-urlop?requestId=${req.id}`} method="POST">
+                            <button
+                              type="submit"
+                              className="bg-red-600/80 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-semibold shadow transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              🗑️ Anuluj / Usuń urlop
+                            </button>
+                          </form>
                         </div>
                       )}
                     </div>
@@ -948,7 +949,28 @@ export default async function DriverPanel() {
                       </div>
                       <p className="text-slate-400 mt-1">{req.reason}</p>
                       {req.responseNotes && (
-                        <div className="text-amber-400/90 mt-1">Notatka zarządu: {req.responseNotes}</div>
+                        <div
+                          className={`mt-1.5 p-1.5 rounded text-[11px] ${
+                            req.status === "REJECTED"
+                              ? "bg-red-950/60 text-red-200 border border-red-800/40"
+                              : "bg-emerald-950/60 text-emerald-200 border border-emerald-800/40"
+                          }`}
+                        >
+                          <b>{req.status === "REJECTED" ? "❌ Powód odrzucenia:" : "💬 Notatka Zarządu:"}</b>{" "}
+                          {req.responseNotes}
+                        </div>
+                      )}
+                      {req.type === "URLOP" && (
+                        <div className="pt-1.5 flex justify-end">
+                          <form action={`/api/panel/kierowca/usun-urlop?requestId=${req.id}`} method="POST">
+                            <button
+                              type="submit"
+                              className="bg-red-600/70 hover:bg-red-600 text-white px-2 py-0.5 rounded text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              🗑️ Usuń urlop
+                            </button>
+                          </form>
+                        </div>
                       )}
                       <div className="text-[10px] text-slate-500 mt-1">
                         Złożono: {new Date(req.createdAt).toLocaleDateString("pl-PL")}

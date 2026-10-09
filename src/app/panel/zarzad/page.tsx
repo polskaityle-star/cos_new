@@ -607,16 +607,38 @@ export default async function AdminPanel({
                           </a>
                         ) : (
                           <form action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=accept`} method="POST">
-                            <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-1.5 rounded text-sm transition-colors shadow">
+                            <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-4 py-1.5 rounded text-sm transition-colors shadow cursor-pointer">
                               Zaakceptuj wniosek
                             </button>
                           </form>
                         )}
-                        <form action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=reject`} method="POST">
-                          <button type="submit" className="bg-red-600 hover:bg-red-500 text-white font-medium px-3 py-1.5 rounded text-sm transition-colors shadow">
-                            Odrzuć
-                          </button>
-                        </form>
+                        <details className="inline-block">
+                          <summary className="bg-red-600/80 hover:bg-red-600 text-white font-medium px-3 py-1.5 rounded text-sm transition-colors shadow cursor-pointer list-none">
+                            ✕ Odrzuć...
+                          </summary>
+                          <form
+                            action={`/api/panel/zarzad/wnioski?requestId=${req.id}&action=reject`}
+                            method="POST"
+                            className="mt-2 p-2.5 bg-slate-950 border border-slate-700 rounded-lg space-y-2 z-10 w-64 shadow-xl"
+                          >
+                            <label className="block text-[11px] text-slate-300 font-semibold">
+                              Powód odrzucenia wniosku:
+                            </label>
+                            <input
+                              type="text"
+                              name="rejectReason"
+                              placeholder="np. Brak wolnych wozów w tym dniu"
+                              required
+                              className="w-full bg-slate-900 border border-slate-600 rounded px-2.5 py-1 text-xs text-white outline-none focus:border-red-500"
+                            />
+                            <button
+                              type="submit"
+                              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-2 rounded text-xs transition cursor-pointer"
+                            >
+                              Potwierdź odrzucenie
+                            </button>
+                          </form>
+                        </details>
                       </div>
                     </div>
                   );
@@ -625,11 +647,23 @@ export default async function AdminPanel({
             )}
           </div>
 
-          {/* Historia wniosków (Wymóg 19) */}
+          {/* Historia wniosków (Wymóg 19 i 12) */}
           <div className="border-t border-slate-700 pt-6">
-            <h3 className="text-lg font-bold text-slate-300 mb-3 flex items-center gap-2">
-              <span>📜 Historia rozpatrzonych wniosków ({driverRequestsHistory.length})</span>
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-slate-300 flex items-center gap-2">
+                <span>📜 Historia rozpatrzonych wniosków ({driverRequestsHistory.length})</span>
+              </h3>
+              {driverRequestsHistory.length > 0 && (
+                <form action="/api/panel/zarzad/wnioski?action=clear_history" method="POST">
+                  <button
+                    type="submit"
+                    className="text-xs text-rose-400 hover:text-white bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 px-2.5 py-1 rounded transition cursor-pointer"
+                  >
+                    🗑️ Wyczyść historię wniosków
+                  </button>
+                </form>
+              )}
+            </div>
             {driverRequestsHistory.length === 0 ? (
               <p className="text-slate-500 text-xs">Brak historii wniosków.</p>
             ) : (
@@ -665,10 +699,26 @@ export default async function AdminPanel({
                       </div>
                       <div className="text-slate-400 mt-0.5">
                         {hReq.reason} {hReq.details ? `(${hReq.details})` : ""}
+                        {hReq.responseNotes && (
+                          <span className="block text-rose-400 font-semibold mt-0.5">
+                            💬 Powód zarządu: {hReq.responseNotes}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div className="text-slate-500 text-[11px] shrink-0">
-                      Data: {new Date(hReq.createdAt).toLocaleDateString()}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-slate-500 text-[11px]">
+                        Data: {new Date(hReq.createdAt).toLocaleDateString()}
+                      </span>
+                      <form action={`/api/panel/zarzad/wnioski?requestId=${hReq.id}&action=delete`} method="POST">
+                        <button
+                          type="submit"
+                          className="text-slate-500 hover:text-red-400 p-1 text-xs transition cursor-pointer"
+                          title="Usuń ten wniosek z historii / anuluj urlop"
+                        >
+                          🗑️
+                        </button>
+                      </form>
                     </div>
                   </div>
                 ))}
@@ -749,9 +799,49 @@ export default async function AdminPanel({
                       </div>
                     </div>
 
-                    <div className="text-sm text-slate-300 bg-slate-950/60 p-3 rounded border border-slate-800">
-                      <span className="text-xs text-slate-400 font-semibold block mb-1">Opis kierowcy:</span>
-                      {def.description}
+                    <div className="text-sm text-slate-300 bg-slate-950/60 p-3 rounded border border-slate-800 space-y-2">
+                      <div>
+                        <span className="text-xs text-slate-400 font-semibold block mb-1">Opis usterki od kierowcy:</span>
+                        <p className="whitespace-pre-wrap">{def.description || "Brak szczegółowego opisu."}</p>
+                      </div>
+
+                      {/* Galeria zdjęć awarii ze zgłoszenia (Wymóg 6) */}
+                      {def.photos && (() => {
+                        try {
+                          const pList = JSON.parse(def.photos) as string[];
+                          if (Array.isArray(pList) && pList.length > 0) {
+                            return (
+                              <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                                <span className="text-xs text-amber-300 font-semibold block">
+                                  📷 Dołączone zdjęcia uszkodzeń ({pList.length}):
+                                </span>
+                                <div className="flex flex-wrap gap-2">
+                                  {pList.map((photoUrl, pIdx) => (
+                                    <a
+                                      key={pIdx}
+                                      href={photoUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      title="Kliknij, aby otworzyć zdjęcie w pełnym rozmiarze"
+                                      className="group relative block overflow-hidden rounded-lg border border-slate-700 hover:border-amber-400 transition"
+                                    >
+                                      <img
+                                        src={photoUrl}
+                                        alt={`Zdjęcie usterki ${pIdx + 1}`}
+                                        className="w-24 h-24 object-cover group-hover:scale-105 transition-transform"
+                                      />
+                                      <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[9px] text-center text-white py-0.5">
+                                        Powiększ ↗
+                                      </span>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                        } catch {}
+                        return null;
+                      })()}
                     </div>
 
                     {/* Formularz zarządzania warsztatem */}
@@ -898,11 +988,23 @@ export default async function AdminPanel({
             )}
           </div>
 
-          {/* Historia zgłoszeń technicznych (Wymóg 18) */}
+          {/* Historia zgłoszeń technicznych (Wymóg 18 i 12) */}
           <div className="border-t border-slate-700 pt-6">
-            <h3 className="text-lg font-bold text-slate-300 mb-3 flex items-center gap-2">
-              <span>📜 Historia napraw i odrzuconych zgłoszeń technicznych ({vehicleDefectsHistory.length})</span>
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-slate-300 flex items-center gap-2">
+                <span>📜 Historia napraw i odrzuconych zgłoszeń technicznych ({vehicleDefectsHistory.length})</span>
+              </h3>
+              {vehicleDefectsHistory.length > 0 && (
+                <form action="/api/panel/zarzad/usterki?action=clear_history" method="POST">
+                  <button
+                    type="submit"
+                    className="text-xs text-rose-400 hover:text-white bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 px-2.5 py-1 rounded transition cursor-pointer"
+                  >
+                    🗑️ Wyczyść historię warsztatu
+                  </button>
+                </form>
+              )}
+            </div>
             {vehicleDefectsHistory.length === 0 ? (
               <p className="text-slate-500 text-xs">Brak wpisów w historii warsztatu.</p>
             ) : (
@@ -973,13 +1075,14 @@ export default async function AdminPanel({
                     </div>
                   </div>
 
-                  {/* Podgląd plików i screenów */}
+                  {/* Podgląd plików i screenów (Wymóg 10) */}
                   <div className="mb-4">
                     <ReportFileList
                       reportId={report.id}
                       startScreenshot={report.startScreenshot}
                       endScreenshot={report.endScreenshot}
                       summaryFile={report.summaryFile}
+                      depotScreenshots={report.depotScreenshots}
                     />
                   </div>
 
@@ -1004,9 +1107,21 @@ export default async function AdminPanel({
 
       {/* 6. Wiadomości kontaktowe */}
       <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <h2 className="text-2xl font-bold mb-4 text-purple-400 flex items-center justify-between">
-          <span>📬 Skrzynka Wiadomości Kontaktowych ({contactMessages.length})</span>
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h2 className="text-2xl font-bold text-purple-400 flex items-center gap-2">
+            <span>📬 Skrzynka Wiadomości Kontaktowych ({contactMessages.length})</span>
+          </h2>
+          {contactMessages.length > 0 && (
+            <form action="/api/panel/zarzad/wiadomosci?action=clear_contact_history" method="POST">
+              <button
+                type="submit"
+                className="text-xs text-rose-400 hover:text-white bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 px-2.5 py-1 rounded transition cursor-pointer"
+              >
+                🗑️ Wyczyść skrzynkę kontaktową
+              </button>
+            </form>
+          )}
+        </div>
         {contactMessages.length === 0 ? (
           <p className="text-slate-400 text-sm">Brak nadesłanych wiadomości.</p>
         ) : (
@@ -1032,7 +1147,7 @@ export default async function AdminPanel({
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <form action={`/api/panel/zarzad/wiadomosci?id=${msg.id}&action=delete`} method="POST">
-                      <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs">
+                      <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs cursor-pointer">
                         Usuń
                       </button>
                     </form>
@@ -1054,7 +1169,7 @@ export default async function AdminPanel({
                     placeholder="Wpisz odpowiedź na tę wiadomość..."
                     className="flex-grow bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500"
                   />
-                  <button type="submit" className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap">
+                  <button type="submit" className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap cursor-pointer">
                     💬 Wyślij odpowiedź
                   </button>
                 </form>
@@ -1139,11 +1254,23 @@ export default async function AdminPanel({
               </button>
             </form>
 
-            {/* Historia wysłanych wiadomości do kierowców */}
+            {/* Historia wysłanych wiadomości do kierowców (Wymóg 12) */}
             <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                📤 Historia wiadomości wysłanych do Kierowców ({sentDriverMessages.length}):
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  📤 Historia wiadomości wysłanych do Kierowców ({sentDriverMessages.length}):
+                </h4>
+                {sentDriverMessages.length > 0 && (
+                  <form action="/api/panel/zarzad/wiadomosci?action=clear_driver_notifications" method="POST">
+                    <button
+                      type="submit"
+                      className="text-[11px] text-rose-400 hover:text-white bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 px-2 py-0.5 rounded transition cursor-pointer"
+                    >
+                      🗑️ Wyczyść historię
+                    </button>
+                  </form>
+                )}
+              </div>
               {sentDriverMessages.length === 0 ? (
                 <p className="text-slate-500 text-xs">Brak wysłanych wiadomości.</p>
               ) : (
@@ -1463,10 +1590,21 @@ export default async function AdminPanel({
                         className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-300 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[11px] file:bg-blue-700 file:text-white"
                       />
                     </div>
-                    <div className="flex justify-between items-center pt-1">
-                      <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
-                        Zapisz zmiany
-                      </button>
+                    <div className="flex justify-between items-center pt-1 gap-2 flex-wrap">
+                      <div className="flex gap-2 items-center">
+                        <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-semibold">
+                          Zapisz zmiany
+                        </button>
+                        {veh.status === "WARSZTAT" && (
+                          <button
+                            type="submit"
+                            formAction={`/api/panel/zarzad/tabor/status?id=${veh.id}&status=SPRAWNY`}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs font-bold shadow flex items-center gap-1 cursor-pointer"
+                          >
+                            ✅ Zmień na Sprawny
+                          </button>
+                        )}
+                      </div>
                       <button
                         type="submit"
                         formAction={`/api/panel/zarzad/tabor/delete?id=${veh.id}`}
@@ -1655,10 +1793,139 @@ export default async function AdminPanel({
                         </details>
                       );
                     })()}
+                    {/* Formularz edycji służby (Wymóg 7) */}
+                    <details className="mt-2 text-xs bg-slate-950/80 p-3 rounded-lg border border-slate-700 space-y-2">
+                      <summary className="cursor-pointer font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 list-none">
+                        <span>✏️ Edytuj tę służbę w grafiku</span>
+                      </summary>
+                      <form action="/api/panel/zarzad/sluzby/edit" method="POST" className="mt-2 space-y-3 pt-2 border-t border-slate-800">
+                        <input type="hidden" name="dutyId" value={duty.id} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Kierowca:</label>
+                            <select
+                              name="userId"
+                              defaultValue={duty.userId}
+                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                            >
+                              {activeUsers.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.badgeNumber ? `[${u.badgeNumber}] ` : ""}{u.username} [{u.carrier || "Brak"}]
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Linia:</label>
+                            <select
+                              name="lineId"
+                              defaultValue={duty.lineId}
+                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                            >
+                              {allLines.map((l) => (
+                                <option key={l.id} value={l.id}>
+                                  Linia {l.number} {l.carrier ? `[${l.carrier}]` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Pojazd:</label>
+                            <select
+                              name="vehicleId"
+                              defaultValue={duty.vehicleId || ""}
+                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                            >
+                              <option value="">-- Brak wozu --</option>
+                              {allVehicles
+                                .filter((v) => !duty.user?.carrier || v.carrier === duty.user.carrier)
+                                .map((v) => (
+                                  <option key={v.id} value={v.id}>
+                                    #{v.fleetNumber} {v.model} [{v.carrier}]
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Data służby:</label>
+                            <input
+                              type="date"
+                              name="date"
+                              defaultValue={new Date(duty.date).toISOString().split("T")[0]}
+                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Brygada:</label>
+                            <input
+                              type="text"
+                              name="brigade"
+                              defaultValue={duty.brigade || ""}
+                              placeholder="np. 2/1 - Dni robocze"
+                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Zmiana:</label>
+                            <select
+                              name="shift"
+                              defaultValue={duty.shift || "1 Zmiana"}
+                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                            >
+                              <option value="1 Zmiana">1 Zmiana</option>
+                              <option value="2 Zmiana">2 Zmiana</option>
+                              <option value="3 Zmiana">3 Zmiana</option>
+                              <option value="Szczytowa">Szczytowa</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] text-slate-400 mb-0.5">Status:</label>
+                            <select
+                              name="status"
+                              defaultValue={duty.status}
+                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                            >
+                              <option value="SCHEDULED">Zaplanowana (SCHEDULED)</option>
+                              <option value="COMPLETED">Zrealizowana (COMPLETED)</option>
+                              <option value="CANCELLED">Anulowana (CANCELLED)</option>
+                              <option value="MISSED">Niezaliczona (MISSED)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-0.5">Uwagi:</label>
+                          <input
+                            type="text"
+                            name="notes"
+                            defaultValue={duty.notes || ""}
+                            placeholder="Opcjonalne uwagi..."
+                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                          />
+                        </div>
+
+                        <div className="flex justify-end pt-1">
+                          <button
+                            type="submit"
+                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1.5 rounded text-xs transition cursor-pointer"
+                          >
+                            💾 Zapisz zmiany w służbie
+                          </button>
+                        </div>
+                      </form>
+                    </details>
                   </div>
-                  <div>
+                  <div className="shrink-0">
                     <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">
-                      <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold transition-colors">
+                      <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer">
                         🗑 Usuń służbę
                       </button>
                     </form>

@@ -7,6 +7,7 @@ interface ReportFileListProps {
   startScreenshot: string;
   endScreenshot: string;
   summaryFile: string;
+  depotScreenshots?: string | null;
 }
 
 export default function ReportFileList({
@@ -14,14 +15,22 @@ export default function ReportFileList({
   startScreenshot,
   endScreenshot,
   summaryFile,
+  depotScreenshots,
 }: ReportFileListProps) {
-  const [modalType, setModalType] = useState<"start" | "end" | "summary" | null>(null);
+  const [modalType, setModalType] = useState<string | null>(null);
   const [summaryText, setSummaryText] = useState<string>("");
   const [loadingSummary, setLoadingSummary] = useState(false);
 
   const startUrl = `/api/panel/zarzad/raporty/plik?reportId=${reportId}&type=start`;
   const endUrl = `/api/panel/zarzad/raporty/plik?reportId=${reportId}&type=end`;
   const summaryUrl = `/api/panel/zarzad/raporty/plik?reportId=${reportId}&type=summary`;
+
+  let depotObj: Record<string, string> = {};
+  if (depotScreenshots) {
+    try {
+      depotObj = JSON.parse(depotScreenshots);
+    } catch {}
+  }
 
   const openSummaryModal = async () => {
     setModalType("summary");
@@ -61,7 +70,7 @@ export default function ReportFileList({
           <button
             type="button"
             onClick={() => setModalType("start")}
-            className="text-emerald-400 hover:text-emerald-300 font-medium text-xs flex items-center gap-1 flex-grow text-left"
+            className="text-emerald-400 hover:text-emerald-300 font-medium text-xs flex items-center gap-1 flex-grow text-left cursor-pointer"
           >
             <span>📷 Screen Start</span>
           </button>
@@ -81,7 +90,7 @@ export default function ReportFileList({
           <button
             type="button"
             onClick={() => setModalType("end")}
-            className="text-emerald-400 hover:text-emerald-300 font-medium text-xs flex items-center gap-1 flex-grow text-left"
+            className="text-emerald-400 hover:text-emerald-300 font-medium text-xs flex items-center gap-1 flex-grow text-left cursor-pointer"
           >
             <span>📷 Screen Koniec</span>
           </button>
@@ -101,7 +110,7 @@ export default function ReportFileList({
           <button
             type="button"
             onClick={openSummaryModal}
-            className="text-blue-400 hover:text-blue-300 font-medium text-xs flex items-center gap-1 flex-grow text-left"
+            className="text-blue-400 hover:text-blue-300 font-medium text-xs flex items-center gap-1 flex-grow text-left cursor-pointer"
           >
             <span>📄 Podsumowanie (.txt)</span>
           </button>
@@ -116,6 +125,53 @@ export default function ReportFileList({
           </a>
         </div>
       </div>
+
+      {/* Screeny z wyjazdu i zjazdu do zajezdni (Wymóg 10) */}
+      {Object.keys(depotObj).length > 0 && (
+        <div className="pt-2 border-t border-slate-800 space-y-1.5">
+          <span className="text-[11px] font-semibold text-amber-300 block">
+            🏢 Zrzuty ekranu z zajezdni (wyjazd / zjazd):
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {depotObj.depotDep1 && (
+              <button
+                type="button"
+                onClick={() => setModalType("depotDep1")}
+                className="bg-amber-950/80 hover:bg-amber-900 border border-amber-600/50 text-amber-200 text-xs px-2.5 py-1 rounded cursor-pointer transition"
+              >
+                📸 I Wyjazd z zajezdni
+              </button>
+            )}
+            {depotObj.depotArr1 && (
+              <button
+                type="button"
+                onClick={() => setModalType("depotArr1")}
+                className="bg-amber-950/80 hover:bg-amber-900 border border-amber-600/50 text-amber-200 text-xs px-2.5 py-1 rounded cursor-pointer transition"
+              >
+                📸 I Zjazd do zajezdni
+              </button>
+            )}
+            {depotObj.depotDep2 && (
+              <button
+                type="button"
+                onClick={() => setModalType("depotDep2")}
+                className="bg-purple-950/80 hover:bg-purple-900 border border-purple-600/50 text-purple-200 text-xs px-2.5 py-1 rounded cursor-pointer transition"
+              >
+                📸 II Wyjazd z zajezdni
+              </button>
+            )}
+            {depotObj.depotArr2 && (
+              <button
+                type="button"
+                onClick={() => setModalType("depotArr2")}
+                className="bg-purple-950/80 hover:bg-purple-900 border border-purple-600/50 text-purple-200 text-xs px-2.5 py-1 rounded cursor-pointer transition"
+              >
+                📸 II Zjazd do zajezdni
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* MODAL LIGHTBOX */}
       {modalType && (
@@ -133,10 +189,22 @@ export default function ReportFileList({
                 {modalType === "start" && "📷 Zrzut ekranu: Start służby"}
                 {modalType === "end" && "📷 Zrzut ekranu: Koniec służby"}
                 {modalType === "summary" && "📄 Podsumowanie kursu z OMSI 2"}
+                {modalType === "depotDep1" && "🏢 Zrzut ekranu: I Wyjazd z zajezdni"}
+                {modalType === "depotArr1" && "🏢 Zrzut ekranu: I Zjazd do zajezdni"}
+                {modalType === "depotDep2" && "🏢 Zrzut ekranu: II Wyjazd z zajezdni"}
+                {modalType === "depotArr2" && "🏢 Zrzut ekranu: II Zjazd do zajezdni"}
               </h3>
               <div className="flex items-center gap-2">
                 <a
-                  href={modalType === "start" ? startUrl : modalType === "end" ? endUrl : summaryUrl}
+                  href={
+                    modalType === "start"
+                      ? startUrl
+                      : modalType === "end"
+                      ? endUrl
+                      : modalType === "summary"
+                      ? summaryUrl
+                      : `/api/panel/zarzad/raporty/plik?reportId=${reportId}&type=${modalType}`
+                  }
                   target="_blank"
                   rel="noreferrer"
                   className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded transition-colors"
@@ -146,7 +214,7 @@ export default function ReportFileList({
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="text-slate-400 hover:text-white bg-slate-800 hover:bg-red-600 px-3 py-1 rounded text-sm transition-colors"
+                  className="text-slate-400 hover:text-white bg-slate-800 hover:bg-red-600 px-3 py-1 rounded text-sm transition-colors cursor-pointer"
                 >
                   ✕ Zamknij
                 </button>
@@ -167,6 +235,14 @@ export default function ReportFileList({
                 <img
                   src={endScreenshot.startsWith("data:") ? endScreenshot : endUrl}
                   alt="Zrzut ekranu koniec"
+                  className="max-h-[75vh] max-w-full object-contain rounded border border-slate-800"
+                />
+              )}
+
+              {modalType.startsWith("depot") && (
+                <img
+                  src={depotObj[modalType]?.startsWith("data:") ? depotObj[modalType] : `/api/panel/zarzad/raporty/plik?reportId=${reportId}&type=${modalType}`}
+                  alt="Zrzut ekranu z zajezdni"
                   className="max-h-[75vh] max-w-full object-contain rounded border border-slate-800"
                 />
               )}

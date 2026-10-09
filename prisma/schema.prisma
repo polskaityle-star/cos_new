@@ -115,6 +115,7 @@ model Report {
   startScreenshot String
   endScreenshot   String
   summaryFile     String
+  depotScreenshots String? // JSON string: { depotDep1?, depotArr1?, depotDep2?, depotArr2? }
   status          String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
   createdAt       DateTime @default(now())
 }
@@ -143,6 +144,7 @@ model VehicleDefect {
   title         String
   description   String
   defectType    String?   // np. "Awaria mechaniczna", "Układ hamulcowy", "Elektryka", "Kolizja"
+  photos        String?   // JSON array string ze zdjęciami awarii
   workshopStart DateTime? // Od kiedy na warsztacie
   workshopEnd   DateTime? // Do kiedy na warsztacie
   adminNotes    String?   // Notatka zarządu / warsztatu

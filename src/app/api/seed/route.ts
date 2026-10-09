@@ -9,51 +9,55 @@ export async function GET() {
     const adminPassword = await bcrypt.hash("admin123", 10);
     const driverPassword = await bcrypt.hash("kierowca123", 10);
 
-    // 1. Zarząd: Godksawiss (usunięcie administratora i starego admina)
-    await prisma.user.deleteMany({
+    // 1. Zarząd: Godksawiss
+    const existingAdmin = await prisma.user.findFirst({
       where: {
-        username: { in: ["administrator", "Administrator", "admin", "Admin"] },
-      },
+        OR: [
+          { username: "Godksawiss" },
+          { username: "godksawiss" },
+          { role: "WLASCICIEL" }
+        ]
+      }
     });
 
-    await prisma.user.upsert({
-      where: { username: "Godksawiss" },
-      update: {
-        password: adminPassword,
-        role: "WLASCICIEL",
-        badgeNumber: "W1",
-        status: "ACCEPTED",
-        carrier: "VMPK",
-        avatar: null,
-      },
-      create: {
-        username: "Godksawiss",
-        password: adminPassword,
-        role: "WLASCICIEL",
-        badgeNumber: "W1",
-        status: "ACCEPTED",
-        carrier: "VMPK",
-      },
-    });
+    if (!existingAdmin) {
+      await prisma.user.create({
+        data: {
+          username: "Godksawiss",
+          password: adminPassword,
+          role: "WLASCICIEL",
+          badgeNumber: "W1",
+          status: "ACCEPTED",
+          carrier: "VMPK",
+        },
+      });
+    } else {
+      await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: {
+          role: "WLASCICIEL",
+          badgeNumber: existingAdmin.badgeNumber || "W1",
+          status: "ACCEPTED",
+          carrier: "VMPK",
+          // Nie nadpisujemy hasła!
+        },
+      });
+    }
 
     // 2. Kierowca1
-    await prisma.user.upsert({
-      where: { username: "kierowca1" },
-      update: {
-        password: driverPassword,
-        role: "KIEROWCA",
-        badgeNumber: "K1001",
-        status: "ACCEPTED",
-        carrier: "VMPK",
-      },
-      create: {
-        username: "kierowca1",
-        password: driverPassword,
-        role: "KIEROWCA",
-        status: "ACCEPTED",
-        carrier: "VMPK",
-      },
-    });
+    const existingDriver = await prisma.user.findUnique({ where: { username: "kierowca1" } });
+    if (!existingDriver) {
+      await prisma.user.create({
+        data: {
+          username: "kierowca1",
+          password: driverPassword,
+          role: "KIEROWCA",
+          badgeNumber: "K1001",
+          status: "ACCEPTED",
+          carrier: "VMPK",
+        },
+      });
+    }
 
     // 3. Linie
     const lineCount = await prisma.line.count();

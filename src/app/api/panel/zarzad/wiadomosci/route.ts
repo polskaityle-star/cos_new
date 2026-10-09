@@ -9,13 +9,30 @@ import { canAccessManagementPanel } from "@/lib/roles";
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !canAccessManagementPanel(session.user.role)) {
+  if (!session || !session.user || !canAccessManagementPanel(session.user.role, (session.user as any)?.username)) {
     return NextResponse.json({ message: "Brak uprawnień" }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);
   const messageId = searchParams.get("id");
   const action = searchParams.get("action");
+
+  if (action === "clear_contact_history") {
+    await prisma.contactMessage.deleteMany({});
+    revalidatePath("/panel/zarzad");
+    redirect("/panel/zarzad");
+    return;
+  }
+
+  if (action === "clear_driver_notifications") {
+    await prisma.driverNotification.deleteMany({
+      where: { direction: "TO_DRIVER" },
+    });
+    revalidatePath("/panel/zarzad");
+    revalidatePath("/panel/kierowca");
+    redirect("/panel/zarzad");
+    return;
+  }
 
   if (!messageId || !action) {
     return NextResponse.json({ message: "Brak parametrów" }, { status: 400 });
