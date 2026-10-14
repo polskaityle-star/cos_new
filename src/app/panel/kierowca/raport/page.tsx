@@ -81,8 +81,8 @@ function ReportFormContent() {
 
   const [duty, setDuty] = useState<DutyInfo | null>(null);
 
-  // Zmiana / typ służby: "ZMIANA_1" | "ZMIANA_2" | "SZCZYTOWA"
-  const [shiftMode, setShiftMode] = useState<"ZMIANA_1" | "ZMIANA_2" | "SZCZYTOWA">("ZMIANA_1");
+  // Zmiana / typ służby: "ZMIANA_1" | "ZMIANA_2" | "NOCNA" | "SZCZYTOWA"
+  const [shiftMode, setShiftMode] = useState<"ZMIANA_1" | "ZMIANA_2" | "NOCNA" | "SZCZYTOWA">("ZMIANA_1");
 
   const [startMileage, setStartMileage] = useState("");
   const [endMileage, setEndMileage] = useState("");
@@ -92,7 +92,7 @@ function ReportFormContent() {
   const [endFile, setEndFile] = useState<File | null>(null);
   const [summaryFile, setSummaryFile] = useState<File | null>(null);
 
-  // Opcjonalne screeny z zajezdni wg Wymogu 10
+  // Opcjonalne screeny z zajezdni wg Wymogu 10 i 3.1
   const [depotDep1File, setDepotDep1File] = useState<File | null>(null);
   const [depotArr1File, setDepotArr1File] = useState<File | null>(null);
   const [depotDep2File, setDepotDep2File] = useState<File | null>(null);
@@ -110,10 +110,21 @@ function ReportFormContent() {
         if (data?.duty) {
           setDuty(data.duty);
           const d = data.duty;
+          const lineNum = (d.line?.number || "").toLowerCase();
           const brig = (d.brigade || "").toLowerCase();
           const sh = (d.shift || "").toLowerCase();
 
-          if (brig.includes("szczyt") || sh.includes("szczyt")) {
+          // Automatyczne wykrywanie zmiany: nocna (N1, N2, 3 zmiana), szczytowa, 2 zmiana, 1 zmiana
+          if (
+            lineNum.startsWith("n") ||
+            lineNum.includes("noc") ||
+            sh.includes("3") ||
+            sh.includes("noc") ||
+            brig.includes("noc") ||
+            brig.includes("/3")
+          ) {
+            setShiftMode("NOCNA");
+          } else if (brig.includes("szczyt") || sh.includes("szczyt")) {
             setShiftMode("SZCZYTOWA");
           } else if (sh.includes("2") || brig.includes("/2") || brig.includes("2 zmiana")) {
             setShiftMode("ZMIANA_2");
@@ -164,13 +175,16 @@ function ReportFormContent() {
       formData.append("endScreenshotFile", compressedEnd);
       formData.append("summaryDocFile", summaryFile);
 
-      // Opcjonalne screeny z zajezdni (Wymóg 10)
+      // Opcjonalne screeny z zajezdni (Wymóg 10 i 3.1)
       if (shiftMode === "ZMIANA_1" && depotDep1File) {
         const comp = await compressImage(depotDep1File);
         formData.append("depotDep1File", comp);
       } else if (shiftMode === "ZMIANA_2" && depotArr1File) {
         const comp = await compressImage(depotArr1File);
         formData.append("depotArr1File", comp);
+      } else if (shiftMode === "NOCNA") {
+        if (depotDep1File) formData.append("depotDep1File", await compressImage(depotDep1File));
+        if (depotArr1File) formData.append("depotArr1File", await compressImage(depotArr1File));
       } else if (shiftMode === "SZCZYTOWA") {
         if (depotDep1File) formData.append("depotDep1File", await compressImage(depotDep1File));
         if (depotArr1File) formData.append("depotArr1File", await compressImage(depotArr1File));
@@ -258,7 +272,7 @@ function ReportFormContent() {
         <label className="block text-xs font-bold text-amber-300 uppercase tracking-wider">
           ⚙️ Typ brygady i zmiany (dla screenów z zajezdni):
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           <button
             type="button"
             onClick={() => setShiftMode("ZMIANA_1")}
@@ -283,6 +297,19 @@ function ReportFormContent() {
           >
             <div>2 Zmiana (Zjazd)</div>
             <div className="text-[10px] font-normal opacity-80 mt-0.5">Tylko screen ze zjazdu</div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShiftMode("NOCNA")}
+            className={`px-3 py-2 rounded-lg text-xs font-bold text-left border transition ${
+              shiftMode === "NOCNA"
+                ? "bg-indigo-600 border-indigo-500 text-white shadow"
+                : "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500"
+            }`}
+          >
+            <div>🌙 Zmiana Nocna</div>
+            <div className="text-[10px] font-normal opacity-80 mt-0.5">Wyjazd i zjazd do zajezdni</div>
           </button>
 
           <button
@@ -375,7 +402,7 @@ function ReportFormContent() {
         </div>
       </div>
 
-      {/* Opcjonalne screeny z wyjazdu i zjazdu do zajezdni (Wymóg 10, 10.1, 10.2, 10.3) */}
+      {/* Opcjonalne screeny z wyjazdu i zjazdu do zajezdni (Wymóg 10, 10.1, 10.2, 10.3, 3.1) */}
       <div className="space-y-4 pt-4 border-t border-slate-700 bg-slate-900/50 p-4 rounded-xl border">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-amber-300 flex items-center gap-1.5">
@@ -384,6 +411,7 @@ function ReportFormContent() {
           <span className="text-[11px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
             {shiftMode === "ZMIANA_1" && "Zmiana 1: Tylko wyjazd"}
             {shiftMode === "ZMIANA_2" && "Zmiana 2: Tylko zjazd"}
+            {shiftMode === "NOCNA" && "Zmiana Nocna: Wyjazd i zjazd"}
             {shiftMode === "SZCZYTOWA" && "Szczytowa: 2x wyjazd i zjazd"}
           </span>
         </div>
@@ -417,6 +445,36 @@ function ReportFormContent() {
               className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-amber-700 file:text-white"
             />
             <p className="text-[11px] text-slate-400">Dodaj zdjęcie autobusu po zjeździe na plac zajezdni.</p>
+          </div>
+        )}
+
+        {/* 3.1: Zmiana Nocna - wyjazd z zajezdni i zjazd do zajezdni */}
+        {shiftMode === "NOCNA" && (
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">
+                📷 Zrzut ekranu: Wyjazd z zajezdni (opcjonalny)
+              </label>
+              <input
+                type="file"
+                accept="image/png, image/jpeg, image/jpg, image/webp"
+                onChange={(e) => setDepotDep1File(e.target.files?.[0] || null)}
+                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-indigo-700 file:text-white"
+              />
+              <p className="text-[11px] text-slate-400">Dodaj zdjęcie autobusu przed wyjazdem na nocną służbę.</p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">
+                📷 Zrzut ekranu: Zjazd do zajezdni (opcjonalny)
+              </label>
+              <input
+                type="file"
+                accept="image/png, image/jpeg, image/jpg, image/webp"
+                onChange={(e) => setDepotArr1File(e.target.files?.[0] || null)}
+                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-indigo-700 file:text-white"
+              />
+              <p className="text-[11px] text-slate-400">Dodaj zdjęcie autobusu po zjeździe z nocnej służby.</p>
+            </div>
           </div>
         )}
 

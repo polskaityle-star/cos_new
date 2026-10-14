@@ -612,6 +612,56 @@ export default async function AdminPanel({
                             </button>
                           </form>
                         )}
+                        {req.type === "URLOP" && (
+                          <details className="inline-block relative">
+                            <summary className="bg-amber-600/90 hover:bg-amber-600 text-white font-medium px-3 py-1.5 rounded text-sm transition-colors shadow cursor-pointer list-none">
+                              ✏️ Edytuj urlop
+                            </summary>
+                            <form
+                              action="/api/panel/kierowca/edytuj-urlop"
+                              method="POST"
+                              className="mt-2 p-3 bg-slate-950 border border-slate-700 rounded-lg space-y-2 z-20 w-72 shadow-2xl text-left absolute right-0"
+                            >
+                              <input type="hidden" name="requestId" value={req.id} />
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Od kiedy:</label>
+                                <input
+                                  type="date"
+                                  name="dateStart"
+                                  required
+                                  defaultValue={req.dateStart ? new Date(req.dateStart).toISOString().split("T")[0] : ""}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Do kiedy:</label>
+                                <input
+                                  type="date"
+                                  name="dateEnd"
+                                  required
+                                  defaultValue={req.dateEnd ? new Date(req.dateEnd).toISOString().split("T")[0] : ""}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Powód urlopu:</label>
+                                <input
+                                  type="text"
+                                  name="reason"
+                                  defaultValue={req.reason || ""}
+                                  placeholder="Powód urlopu"
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-2 rounded text-xs transition cursor-pointer"
+                              >
+                                💾 Zapisz zmiany
+                              </button>
+                            </form>
+                          </details>
+                        )}
                         <details className="inline-block">
                           <summary className="bg-red-600/80 hover:bg-red-600 text-white font-medium px-3 py-1.5 rounded text-sm transition-colors shadow cursor-pointer list-none">
                             ✕ Odrzuć...
@@ -710,6 +760,56 @@ export default async function AdminPanel({
                       <span className="text-slate-500 text-[11px]">
                         Data: {new Date(hReq.createdAt).toLocaleDateString()}
                       </span>
+                      {hReq.type === "URLOP" && (
+                        <details className="inline-block relative">
+                          <summary className="bg-amber-600/80 hover:bg-amber-600 text-white px-2 py-0.5 rounded text-[11px] font-semibold transition-colors cursor-pointer list-none">
+                            ✏️ Edytuj urlop
+                          </summary>
+                          <form
+                            action="/api/panel/kierowca/edytuj-urlop"
+                            method="POST"
+                            className="mt-2 p-2.5 bg-slate-950 border border-slate-700 rounded-lg space-y-2 text-left w-64 shadow-2xl z-20 absolute right-0"
+                          >
+                            <input type="hidden" name="requestId" value={hReq.id} />
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">Od kiedy:</label>
+                              <input
+                                type="date"
+                                name="dateStart"
+                                required
+                                defaultValue={hReq.dateStart ? new Date(hReq.dateStart).toISOString().split("T")[0] : ""}
+                                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">Do kiedy:</label>
+                              <input
+                                type="date"
+                                name="dateEnd"
+                                required
+                                defaultValue={hReq.dateEnd ? new Date(hReq.dateEnd).toISOString().split("T")[0] : ""}
+                                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">Powód urlopu:</label>
+                              <input
+                                type="text"
+                                name="reason"
+                                defaultValue={hReq.reason || ""}
+                                placeholder="Powód urlopu"
+                                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-2 rounded text-xs transition cursor-pointer"
+                            >
+                              💾 Zapisz zmiany
+                            </button>
+                          </form>
+                        </details>
+                      )}
                       <form action={`/api/panel/zarzad/wnioski?requestId=${hReq.id}&action=delete`} method="POST">
                         <button
                           type="submit"

@@ -888,7 +888,52 @@ export default async function DriverPanel() {
                         </div>
                       )}
                       {req.type === "URLOP" && (
-                        <div className="pt-2 flex justify-end">
+                        <div className="pt-2 flex flex-wrap items-center justify-end gap-2 border-t border-slate-800 mt-2">
+                          <details className="text-xs">
+                            <summary className="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs font-semibold shadow transition-colors flex items-center gap-1 cursor-pointer list-none">
+                              ✏️ Edytuj urlop
+                            </summary>
+                            <form action="/api/panel/kierowca/edytuj-urlop" method="POST" className="mt-2 p-3 bg-slate-950 border border-slate-700 rounded-lg space-y-2 text-left w-72">
+                              <input type="hidden" name="requestId" value={req.id} />
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Od kiedy:</label>
+                                <input
+                                  type="date"
+                                  name="dateStart"
+                                  required
+                                  defaultValue={req.dateStart ? new Date(req.dateStart).toISOString().split("T")[0] : ""}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Do kiedy:</label>
+                                <input
+                                  type="date"
+                                  name="dateEnd"
+                                  required
+                                  defaultValue={req.dateEnd ? new Date(req.dateEnd).toISOString().split("T")[0] : ""}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Powód urlopu:</label>
+                                <input
+                                  type="text"
+                                  name="reason"
+                                  defaultValue={req.reason || ""}
+                                  placeholder="np. Wyjazd, sprawy prywatne"
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-2 rounded text-xs transition cursor-pointer"
+                              >
+                                💾 Zapisz zmiany w urlopie
+                              </button>
+                            </form>
+                          </details>
+
                           <form action={`/api/panel/kierowca/usun-urlop?requestId=${req.id}`} method="POST">
                             <button
                               type="submit"
@@ -948,6 +993,12 @@ export default async function DriverPanel() {
                         </span>
                       </div>
                       <p className="text-slate-400 mt-1">{req.reason}</p>
+                      {req.dateStart && (
+                        <div className="text-[11px] text-slate-400 mt-0.5">
+                          Termin: {new Date(req.dateStart).toLocaleDateString("pl-PL")}
+                          {req.dateEnd ? ` do ${new Date(req.dateEnd).toLocaleDateString("pl-PL")}` : ""}
+                        </div>
+                      )}
                       {req.responseNotes && (
                         <div
                           className={`mt-1.5 p-1.5 rounded text-[11px] ${
@@ -961,7 +1012,52 @@ export default async function DriverPanel() {
                         </div>
                       )}
                       {req.type === "URLOP" && (
-                        <div className="pt-1.5 flex justify-end">
+                        <div className="pt-1.5 flex flex-wrap items-center justify-end gap-1.5 border-t border-slate-800 mt-1.5">
+                          <details className="text-xs">
+                            <summary className="bg-amber-600/80 hover:bg-amber-600 text-white px-2 py-0.5 rounded text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer list-none">
+                              ✏️ Edytuj urlop
+                            </summary>
+                            <form action="/api/panel/kierowca/edytuj-urlop" method="POST" className="mt-2 p-2.5 bg-slate-950 border border-slate-700 rounded-lg space-y-2 text-left w-64 shadow-xl">
+                              <input type="hidden" name="requestId" value={req.id} />
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Od kiedy:</label>
+                                <input
+                                  type="date"
+                                  name="dateStart"
+                                  required
+                                  defaultValue={req.dateStart ? new Date(req.dateStart).toISOString().split("T")[0] : ""}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Do kiedy:</label>
+                                <input
+                                  type="date"
+                                  name="dateEnd"
+                                  required
+                                  defaultValue={req.dateEnd ? new Date(req.dateEnd).toISOString().split("T")[0] : ""}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Powód urlopu:</label>
+                                <input
+                                  type="text"
+                                  name="reason"
+                                  defaultValue={req.reason || ""}
+                                  placeholder="np. Zmiana terminu wyjazdu"
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-2 rounded text-xs transition cursor-pointer"
+                              >
+                                💾 Zapisz zmiany
+                              </button>
+                            </form>
+                          </details>
+
                           <form action={`/api/panel/kierowca/usun-urlop?requestId=${req.id}`} method="POST">
                             <button
                               type="submit"
