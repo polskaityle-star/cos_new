@@ -329,7 +329,7 @@ export default async function AdminPanel({
             </span>
           </div>
           <p className="text-slate-400 text-sm">
-            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.4.5.0)
+            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce
           </p>
         </div>
         <div className="flex flex-col md:items-end gap-3">
@@ -344,7 +344,7 @@ export default async function AdminPanel({
               href="/"
               className="bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-600 shadow"
             >
-              <span>🌐 Strona Główna</span>
+              <span>🌐 Strona główna</span>
             </Link>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">

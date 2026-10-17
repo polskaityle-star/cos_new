@@ -66,7 +66,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Wymarzony Nick w firmie *</label>
+            <label className="text-xs font-semibold text-slate-300">Wymarzony nick w firmie *</label>
             <input
               type="text"
               required
@@ -130,7 +130,7 @@ export default function RegisterPage() {
           </div>
 
           <button disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded shadow transition-colors disabled:opacity-50">
-            {loading ? "Wysyłanie wniosku..." : "Złóż Wniosek o Pracę"}
+            {loading ? "Wysyłanie wniosku..." : "Złóż wniosek o pracę"}
           </button>
         </form>
 

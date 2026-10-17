@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import packageInfo from "@/../package.json";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   return NextResponse.json(
     {
-      version: "0.5.0.0",
-      release: "0.5.0.0-beta",
+      version: packageInfo.version,
+      release: `${packageInfo.version}-beta`,
       status: "online",
       deployedAt: new Date().toISOString(),
     },

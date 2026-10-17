@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Nasz tabor – VZTM Kielce",
+  description: "Baza pojazdów autobusowych przewoźników VMPK i VBP Tour Regio w projekcie VZTM Kielce dla symulatora OMSI 2.",
+};
 
 export default async function FleetPage({ searchParams }: { searchParams: Promise<{ carrier?: string }> }) {
   const { carrier: carrierFilter } = await searchParams;
@@ -24,7 +30,7 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700 pb-4">
         <div>
-          <h1 className="text-4xl font-extrabold text-amber-400">🚌 Nasz Tabor</h1>
+          <h1 className="text-4xl font-extrabold text-amber-400">🚌 Nasz tabor</h1>
           <p className="text-sm text-slate-300 mt-1">
             {isDriver
               ? `Jako kierowca ${driverCarrier} masz dostęp wyłącznie do taboru swojego przewoźnika.`

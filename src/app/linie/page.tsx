@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Linie autobusowe – VZTM Kielce",
+  description: "Wykaz linii autobusowych i tras obsługiwanych przez przewoźników VMPK oraz VBP Tour Regio w wirtualnych Kielcach dla OMSI 2.",
+};
 
 export default async function LinesPage() {
   const lines = await prisma.line.findMany({
@@ -12,7 +18,7 @@ export default async function LinesPage() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-bold mb-2">Obsługiwane Linie</h1>
+          <h1 className="text-4xl font-bold mb-2">Obsługiwane linie</h1>
           <p className="text-slate-300">
             Lista linii komunikacyjnych obsługiwanych przez przewoźników VZTM Kielce.
           </p>
@@ -21,7 +27,7 @@ export default async function LinesPage() {
           href="/brygady"
           className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors self-start md:self-auto"
         >
-          📋 Przejdź do Wykazu Brygad &rarr;
+          📋 Przejdź do wykazu brygad &rarr;
         </Link>
       </div>
 

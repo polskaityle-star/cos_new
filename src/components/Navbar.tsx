@@ -19,19 +19,13 @@ export default function Navbar() {
   return (
     <nav className={`${navBg} shadow-md transition-colors duration-300`}>
       <div className="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
-        <Link href="/" className="flex flex-col group leading-tight">
+        <Link href="/" className="flex items-center group">
           <span className="text-xl font-bold font-mono tracking-wider flex items-center gap-2 group-hover:text-amber-300 transition-colors">
             🚍 VZTM KIELCE
           </span>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="bg-amber-400/20 text-amber-300 border border-amber-400/50 px-1.5 py-0.2 rounded text-[11px] font-mono font-bold tracking-normal shadow-xs">
-              v0.5.0.0
-            </span>
-            <span className="text-[10px] text-slate-300 font-medium">BETA</span>
-          </div>
         </Link>
         <div className="flex gap-4 md:gap-5 items-center flex-wrap">
-          <Link href="/" className="hover:text-amber-300 font-semibold transition-colors">Strona Główna</Link>
+          <Link href="/" className="hover:text-amber-300 font-semibold transition-colors">Strona główna</Link>
           <Link href="/vmpk" className="hover:text-yellow-300 font-semibold transition-colors">VMPK</Link>
           <Link href="/vbp" className="hover:text-gray-300 font-semibold transition-colors">VBP</Link>
           <Link href="/kontakt" className="hover:opacity-80 transition-opacity">Kontakt</Link>
@@ -67,7 +61,7 @@ export default function Navbar() {
 
               {hasManagementAccess && (
                 <Link href="/panel/zarzad" className="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs font-semibold transition-colors shadow">
-                  Panel Zarządu
+                  Panel zarządu
                 </Link>
               )}
 
@@ -79,7 +73,7 @@ export default function Navbar() {
                     className="w-4 h-4 rounded-full object-cover border border-amber-300 shrink-0"
                   />
                 )}
-                <span>Panel Kierowcy</span>
+                <span>Panel kierowcy</span>
               </Link>
 
               <button
@@ -96,7 +90,7 @@ export default function Navbar() {
                 Logowanie
               </Link>
               <Link href="/register" className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
-                Złóż Wniosek
+                Złóż wniosek
               </Link>
             </div>
           )}

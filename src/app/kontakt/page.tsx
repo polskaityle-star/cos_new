@@ -76,14 +76,14 @@ export default function ContactPage() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-slate-300">Adres Email</label>
+              <label htmlFor="email" className="text-sm font-medium text-slate-300">Adres e-mail</label>
               <input
                 type="email"
                 id="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
-                placeholder="twoj@email.com (opcjonalnie)"
+                placeholder="twoj@e-mail.com (opcjonalnie)"
               />
             </div>
           </div>
@@ -127,11 +127,21 @@ export default function ContactPage() {
       <div className="grid md:grid-cols-2 gap-6 mt-12">
         <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center">
           <h3 className="font-bold text-xl mb-2 text-[#E31837]">Zarząd VMPK</h3>
-          <p className="text-slate-400">vmpk@vztm-kielce.pl</p>
+          <a
+            href="mailto:vmpk@vztm-kielce.pl"
+            className="text-slate-400 hover:text-white transition-colors underline"
+          >
+            vmpk@vztm-kielce.pl
+          </a>
         </div>
         <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 text-center">
           <h3 className="font-bold text-xl mb-2 text-[#005A9C]">Zarząd VBP</h3>
-          <p className="text-slate-400">vbp@vztm-kielce.pl</p>
+          <a
+            href="mailto:vbp@vztm-kielce.pl"
+            className="text-slate-400 hover:text-white transition-colors underline"
+          >
+            vbp@vztm-kielce.pl
+          </a>
         </div>
       </div>
     </div>

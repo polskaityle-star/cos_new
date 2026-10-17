@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "VMPK Kielce – VZTM Kielce",
+  description: "Wirtualne Miejskie Przedsiębiorstwo Komunikacyjne w Kielcach dla OMSI 2. Czerwono-żółte barwy, tradycja, profesjonalizm i trzon kieleckiej komunikacji miejskiej.",
+};
+
 export default function VMPKPage() {
   return (
     <div className="space-y-8 animate-fade-in">
@@ -6,7 +13,7 @@ export default function VMPKPage() {
         <p className="text-xl max-w-3xl leading-relaxed">
           Wirtualne Miejskie Przedsiębiorstwo Komunikacyjne w Kielcach. 
           Rozpoznawalni z daleka dzięki naszym charakterystycznym, czerwono-żółtym barwom. 
-          Jesteśmy głównym operatorem komunikacyjnym w wirtualnych Kielcach na platformie OMSI 2.
+          Jesteśmy głównym operatorem komunikacji miejskiej w wirtualnych Kielcach na platformie OMSI 2.
         </p>
       </div>
 
@@ -19,9 +26,9 @@ export default function VMPKPage() {
           </p>
         </div>
         <div className="bg-slate-800 p-8 rounded-xl border border-slate-700">
-          <h2 className="text-2xl font-bold text-[#FFC627] mb-4">Nasza Flota</h2>
+          <h2 className="text-2xl font-bold text-[#FFC627] mb-4">Nasza flota</h2>
           <p className="text-slate-300">
-            Posiadamy zróżnicowany tabor miejski, od standardowych 12-metrowych autobusów, 
+            Posiadamy zróżnicowany tabor miejski, od standardowych 12-metrowych autobusów 
             aż po wielkopojemne przegubowce.
           </p>
         </div>

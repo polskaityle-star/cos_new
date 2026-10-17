@@ -1,14 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Strona główna – VZTM Kielce",
+  description: "Wirtualny Zarząd Transportu Miejskiego w Kielcach dla OMSI 2. Zarządzanie liniami, rozkładami jazdy i taborem przewoźników VMPK oraz VBP.",
+};
 
 export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center space-y-12 py-12">
       <div className="text-center space-y-4 max-w-2xl">
-        <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-300 px-3.5 py-1 rounded-full text-xs font-mono font-bold shadow-xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>Wersja systemu:</span>
-          <span className="underline font-extrabold">v0.5.0.0</span>
-        </div>
         <h1 className="text-5xl font-extrabold tracking-tight">Witaj w VZTM Kielce</h1>
         <p className="text-lg text-slate-300">
           Wirtualny Zarząd Transportu Miejskiego dla gry OMSI 2. Zarządzamy komunikacją miejską w wirtualnych Kielcach,
@@ -50,7 +51,7 @@ export default function Home() {
           Złóż wniosek rekrutacyjny, wybierz swojego przewoźnika i rozpocznij karierę wirtualnego kierowcy autobusu.
         </p>
         <Link href="/register" className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-colors text-lg">
-          Złóż Wniosek (Rejestracja)
+          Złóż wniosek (rejestracja)
         </Link>
       </div>
     </div>

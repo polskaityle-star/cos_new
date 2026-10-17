@@ -172,7 +172,7 @@ export default function LoginPage() {
 
         {activeTab === "login" ? (
           <>
-            <h1 className="text-2xl font-bold mb-4 text-center text-white">Logowanie do Portalu</h1>
+            <h1 className="text-2xl font-bold mb-4 text-center text-white">Logowanie do portalu</h1>
 
             {error && (
               <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded mb-4 text-center text-sm">
@@ -182,7 +182,7 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm text-slate-300">Nazwa Użytkownika / Nick</label>
+                <label className="text-sm text-slate-300">Nazwa użytkownika / nick</label>
                 <input
                   type="text"
                   required
@@ -228,7 +228,7 @@ export default function LoginPage() {
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold mb-4 text-center text-white">Zmiana Hasła</h1>
+            <h1 className="text-2xl font-bold mb-4 text-center text-white">Zmiana hasła</h1>
 
             {cpError && (
               <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded mb-4 text-center text-sm">
@@ -244,7 +244,7 @@ export default function LoginPage() {
 
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Nazwa Użytkownika / Nick *</label>
+                <label className="text-xs font-semibold text-slate-300">Nazwa użytkownika / nick *</label>
                 <input
                   type="text"
                   required
@@ -305,7 +305,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center text-sm text-slate-400">
           Nie masz konta?{" "}
           <a href="/register" className="text-emerald-400 hover:underline">
-            Złóż wniosek (Zarejestruj się)
+            Złóż wniosek (zarejestruj się)
           </a>
         </div>
       </div>

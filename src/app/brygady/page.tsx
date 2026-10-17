@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
@@ -12,6 +13,11 @@ import {
 } from "@/lib/brigades";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Wykaz brygad – VZTM Kielce",
+  description: "Szczegółowy harmonogram odjazdów, zjazdów, godzin szczytowych oraz punktów przesiadek kierowców w projekcie VZTM Kielce OMSI 2.",
+};
 
 export default async function BrigadesPage({
   searchParams,
@@ -53,7 +59,7 @@ export default async function BrigadesPage({
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700 pb-6">
         <div>
-          <h1 className="text-4xl font-extrabold text-amber-400">📋 Wykaz Brygad i Służb</h1>
+          <h1 className="text-4xl font-extrabold text-amber-400">📋 Wykaz brygad i służb</h1>
           <p className="text-slate-300 mt-1">
             Szczegółowy harmonogram odjazdów, zjazdów oraz wyznaczonych punktów przesiadek dla kierowców.
           </p>
@@ -63,7 +69,7 @@ export default async function BrigadesPage({
             href="/linie"
             className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            &larr; Powrót do Linii
+            &larr; Powrót do linii
           </Link>
         </div>
       </div>
