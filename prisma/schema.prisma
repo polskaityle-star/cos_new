@@ -7,26 +7,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id                String          @id @default(cuid())
-  username          String          @unique
-  password          String
-  role              String          @default("KIEROWCA") // KIEROWCA, DYSPOZYTOR, KIEROWNIK_PRZEWOZOW, MECHANIK, SPRAWDZAJACY, WLASCICIEL, ZARZAD
-  carrier           String?         // VMPK, VBP (nullable until accepted or specified in registration)
-  status            String          @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  age               Int?            // Wiek użytkownika
-  bio               String?         // O sobie
-  avatar            String?         // Ścieżka do zdjęcia profilowego
-  badgeNumber       String?         // Numer służbowy (np. K1923, D14, P05, M12, S03, W1)
-  workingDays       String?         // Etat - wybrane dni tygodnia (np. PN,WT,SR,CZ,PT)
-  assignedVehicleId String?         // Stały pojazd
-  assignedVehicle   Vehicle?        @relation("AssignedVehicle", fields: [assignedVehicleId], references: [id], onDelete: SetNull)
-  suspended         Boolean         @default(false)
-  discordId         String?         @unique // ID konta Discord (powiązanie przez OAuth)
-  discordUsername   String?         // Nazwa na Discordzie (tylko do wyświetlania)
-  discordNotify     Boolean         @default(true) // Czy wysyłać powiadomienia w wiadomościach prywatnych
-  createdAt         DateTime        @default(now())
+  id                String               @id @default(cuid())
+  username          String               @unique
+  password          String               @default("")
+  role              String               @default("KIEROWCA") // KIEROWCA, DYSPOZYTOR, KIEROWNIK_PRZEWOZOW, MECHANIK, SPRAWDZAJACY, WLASCICIEL, ZARZAD
+  carrier           String?              // VMPK, VBP (nullable until accepted or specified in registration)
+  status            String               @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  age               Int?                 // Wiek użytkownika
+  bio               String?              // O sobie
+  avatar            String?              // Ścieżka do zdjęcia profilowego
+  badgeNumber       String?              // Numer służbowy (np. K1923, D14, P05, M12, S03, W1)
+  workingDays       String?              // Etat - wybrane dni tygodnia (np. PN,WT,SR,CZ,PT)
+  assignedVehicleId String?              // Stały pojazd
+  assignedVehicle   Vehicle?             @relation("AssignedVehicle", fields: [assignedVehicleId], references: [id], onDelete: SetNull)
+  suspended         Boolean              @default(false)
+  discordId         String?              @unique // ID konta Discord (powiązanie przez OAuth)
+  discordUsername   String?              // Nazwa na Discordzie (tylko do wyświetlania)
+  discordNotify     Boolean              @default(true) // Czy wysyłać powiadomienia w wiadomościach prywatnych
+  createdAt         DateTime             @default(now())
   duties            Duty[]
   driverRequests    DriverRequest[]
   vehicleDefects    VehicleDefect[]
@@ -35,10 +34,10 @@ model User {
 
 model Vehicle {
   id                String          @id @default(cuid())
-  carrier           String          // VMPK, VBP
-  model             String
+  carrier           String          @default("VMPK") // VMPK, VBP - zabezpieczone defaultem
+  model             String          @default("")
   registration      String          @unique
-  fleetNumber       String
+  fleetNumber       String          @default("")
   status            String          @default("SPRAWNY") // SPRAWNY, WARSZTAT, KASACJA
   imageUrl          String?         // Ścieżka do zdjęcia PNG/JPG
   year              Int?
@@ -47,137 +46,4 @@ model Vehicle {
   defects           VehicleDefect[]
   duties            Duty[]
   replacementDuties Duty[]          @relation("ReplacementVehicle")
-  assignedUsers     User[]          @relation("AssignedVehicle")
-}
-
-model Line {
-  id               String            @id @default(cuid())
-  number           String
-  carrier          String?           // VMPK, VBP (przypisany przewoźnik)
-  startStop        String?           @default("")
-  endStop          String?           @default("")
-  description      String?
-  directions       String?           // Kierunki / warianty trasy
-  brigades         String?           // Brygady (np. "1, 2, 3")
-  duties           Duty[]
-  brigadeSchedules BrigadeSchedule[]
-}
-
-model BrigadeSchedule {
-  id                  String   @id @default(cuid())
-  lineId              String
-  line                Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
-  carrier             String?  // VMPK, VBP (opcjonalny dedykowany przewoźnik)
-  brigadeType         String?  @default("NORMALNA") // "NORMALNA" (całodzienna) lub "SZCZYTOWA" (dwurazowa)
-  brigadeNumber       String   // np. "34/1", "Brygada 2"
-  startTime           String?  @default("") // Godzina Wyjazdu I (opcjonalna)
-  endTime             String?  @default("") // Godzina Zjazdu I (opcjonalna)
-  firstStopDeparture  String?  // Godzina pierwszego przystanku I (np. "05:30")
-  lastStopArrival     String?  // Godzina ostatniego przystanku I (np. "13:20")
-  startLocation       String?  @default("") // np. "Zajezdnia VMPK / Bukówka"
-  endLocation         String?  @default("") // np. "Bukówka / Zajezdnia"
-  
-  // Pola dla brygady szczytowej (II wyjazd i zjazd):
-  startTime2          String?  @default("") // Godzina Wyjazdu II (opcjonalna)
-  endTime2            String?  @default("") // Godzina Zjazdu II (opcjonalna)
-  firstStopDeparture2 String?  @default("") // Godzina pierwszego przystanku II
-  lastStopArrival2    String?  @default("") // Godzina ostatniego przystanku II
-  startLocation2      String?  @default("") // Miejsce wyjazdu II
-  endLocation2        String?  @default("") // Miejsce zjazdu II
-
-  driverChanges       String?  // Przesiadki kierowców / podmiany (np. "Przesiadka na Żytniej o 09:30")
-  notes               String?  // Uwagi
-  createdAt           DateTime @default(now())
-}
-
-model Duty {
-  id                   String   @id @default(cuid())
-  userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lineId               String
-  line                 Line     @relation(fields: [lineId], references: [id], onDelete: Cascade)
-  vehicleId            String?
-  vehicle              Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  replacementVehicleId String?
-  replacementVehicle   Vehicle? @relation("ReplacementVehicle", fields: [replacementVehicleId], references: [id], onDelete: SetNull)
-  date                 DateTime
-  brigade              String?  // np. "34/2 - dni robocze/1 Zmiana"
-  shift                String?  // "1 Zmiana", "2 Zmiana", "3 Zmiana"
-  notes                String?  // Opcjonalne uwagi do służby
-  isExtra              Boolean  @default(false) // Służba dodatkowa (odrabiająca niezaliczone służby)
-  status               String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, MISSED
-  report               Report?
-}
-
-model Report {
-  id              String   @id @default(cuid())
-  dutyId          String   @unique
-  duty            Duty     @relation(fields: [dutyId], references: [id], onDelete: Cascade)
-  startMileage    Int
-  endMileage      Int
-  startScreenshot String
-  endScreenshot   String
-  summaryFile     String
-  depotScreenshots String? // JSON string: { depotDep1?, depotArr1?, depotDep2?, depotArr2? }
-  status          String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  createdAt       DateTime @default(now())
-}
-
-model DriverRequest {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type          String    // DODATKOWA_SLUZBA, ANULOWANIE_SLUZBY, URLOP, STALY_POJAZD, ZMIANA_ETATU, ODWIESZENIE
-  reason        String?   // Opcjonalne uzasadnienie
-  dateStart     DateTime?
-  dateEnd       DateTime?
-  dutyId        String?
-  details       String?   // np. wybrany pojazd lub nowe dni etatu
-  status        String    @default("PENDING") // PENDING, ACCEPTED, REJECTED
-  responseNotes String?   // Notatka zarządu
-  createdAt     DateTime  @default(now())
-}
-
-model VehicleDefect {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  vehicleId     String
-  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  title         String
-  description   String
-  defectType    String?   // np. "Awaria mechaniczna", "Układ hamulcowy", "Elektryka", "Kolizja"
-  photos        String?   // JSON array string ze zdjęciami awarii
-  workshopStart DateTime? // Od kiedy na warsztacie
-  workshopEnd   DateTime? // Do kiedy na warsztacie
-  adminNotes    String?   // Notatka zarządu / warsztatu
-  status        String    @default("NOWE") // NOWE, WARSZTAT, NAPRAWIONE, ODRZUCONE
-  createdAt     DateTime  @default(now())
-}
-
-model ContactMessage {
-  id        String    @id @default(cuid())
-  name      String
-  email     String
-  subject   String
-  message   String
-  status    String    @default("NOWA") // NOWA, PRZECZYTANA, ODPOWIEDZIANO
-  reply     String?   // Odpowiedź Zarządu
-  repliedAt DateTime? // Data odpowiedzi
-  createdAt DateTime  @default(now())
-}
-
-model DriverNotification {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sender    String    // np. "Zarząd", "Godksawiss (Właściciel)", "kierowca1 (Kierowca)"
-  title     String
-  message   String
-  read      Boolean   @default(false)
-  direction String    @default("TO_DRIVER") // "TO_DRIVER" (od Zarządu do kierowcy) lub "TO_MANAGEMENT" (od kierowcy do Zarządu)
-  reply     String?   // Treść odpowiedzi
-  repliedAt DateTime? // Data nadesłania odpowiedzi
-  replyBy   String?   // Kto odpowiedział (np. "Godksawiss", "kierowca1")
-  createdAt DateTime  @default(now())
-}
+  assignedUsers     User[]          @relation("AssignedVehicle
