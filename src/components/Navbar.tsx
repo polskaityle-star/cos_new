@@ -112,7 +112,7 @@ export default function Navbar() {
                       {session.user.badgeNumber || (session.user.username?.toLowerCase() === "godksawiss" ? "W1" : null)}
                     </span>
                   )}
-                  <span>{session.user.username}</span>
+                  <span>{session.user.discordUsername || session.user.username}</span>
                 </span>
                 <span
                   className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${

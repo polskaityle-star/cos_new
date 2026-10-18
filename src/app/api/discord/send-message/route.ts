@@ -37,9 +37,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Wiadomość może mieć maksymalnie 2000 znaków." }, { status: 400 });
     }
 
-    const badge = session.user.badgeNumber ? ` [${session.user.badgeNumber}]` : "";
+    const badge = session.user.badgeNumber || (session.user.username?.toLowerCase() === "godksawiss" ? "W1" : null);
+    const displayName = session.user.discordUsername || session.user.username;
     const roleLabel = getRoleLabel(session.user.role);
-    const sender = `${session.user.username}${badge}`;
+    const sender = badge ? `${badge} ${displayName}` : displayName;
 
     const ok = await sendToChannel(
       channel,

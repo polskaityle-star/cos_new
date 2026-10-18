@@ -11,6 +11,8 @@ declare module "next-auth" {
       avatar?: string | null
       workingDays?: string | null
       assignedVehicleId?: string | null
+      discordId?: string | null
+      discordUsername?: string | null
     } & DefaultSession["user"]
   }
 
@@ -23,5 +25,7 @@ declare module "next-auth" {
     avatar?: string | null
     workingDays?: string | null
     assignedVehicleId?: string | null
+    discordId?: string | null
+    discordUsername?: string | null
   }
 }

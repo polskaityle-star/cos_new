@@ -247,11 +247,16 @@ export async function syncDiscordRolesDetailed(userId: string): Promise<SyncRole
   try {
     const u = await prisma.user.findUnique({
       where: { id: userId },
-      select: { discordId: true, role: true, carrier: true, status: true, suspended: true, username: true, badgeNumber: true },
+      select: { discordId: true, role: true, carrier: true, status: true, suspended: true, username: true, badgeNumber: true, discordUsername: true },
     });
     if (!u?.discordId) {
       return { success: false, message: "Konto użytkownika nie jest powiązane z Discordem.", appliedRoles: [] };
     }
+
+    // Pobierz informacje o gildii (m.in. czy użytkownik jest właścicielem serwera)
+    const gRes = await discordFetch(`${API}/guilds/${guild}`, { headers: botHeaders() });
+    const guildData = gRes?.ok ? ((await gRes.json()) as { owner_id?: string }) : null;
+    const isGuildOwner = guildData?.owner_id === u.discordId;
 
     const guildRoles = await fetchGuildRoles();
 
@@ -273,9 +278,26 @@ export async function syncDiscordRolesDetailed(userId: string): Promise<SyncRole
       return { success: false, message: `Błąd Discord API: kod ${mRes.status}.`, appliedRoles: [] };
     }
 
-    const member = (await mRes.json()) as { roles: string[] };
+    const member = (await mRes.json()) as {
+      roles: string[];
+      nick?: string | null;
+      user?: { id: string; username: string; global_name?: string | null };
+    };
     const currentRoles = new Set(member.roles);
     const applied: string[] = [];
+
+    // Zapisz/zaktualizuj discordUsername w bazie danych
+    const freshDiscordName = member.user?.global_name || member.user?.username || member.nick;
+    if (freshDiscordName && freshDiscordName !== u.discordUsername) {
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { discordUsername: freshDiscordName },
+        });
+      } catch {}
+    }
+
+    let nickNotice = "";
 
     if (u.status === "ACCEPTED" && !u.suspended) {
       // 1. Rola stanowiskowa
@@ -339,15 +361,28 @@ export async function syncDiscordRolesDetailed(userId: string): Promise<SyncRole
       // 5. Aktualizacja pseudonimu na serwerze Discord (np. "W1 Godksawiss")
       const effectiveBadge = u.badgeNumber || (u.username.toLowerCase() === "godksawiss" ? "W1" : null);
       if (effectiveBadge) {
-        const targetNick = `${effectiveBadge} ${u.username}`;
-        try {
-          await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}`, {
-            method: "PATCH",
-            headers: { ...botHeaders(), "Content-Type": "application/json" },
-            body: JSON.stringify({ nick: targetNick }),
-          });
-        } catch {
-          // Ignorujemy brak uprawnień bota (np. zmiana nicku właściciela serwera Discord)
+        // Użyj nicku z Discorda jeśli istnieje, inaczej z systemu
+        const dcRawName = member.nick || member.user?.global_name || member.user?.username || u.discordUsername || u.username;
+        const cleanName = dcRawName.replace(/^\[?[A-Z0-9]+\]?\s*\|?\s*/i, "").trim() || u.username;
+        const targetNick = `${effectiveBadge} ${cleanName}`.slice(0, 32);
+
+        if (isGuildOwner) {
+          nickNotice = ` (Uwaga: Jesteś Właścicielem serwera Discord – Discord zabrania botom modyfikacji pseudonimu Właściciela Serwera. Ustaw pseudonim "${targetNick}" ręcznie na Discordzie: prawy klik na siebie -> Zmień profil serwera). Dla pozostałych kierowców bot ustawi go automatycznie.`;
+        } else {
+          try {
+            const nickRes = await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}`, {
+              method: "PATCH",
+              headers: { ...botHeaders(), "Content-Type": "application/json" },
+              body: JSON.stringify({ nick: targetNick }),
+            });
+            if (nickRes && nickRes.ok) {
+              nickNotice = ` oraz ustawiono pseudonim "${targetNick}".`;
+            } else if (nickRes?.status === 403) {
+              nickNotice = ` (Uwaga: Bot nie ma uprawnienia "Zarządzanie pseudonimami" / Manage Nicknames lub jego rola na Discordzie jest niżej niż Twoja; ustaw "${targetNick}" ręcznie).`;
+            }
+          } catch (e) {
+            console.error("[discord] Błąd zmiany nicku:", e);
+          }
         }
       }
     } else {
@@ -373,12 +408,12 @@ export async function syncDiscordRolesDetailed(userId: string): Promise<SyncRole
     }
 
     if (applied.length > 0) {
-      return { success: true, message: `Pomyślnie zsynchronizowano role na Discordzie: ${applied.join(", ")}`, appliedRoles: applied };
+      return { success: true, message: `Pomyślnie zsynchronizowano role na Discordzie (${applied.join(", ")})${nickNotice}`, appliedRoles: applied };
     }
 
     return {
       success: true,
-      message: `Role użytkownika (${u.role}${u.carrier ? `, ${u.carrier}` : ""}) zostały zaktualizowane na serwerze Discord.`,
+      message: `Role użytkownika (${u.role}${u.carrier ? `, ${u.carrier}` : ""}) zostały zaktualizowane na serwerze Discord${nickNotice}`,
       appliedRoles: applied,
     };
   } catch (err) {

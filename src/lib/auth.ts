@@ -121,6 +121,8 @@ export const authOptions: NextAuthOptions = {
           avatar: safeAvatar,
           workingDays: user.workingDays,
           assignedVehicleId: user.assignedVehicleId,
+          discordId: user.discordId,
+          discordUsername: user.discordUsername,
         };
       },
     }),
@@ -161,6 +163,8 @@ export const authOptions: NextAuthOptions = {
             avatar: dbUser.avatar,
             workingDays: dbUser.workingDays,
             assignedVehicleId: dbUser.assignedVehicleId,
+            discordId: dbUser.discordId,
+            discordUsername: dbUser.discordUsername,
           } as typeof user;
         }
       }
@@ -170,6 +174,8 @@ export const authOptions: NextAuthOptions = {
         token.role = currentUser.role;
         token.carrier = currentUser.carrier;
         token.badgeNumber = currentUser.badgeNumber || (currentUser.username?.toLowerCase() === "godksawiss" ? "W1" : null);
+        token.discordId = currentUser.discordId || null;
+        token.discordUsername = currentUser.discordUsername || null;
         
         // Zabezpieczenie przed przepełnieniem ciasteczka:
         if (currentUser.avatar && (currentUser.avatar.startsWith("http://") || currentUser.avatar.startsWith("https://"))) {
@@ -182,11 +188,11 @@ export const authOptions: NextAuthOptions = {
 
         token.workingDays = currentUser.workingDays;
         token.assignedVehicleId = currentUser.assignedVehicleId;
-      } else if (token.id && (!token.badgeNumber || !token.carrier)) {
+      } else if (token.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { badgeNumber: true, username: true, role: true, carrier: true },
+            select: { badgeNumber: true, username: true, role: true, carrier: true, discordId: true, discordUsername: true },
           });
           if (dbUser) {
             let finalBadge = dbUser.badgeNumber;
@@ -200,6 +206,8 @@ export const authOptions: NextAuthOptions = {
             token.badgeNumber = finalBadge || (dbUser.username?.toLowerCase() === "godksawiss" ? "W1" : null);
             token.carrier = dbUser.carrier;
             token.role = dbUser.role;
+            token.discordId = dbUser.discordId || null;
+            token.discordUsername = dbUser.discordUsername || null;
           }
         } catch {
           // ignore
@@ -217,6 +225,8 @@ export const authOptions: NextAuthOptions = {
         session.user.avatar = (token.avatar as string) || null;
         session.user.workingDays = (token.workingDays as string) || null;
         session.user.assignedVehicleId = (token.assignedVehicleId as string) || null;
+        session.user.discordId = (token.discordId as string) || null;
+        session.user.discordUsername = (token.discordUsername as string) || null;
       }
       return session;
     },
