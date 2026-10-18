@@ -77,7 +77,7 @@ export async function POST(req: Request) {
 
   const name: string | undefined = body.data?.name;
   const discordId: string | undefined = body.member?.user?.id ?? body.user?.id;
-  const site = siteUrl();
+  const site = siteUrl(req);
 
   try {
     // Komendy publiczne (bez powiązanego konta)

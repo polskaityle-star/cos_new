@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
-  const base = siteUrl();
+  const base = siteUrl(req);
   if (!session?.user) return NextResponse.redirect(new URL("/login", base));
 
   const back = (flag: string) =>
