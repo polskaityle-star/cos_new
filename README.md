@@ -314,3 +314,58 @@ Wydanie **0.4.0.0** wprowadza kompleksowy pakiet usprawnień organizacyjnych, te
 
 ---
 *VZTM Kielce © 2026. Wszelkie prawa zastrzeżone.*
+
+---
+
+## 💬 Integracja z Discordem
+
+System łączy się z Discordem na cztery sposoby. Każdy element działa niezależnie - brak zmiennych środowiskowych po prostu wyłącza dany element, a reszta systemu działa jak dotąd. Pełna lista zmiennych: plik `.env.example`.
+
+### 1. Powiadomienia (webhooki i wiadomości prywatne)
+
+| Zdarzenie | Gdzie trafia |
+| :--- | :--- |
+| Nowe zgłoszenie rekrutacyjne | kanał `REKRUTACJA` |
+| Nowy wniosek kierowcy | kanał `WNIOSKI` |
+| Nowa usterka | kanał `USTERKI` + **wiadomość prywatna do mechaników** |
+| Nowy raport do sprawdzenia | kanał `RAPORTY` |
+| Wiadomość kierowcy do Zarządu | kanał `WIADOMOSCI` |
+| Formularz kontaktowy ze strony | kanał `KONTAKT` |
+| Decyzja o wniosku, nowa służba w grafiku, wynik sprawdzenia raportu, wiadomość i odpowiedź od Zarządu, akceptacja konta, zmiana roli | **wiadomość prywatna do zainteresowanego** |
+
+Wiadomości prywatne dostają tylko osoby, które powiązały konto Discord i nie wyłączyły powiadomień (przycisk w panelu). Jeśli ktoś ma zablokowane wiadomości od członków serwera, wysyłka po cichu się pomija - akcja w systemie nie jest blokowana.
+
+Konfiguracja: w ustawieniach kanału Discord -> *Integracje* -> *Webhooki* utwórz webhook i wklej jego adres do `DISCORD_WEBHOOK_<KANAŁ>` (lub jeden wspólny do `DISCORD_WEBHOOK_URL`). Do wiadomości prywatnych potrzebny jest `DISCORD_BOT_TOKEN`.
+
+### 2. Powiązanie konta i logowanie przez Discord
+
+1. W [Discord Developer Portal](https://discord.com/developers/applications) utwórz aplikację i w zakładce **OAuth2** dodaj dwa adresy przekierowania:
+   - `https://TWOJA-DOMENA/api/auth/callback/discord` (logowanie)
+   - `https://TWOJA-DOMENA/api/discord/link/callback` (powiązanie konta)
+2. Ustaw `DISCORD_CLIENT_ID` i `DISCORD_CLIENT_SECRET`.
+3. Zalogowany użytkownik klika w panelu **Połącz z Discordem**. Od tej chwili na stronie logowania pojawia się przycisk **Zaloguj się przez Discord**.
+
+Logowanie przez Discord działa wyłącznie dla kont wcześniej powiązanych i zaakceptowanych - nie tworzy nowych kont. Powiązanie wymaga zalogowania hasłem, więc nikt nie przejmie cudzego konta samym Discordem.
+
+### 3. Bot (komendy slash)
+
+Bot działa bez stałego procesu: Discord wysyła komendy na adres strony.
+
+1. W ustawieniach aplikacji w polu **Interactions Endpoint URL** wpisz `https://TWOJA-DOMENA/api/discord/interactions`.
+2. Ustaw `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`.
+3. Zarejestruj komendy (raz): `node scripts/discord-register-commands.js`.
+4. Zaproś bota na serwer (zakres `bot` i `applications.commands`; do ról potrzebne jest uprawnienie *Zarządzanie rolami*, a rola bota musi być **wyżej** niż role zarządzane przez system).
+
+| Komenda | Opis |
+| :--- | :--- |
+| `/grafik` | Twój grafik na 7 dni |
+| `/sluzba` | Twoja służba na dziś i jutro |
+| `/status` | Rola, przewoźnik, etat, niezaliczone służby, wnioski |
+| `/linie` | Lista linii (dostępna dla każdego) |
+| `/tabor` | Stan taboru VMPK i VBP (dostępna dla każdego) |
+
+Odpowiedzi są widoczne tylko dla osoby, która użyła komendy.
+
+### 4. Role na serwerze
+
+Po akceptacji konta, zmianie roli lub przycisku **Synchronizuj role na serwerze** (Panel Zarządu) bot nadaje rolę Discord odpowiadającą roli w systemie oraz przewoźnikowi (`DISCORD_ROLE_*`). Osoba musi być na serwerze. Role spoza listy zarządzanej przez system nie są ruszane.

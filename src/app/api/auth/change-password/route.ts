@@ -1,119 +1,57 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { verifyPassword } from "@/lib/password";
+import { getClientIp, rateLimit } from "@/lib/rateLimit";
+
+const WINDOW_MS = 15 * 60 * 1000;
+const GENERIC_ERROR = "Nieprawidłowy login lub dotychczasowe hasło.";
+const TOO_MANY = "Zbyt wiele prób. Spróbuj ponownie za kilkanaście minut.";
 
 export async function POST(req: Request) {
   try {
-    const { username, oldPassword, newPassword } = await req.json();
+    const ip = getClientIp(req.headers);
+    if (!rateLimit(`pw:ip:${ip}`, 10, WINDOW_MS)) {
+      return NextResponse.json({ message: TOO_MANY }, { status: 429 });
+    }
+
+    const body = await req.json().catch(() => null);
+    const username = typeof body?.username === "string" ? body.username.trim() : "";
+    const oldPassword = typeof body?.oldPassword === "string" ? body.oldPassword.trim() : "";
+    const newPassword = typeof body?.newPassword === "string" ? body.newPassword.trim() : "";
 
     if (!username || !oldPassword || !newPassword) {
       return NextResponse.json({ message: "Wszystkie pola są wymagane" }, { status: 400 });
     }
-
-    if (newPassword.length < 4) {
-      return NextResponse.json({ message: "Nowe hasło musi mieć co najmniej 4 znaki" }, { status: 400 });
+    if (username.length > 64 || oldPassword.length > 128) {
+      return NextResponse.json({ message: GENERIC_ERROR }, { status: 400 });
+    }
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      return NextResponse.json({ message: "Nowe hasło musi mieć od 8 do 128 znaków" }, { status: 400 });
     }
 
-    const inputUser = username.trim();
-    const ADMIN_ALIASES = [
-      "godksawiss",
-      "admin",
-      "administrator",
-      "administator",
-      "wlasciciel",
-      "zarzad",
-      "ksawe",
-    ];
-    const isGodOrAdmin = ADMIN_ALIASES.includes(inputUser.toLowerCase());
+    if (!rateLimit(`pw:user:${username.toLowerCase()}`, 5, WINDOW_MS)) {
+      return NextResponse.json({ message: TOO_MANY }, { status: 429 });
+    }
 
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { username: inputUser },
-          { username: inputUser.toLowerCase() },
-          ...(isGodOrAdmin
-            ? [
-                { username: "Godksawiss" },
-                { username: "godksawiss" },
-                { role: "WLASCICIEL" },
-                { role: "ZARZAD" },
-              ]
-            : []),
-        ],
-      },
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ username }, { username: username.toLowerCase() }] },
     });
 
-    if (!user && isGodOrAdmin) {
-      const hashed = await bcrypt.hash(newPassword, 10);
-      user = await prisma.user.create({
-        data: {
-          username: "Godksawiss",
-          password: hashed,
-          role: "WLASCICIEL",
-          badgeNumber: "W1",
-          status: "ACCEPTED",
-          carrier: "VMPK",
-        },
-      });
-      return NextResponse.json({
-        success: true,
-        message: "Hasło konta Administratora (Godksawiss) zostało pomyślnie zaktualizowane! Możesz się teraz zalogować.",
-      });
+    if (!user || !user.password) {
+      return NextResponse.json({ message: GENERIC_ERROR }, { status: 400 });
     }
 
-    if (!user) {
-      return NextResponse.json({ message: "Nie znaleziono użytkownika o podanym loginie" }, { status: 404 });
+    const { ok } = await verifyPassword(oldPassword, user.password);
+    if (!ok) {
+      return NextResponse.json({ message: GENERIC_ERROR }, { status: 400 });
     }
 
-    // Sprawdzenie starego hasła (zarówno haszowane jak i plaintext oraz fallback dla admina)
-    let isCorrect = false;
-    try {
-      isCorrect = await bcrypt.compare(oldPassword, user.password);
-    } catch {}
-
-    if (!isCorrect && oldPassword === user.password) {
-      isCorrect = true;
-    }
-
-    if (!isCorrect && (isGodOrAdmin || user.role === "WLASCICIEL" || user.role === "ZARZAD")) {
-      const allowedAdminPasswords = [
-        "admin123",
-        "admin",
-        "Admin123",
-        "Admin",
-        "godksawiss",
-        "Godksawiss",
-        "administrator",
-        "Administrator",
-        "administator",
-        "Administator",
-        "1234",
-        "12345",
-        "123456",
-        "kielce",
-        "vztm",
-        "vztm123",
-        "ksawe",
-        "Ksawe",
-      ];
-      if (allowedAdminPasswords.includes(oldPassword)) {
-        isCorrect = true;
-      }
-    }
-
-    if (!isCorrect) {
-      return NextResponse.json({ message: "Dotychczasowe hasło jest nieprawidłowe" }, { status: 400 });
-    }
-
-    // Haszowanie nowego hasła
+    // Zmieniamy WYŁĄCZNIE hasło. Rola i status zostają bez zmian.
     const hashed = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
       where: { id: user.id },
-      data: {
-        password: hashed,
-        status: "ACCEPTED",
-        role: isGodOrAdmin ? "WLASCICIEL" : user.role,
-      },
+      data: { password: hashed },
     });
 
     return NextResponse.json({

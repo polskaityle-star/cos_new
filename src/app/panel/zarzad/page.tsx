@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import ReportFileList from "@/components/ReportFileList";
 import LiveClock from "@/components/LiveClock";
+import DiscordLinkCard from "@/components/DiscordLinkCard";
 import DutyAssignmentForm from "@/components/DutyAssignmentForm";
 import BrigadeCreationForm from "@/components/BrigadeCreationForm";
 import BrigadeEditCard from "@/components/BrigadeEditCard";
@@ -369,6 +370,8 @@ export default async function AdminPanel({
           </div>
         </div>
       </div>
+
+      <DiscordLinkCard />
 
       {/* 1. Rekrutacja (Wnioski o konto z wiekiem i bio) */}
       {canUsers && (

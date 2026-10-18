@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageDuties } from "@/lib/roles";
 import { getDayOrder } from "@/lib/brigades";
+import { COLORS, notifyUser, runAfter } from "@/lib/discord";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -146,6 +147,23 @@ export async function POST(req: Request) {
 
     revalidatePath("/panel/zarzad");
     revalidatePath("/panel/kierowca");
+
+    await runAfter(async () => {
+      const veh = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+      await notifyUser(userId, [
+        {
+          title: isExtra ? "Nowa służba dodatkowa w grafiku" : "Nowa służba w grafiku",
+          color: COLORS.info,
+          fields: [
+            { name: "Data", value: dutyDate.toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" }), inline: true },
+            { name: "Linia", value: lineObj?.number || "-", inline: true },
+            { name: "Brygada", value: finalBrigade || "-", inline: true },
+            { name: "Pojazd", value: veh ? `#${veh.fleetNumber} ${veh.model}` : "-", inline: true },
+            ...(notes ? [{ name: "Uwagi", value: notes }] : []),
+          ],
+        },
+      ]);
+    });
   }
 
   redirect("/panel/zarzad");

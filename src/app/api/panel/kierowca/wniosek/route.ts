@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { COLORS, runAfter, sendToChannel } from "@/lib/discord";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -88,6 +89,21 @@ export async function POST(req: Request) {
 
   revalidatePath("/panel/kierowca");
   revalidatePath("/panel/zarzad");
+
+  await runAfter(() =>
+    sendToChannel("WNIOSKI", [
+      {
+        title: `Nowy wniosek: ${type}`,
+        color: COLORS.warn,
+        description: finalReason,
+        fields: [
+          { name: "Kierowca", value: `${session.user.username}${session.user.badgeNumber ? ` [${session.user.badgeNumber}]` : ""}`, inline: true },
+          ...(dateStartStr ? [{ name: "Od", value: dateStartStr, inline: true }] : []),
+          ...(dateEndStr ? [{ name: "Do", value: dateEndStr, inline: true }] : []),
+        ],
+      },
+    ])
+  );
 
   redirect("/panel/kierowca");
 }

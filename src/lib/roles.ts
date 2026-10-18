@@ -120,7 +120,7 @@ export const ADMIN_ALIASES = [
 ];
 
 export function isUserAdminOrOwner(role?: string | null, username?: string | null): boolean {
-  if (username && ADMIN_ALIASES.includes(username.toLowerCase())) return true;
+  // Uprawnienia wynikają wyłącznie z roli (nick nie nadaje już uprawnień).
   if (role) {
     const norm = role.toUpperCase();
     if (norm === "WLASCICIEL" || norm === "ZARZAD") return true;

@@ -10,6 +10,7 @@ import AvatarManager from "@/components/AvatarManager";
 import DriverRequestForm from "@/components/DriverRequestForm";
 import DefectReportForm from "@/components/DefectReportForm";
 import LiveClock from "@/components/LiveClock";
+import DiscordLinkCard from "@/components/DiscordLinkCard";
 
 export const dynamic = "force-dynamic";
 
@@ -197,6 +198,8 @@ export default async function DriverPanel() {
           )}
         </div>
       </div>
+
+      <DiscordLinkCard />
 
       {/* Ostrzeżenia o niezaliczonych służbach / zawieszeniu konta (Wymogi 5, 10, 11) */}
       {isSuspended ? (

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { COLORS, notifyUser, runAfter } from "@/lib/discord";
 import { canAccessManagementPanel, getRoleLabel } from "@/lib/roles";
 
 export async function POST(req: Request) {
@@ -35,6 +36,10 @@ export async function POST(req: Request) {
 
   revalidatePath("/panel/zarzad");
   revalidatePath("/panel/kierowca");
+
+  await runAfter(() =>
+    notifyUser(userId, [{ title: `Wiadomość od Zarządu: ${title}`, description: message, color: COLORS.info, fields: [{ name: "Od", value: `${session.user.username} (${senderRole})` }] }])
+  );
 
   redirect("/panel/zarzad");
 }
