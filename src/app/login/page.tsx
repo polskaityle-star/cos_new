@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -22,6 +22,21 @@ export default function LoginPage() {
   const [cpSuccess, setCpSuccess] = useState("");
   const [cpError, setCpError] = useState("");
   const [cpLoading, setCpLoading] = useState(false);
+
+  // Logowanie przez Discord (przycisk widoczny tylko, gdy dostawca jest skonfigurowany)
+  const [discordEnabled, setDiscordEnabled] = useState(false);
+  useEffect(() => {
+    fetch("/api/auth/providers")
+      .then((r) => r.json())
+      .then((p) => setDiscordEnabled(Boolean(p?.discord)))
+      .catch(() => {});
+    const err = new URLSearchParams(window.location.search).get("error");
+    if (err === "DiscordNotLinked") {
+      setError("To konto Discord nie jest powiązane z żadnym aktywnym kontem. Zaloguj się hasłem i powiąż Discorda w panelu.");
+    } else if (err === "AccessDenied") {
+      setError("Logowanie przez Discord nie powiodło się.");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,6 +242,26 @@ export default function LoginPage() {
                 {loading ? "Logowanie..." : "Zaloguj się"}
               </button>
             </form>
+
+            {discordEnabled && (
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <div className="h-px flex-1 bg-slate-700" />
+                  <span>lub</span>
+                  <div className="h-px flex-1 bg-slate-700" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => signIn("discord", { callbackUrl: "/panel" })}
+                  className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold py-3 rounded shadow transition-colors cursor-pointer"
+                >
+                  Zaloguj się przez Discord
+                </button>
+                <p className="text-[11px] text-slate-500 text-center">
+                  Działa po powiązaniu konta Discord w panelu (Panel → Discord).
+                </p>
+              </div>
+            )}
           </>
         ) : (
           <>

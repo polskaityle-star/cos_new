@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageRequests } from "@/lib/roles";
+import { COLORS, notifyUser, runAfter } from "@/lib/discord";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -114,6 +115,19 @@ export async function POST(req: Request) {
 
   revalidatePath("/panel/zarzad");
   revalidatePath("/panel/kierowca");
+
+  if (action === "accept" || action === "reject") {
+    const accepted = action === "accept";
+    await runAfter(() =>
+      notifyUser(driverReq.userId, [
+        {
+          title: accepted ? `Wniosek zaakceptowany: ${driverReq.type}` : `Wniosek odrzucony: ${driverReq.type}`,
+          color: accepted ? COLORS.ok : COLORS.bad,
+          description: accepted ? driverReq.reason || undefined : rejectReason || "Wniosek odrzucony przez Zarząd",
+        },
+      ])
+    );
+  }
 
   redirect("/panel/zarzad");
 }

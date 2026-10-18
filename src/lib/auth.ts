@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import DiscordProvider from "next-auth/providers/discord";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { generateBadgeNumber } from "@/lib/roles";
@@ -123,12 +124,44 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
+    // Logowanie przez Discord - tylko dla kont wcześniej powiązanych w panelu (patrz callbacks.signIn)
+    ...(process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET
+      ? [
+          DiscordProvider({
+            clientId: process.env.DISCORD_CLIENT_ID,
+            clientSecret: process.env.DISCORD_CLIENT_SECRET,
+            authorization: { params: { scope: "identify" } },
+          }),
+        ]
+      : []),
   ],
   session: {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ account }) {
+      if (account?.provider !== "discord") return true;
+      const dbUser = await prisma.user.findUnique({ where: { discordId: account.providerAccountId } });
+      // Brak powiązanego konta lub konto nieaktywne -> odmowa (nie tworzymy kont automatycznie)
+      if (!dbUser || dbUser.status !== "ACCEPTED") return "/login?error=DiscordNotLinked";
+      return true;
+    },
+    async jwt({ token, user, account }) {
+      if (account?.provider === "discord") {
+        const dbUser = await prisma.user.findUnique({ where: { discordId: account.providerAccountId } });
+        if (dbUser && dbUser.status === "ACCEPTED") {
+          user = {
+            id: dbUser.id,
+            username: dbUser.username,
+            role: dbUser.role,
+            carrier: dbUser.carrier,
+            badgeNumber: dbUser.badgeNumber,
+            avatar: dbUser.avatar,
+            workingDays: dbUser.workingDays,
+            assignedVehicleId: dbUser.assignedVehicleId,
+          } as typeof user;
+        }
+      }
       if (user) {
         token.id = user.id;
         token.username = user.username;

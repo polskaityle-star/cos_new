@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { COLORS, notifyRoles, runAfter, sendToChannel } from "@/lib/discord";
 import fs from "fs";
 import path from "path";
 
@@ -90,6 +91,22 @@ export async function POST(req: Request) {
   revalidatePath("/tabor");
   revalidatePath("/panel/kierowca");
   revalidatePath("/panel/zarzad");
+
+  await runAfter(async () => {
+    const veh = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    const e = {
+      title: `Usterka: ${title}`,
+      description: description,
+      color: COLORS.bad,
+      fields: [
+        { name: "Pojazd", value: veh ? `#${veh.fleetNumber} ${veh.model} (${veh.registration})` : vehicleId, inline: true },
+        { name: "Zgłosił", value: session.user.username, inline: true },
+        { name: "Zdjęcia", value: String(photosList.length), inline: true },
+      ],
+    };
+    await sendToChannel("USTERKI", [e]);
+    await notifyRoles(["MECHANIK"], [e]); // mechanicy dostają też wiadomość prywatną
+  });
 
   redirect("/panel/kierowca");
 }

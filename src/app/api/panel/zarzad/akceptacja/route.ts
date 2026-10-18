@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageUsers } from "@/lib/roles";
+import { COLORS, notifyUser, runAfter, syncDiscordRoles } from "@/lib/discord";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -36,6 +37,15 @@ export async function POST(req: Request) {
       data: { status: "REJECTED" }
     });
   }
+
+  await runAfter(async () => {
+    await syncDiscordRoles(userId);
+    await notifyUser(userId, [
+      action === "accept"
+        ? { title: "Konto zaakceptowane", description: `Witamy w VZTM Kielce! Przewoźnik: ${carrier}.`, color: COLORS.ok }
+        : { title: "Zgłoszenie odrzucone", description: "Twoje zgłoszenie do VZTM Kielce zostało odrzucone.", color: COLORS.bad },
+    ]);
+  });
 
   revalidatePath("/panel/zarzad");
   redirect("/panel/zarzad");

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageRequests } from "@/lib/roles";
+import { COLORS, notifyUser, runAfter } from "@/lib/discord";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -49,6 +50,21 @@ export async function POST(req: Request) {
     await prisma.report.update({
       where: { id: reportId },
       data: { status: "REJECTED" },
+    });
+  }
+
+  if (action === "accept" || action === "reject") {
+    await runAfter(async () => {
+      const rep = await prisma.report.findUnique({ where: { id: reportId }, include: { duty: { include: { line: true } } } });
+      if (!rep?.duty) return;
+      const ok = action === "accept";
+      await notifyUser(rep.duty.userId, [
+        {
+          title: ok ? "Raport zaakceptowany" : "Raport odrzucony",
+          color: ok ? COLORS.ok : COLORS.bad,
+          description: `Służba z ${rep.duty.date.toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}, linia ${rep.duty.line?.number ?? "-"}.`,
+        },
+      ]);
     });
   }
 

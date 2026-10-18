@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { COLORS, runAfter, sendToChannel } from "@/lib/discord";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -35,6 +36,12 @@ export async function POST(req: Request) {
 
   revalidatePath("/panel/kierowca");
   revalidatePath("/panel/zarzad");
+
+  await runAfter(() =>
+    sendToChannel("WIADOMOSCI", [
+      { title: `Wiadomość do Zarządu: ${title}`, description: message, color: COLORS.info, fields: [{ name: "Od", value: senderText }] },
+    ])
+  );
 
   redirect("/panel/kierowca#wiadomosci");
 }

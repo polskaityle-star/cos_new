@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { COLORS, runAfter, sendToChannel } from "@/lib/discord";
 import { revalidatePath } from "next/cache";
 import fs from "fs";
 import path from "path";
@@ -204,6 +205,20 @@ export async function POST(req: Request) {
     ];
 
     await prisma.$transaction(transactions);
+
+    await runAfter(() =>
+      sendToChannel("RAPORTY", [
+        {
+          title: "Nowy raport do sprawdzenia",
+          color: COLORS.info,
+          fields: [
+            { name: "Kierowca", value: session.user.username, inline: true },
+            { name: "Służba", value: `${dutyStr}${duty.brigade ? ` • ${duty.brigade}` : ""}`, inline: true },
+            { name: "Przebieg", value: `${Math.max(0, endMileage - startMileage)} km`, inline: true },
+          ],
+        },
+      ])
+    );
 
     revalidatePath("/panel/kierowca");
     revalidatePath("/panel/zarzad");

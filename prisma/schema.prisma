@@ -23,6 +23,9 @@ model User {
   assignedVehicleId String?         // Stały pojazd
   assignedVehicle   Vehicle?        @relation("AssignedVehicle", fields: [assignedVehicleId], references: [id], onDelete: SetNull)
   suspended         Boolean         @default(false)
+  discordId         String?         @unique // ID konta Discord (powiązanie przez OAuth)
+  discordUsername   String?         // Nazwa na Discordzie (tylko do wyświetlania)
+  discordNotify     Boolean         @default(true) // Czy wysyłać powiadomienia w wiadomościach prywatnych
   createdAt         DateTime        @default(now())
   duties            Duty[]
   driverRequests    DriverRequest[]
