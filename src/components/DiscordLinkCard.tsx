@@ -11,6 +11,10 @@ interface DiscordState {
   username: string | null;
   notify: boolean;
   canSync: boolean;
+  hasPublicKey?: boolean;
+  hasAppId?: boolean;
+  hasGuildId?: boolean;
+  interactionsEndpoint?: string;
 }
 
 const FLAGS: Record<string, { text: string; ok: boolean }> = {
@@ -206,6 +210,31 @@ export default function DiscordLinkCard() {
       )}
       {msg && (
         <p className={`text-xs ${msg.ok ? "text-emerald-300" : "text-red-300"}`}>{msg.text}</p>
+      )}
+
+      {state.canSync && (
+        <div className="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3 text-xs space-y-1.5 text-slate-300">
+          <div className="font-semibold text-white flex flex-wrap items-center justify-between gap-1">
+            <span>⚙️ Status integracji bota Discord:</span>
+            <span className={state.hasPublicKey ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
+              {state.hasPublicKey ? "✅ DISCORD_PUBLIC_KEY jest ustawiony" : "❌ BRAK DISCORD_PUBLIC_KEY na Vercelu!"}
+            </span>
+          </div>
+          {!state.hasPublicKey && (
+            <p className="text-amber-300 bg-amber-950/60 p-2 rounded border border-amber-800/80">
+              ⚠️ Bez zmiennej <b>DISCORD_PUBLIC_KEY</b> Discord nie może autoryzować komend i wyświetla <b>„Aplikacja nie reaguje”</b>.
+              Skopiuj <b>PUBLIC KEY</b> z Discord Developer Portal (General Information) i dodaj w Vercel &rarr; Settings &rarr; Environment Variables.
+            </p>
+          )}
+          {state.interactionsEndpoint && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pt-1 border-t border-slate-700/60 text-slate-400">
+              <span>Adres do wklejenia w Developer Portal &rarr; <b>Interactions Endpoint URL</b>:</span>
+              <code className="text-indigo-300 bg-slate-950 px-2 py-0.5 rounded select-all font-mono text-[11px]">
+                {state.interactionsEndpoint}
+              </code>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Formularz wysyłania wiadomości na Discord */}
