@@ -136,11 +136,7 @@ export default function Navbar() {
 
               <Link
                 href="/panel/kierowca"
-                className={`nav-btn-driver px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs ${
-                  isCarrier
-                    ? "bg-black/30 hover:bg-black/40 text-white border border-white/20"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white dark:border-slate-700"
-                }`}
+                className="nav-btn-driver px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs"
               >
                 {session.user.avatar && (
                   <img
@@ -164,11 +160,7 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className={`nav-btn-login px-3 py-1.5 rounded-md text-sm font-semibold transition-colors shadow-xs ${
-                  isCarrier
-                    ? "bg-black/30 hover:bg-black/40 text-white border border-white/20"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white dark:border-slate-700"
-                }`}
+                className="nav-btn-login px-3 py-1.5 rounded-md text-sm font-semibold transition-colors shadow-xs"
               >
                 Logowanie
               </Link>

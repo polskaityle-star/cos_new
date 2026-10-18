@@ -400,9 +400,9 @@ html[data-theme="light"] nav:not(.carrier-nav) div[class*="bg-slate-100"] {
   border-color: #cbd5e1 !important;
 }
 
-html.light nav:not(.carrier-nav) div.nav-user-capsule span,
+html.light nav:not(.carrier-nav) div.nav-user-capsule span:not(.nav-btn-driver *):not(.nav-btn-driver):not(.nav-badge-number):not(a[class*="bg-"] *),
 html.light nav:not(.carrier-nav) span.text-slate-900,
-html[data-theme="light"] nav:not(.carrier-nav) div.nav-user-capsule span,
+html[data-theme="light"] nav:not(.carrier-nav) div.nav-user-capsule span:not(.nav-btn-driver *):not(.nav-btn-driver):not(.nav-badge-number):not(a[class*="bg-"] *),
 html[data-theme="light"] nav:not(.carrier-nav) span.text-slate-900 {
   color: #0f172a !important;
 }
@@ -432,28 +432,43 @@ html[data-theme="light"] nav:not(.carrier-nav) button:not([class*="bg-red"]):not
   color: #0f172a !important;
 }
 
-/* Przycisk Panel kierowcy i Logowanie w jasnym motywie - JASNE TŁO, CIEMNY TEKST */
+/* Przycisk Panel kierowcy i Logowanie w jasnym motywie - JASNE TŁO, CIEMNY WYRAŹNY TEKST */
 html.light nav:not(.carrier-nav) .nav-btn-driver,
+html.light nav:not(.carrier-nav) a.nav-btn-driver,
+html.light nav:not(.carrier-nav) a[href="/panel/kierowca"],
 html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-driver,
+html[data-theme="light"] nav:not(.carrier-nav) a.nav-btn-driver,
+html[data-theme="light"] nav:not(.carrier-nav) a[href="/panel/kierowca"],
 html.light nav:not(.carrier-nav) .nav-btn-login,
 html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-login {
-  background-color: #f1f5f9 !important;
+  background-color: #ffffff !important;
   color: #0f172a !important;
   border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
 html.light nav:not(.carrier-nav) .nav-btn-driver *,
+html.light nav:not(.carrier-nav) a.nav-btn-driver *,
+html.light nav:not(.carrier-nav) a[href="/panel/kierowca"] *,
 html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-driver *,
+html[data-theme="light"] nav:not(.carrier-nav) a.nav-btn-driver *,
+html[data-theme="light"] nav:not(.carrier-nav) a[href="/panel/kierowca"] *,
 html.light nav:not(.carrier-nav) .nav-btn-login *,
 html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-login * {
   color: #0f172a !important;
+  font-weight: 700 !important;
 }
 
 html.light nav:not(.carrier-nav) .nav-btn-driver:hover,
+html.light nav:not(.carrier-nav) a.nav-btn-driver:hover,
+html.light nav:not(.carrier-nav) a[href="/panel/kierowca"]:hover,
 html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-driver:hover,
+html[data-theme="light"] nav:not(.carrier-nav) a.nav-btn-driver:hover,
+html[data-theme="light"] nav:not(.carrier-nav) a[href="/panel/kierowca"]:hover,
 html.light nav:not(.carrier-nav) .nav-btn-login:hover,
 html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-login:hover {
-  background-color: #e2e8f0 !important;
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
 }
 
 /* Plakietka numeru służbowego (np. W1) w jasnym motywie */
@@ -533,7 +548,11 @@ html[data-theme="dark"] nav:not(.carrier-nav) button:not([class*="bg-red"]):not(
 
 /* Przycisk Panel kierowcy i Logowanie w ciemnym motywie - CIEMNE TŁO, BIAŁY TEKST */
 html:not(.light) nav:not(.carrier-nav) .nav-btn-driver,
+html:not(.light) nav:not(.carrier-nav) a.nav-btn-driver,
+html:not(.light) nav:not(.carrier-nav) a[href="/panel/kierowca"],
 html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-driver,
+html[data-theme="dark"] nav:not(.carrier-nav) a.nav-btn-driver,
+html[data-theme="dark"] nav:not(.carrier-nav) a[href="/panel/kierowca"],
 html:not(.light) nav:not(.carrier-nav) .nav-btn-login,
 html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-login {
   background-color: #1e293b !important;
@@ -542,14 +561,23 @@ html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-login {
 }
 
 html:not(.light) nav:not(.carrier-nav) .nav-btn-driver *,
+html:not(.light) nav:not(.carrier-nav) a.nav-btn-driver *,
+html:not(.light) nav:not(.carrier-nav) a[href="/panel/kierowca"] *,
 html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-driver *,
+html[data-theme="dark"] nav:not(.carrier-nav) a.nav-btn-driver *,
+html[data-theme="dark"] nav:not(.carrier-nav) a[href="/panel/kierowca"] *,
 html:not(.light) nav:not(.carrier-nav) .nav-btn-login *,
 html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-login * {
   color: #ffffff !important;
+  font-weight: 700 !important;
 }
 
 html:not(.light) nav:not(.carrier-nav) .nav-btn-driver:hover,
+html:not(.light) nav:not(.carrier-nav) a.nav-btn-driver:hover,
+html:not(.light) nav:not(.carrier-nav) a[href="/panel/kierowca"]:hover,
 html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-driver:hover,
+html[data-theme="dark"] nav:not(.carrier-nav) a.nav-btn-driver:hover,
+html[data-theme="dark"] nav:not(.carrier-nav) a[href="/panel/kierowca"]:hover,
 html:not(.light) nav:not(.carrier-nav) .nav-btn-login:hover,
 html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-login:hover {
   background-color: #334155 !important;
