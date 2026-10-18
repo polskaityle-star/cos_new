@@ -11,12 +11,13 @@ function prune(now: number) {
 
 export function getClientIp(headers: Headers | Record<string, string | string[] | undefined> | null | undefined): string {
   let v: unknown;
-  if (headers instanceof Headers) {
-    v = headers.get("x-forwarded-for") ?? headers.get("x-real-ip");
-  } else if (headers) {
-    v = headers["x-forwarded-for"] ?? headers["x-real-ip"];
-    if (Array.isArray(v)) v = v[0];
+  if (headers && typeof (headers as Headers).get === "function") {
+    v = (headers as Headers).get("x-forwarded-for") ?? (headers as Headers).get("x-real-ip");
+  } else if (headers && typeof headers === "object") {
+    const record = headers as Record<string, string | string[] | undefined>;
+    v = record["x-forwarded-for"] ?? record["x-real-ip"];
   }
+  if (Array.isArray(v)) v = v[0];
   if (typeof v !== "string" || !v) return "unknown";
   return v.split(",")[0].trim().slice(0, 64) || "unknown";
 }

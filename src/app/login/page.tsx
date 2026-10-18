@@ -2,16 +2,24 @@
 
 import { signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"login" | "changePassword">("login");
 
   // Stan logowania
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const err = new URLSearchParams(window.location.search).get("error");
+    if (err === "DiscordNotLinked") {
+      return "To konto Discord nie jest powiązane z żadnym aktywnym kontem. Zaloguj się hasłem i powiąż Discorda w panelu.";
+    }
+    if (err === "AccessDenied") {
+      return "Logowanie przez Discord nie powiodło się.";
+    }
+    return "";
+  });
   const [loading, setLoading] = useState(false);
 
   // Stan zmiany hasła (Wymóg 10)
@@ -30,12 +38,6 @@ export default function LoginPage() {
       .then((r) => r.json())
       .then((p) => setDiscordEnabled(Boolean(p?.discord)))
       .catch(() => {});
-    const err = new URLSearchParams(window.location.search).get("error");
-    if (err === "DiscordNotLinked") {
-      setError("To konto Discord nie jest powiązane z żadnym aktywnym kontem. Zaloguj się hasłem i powiąż Discorda w panelu.");
-    } else if (err === "AccessDenied") {
-      setError("Logowanie przez Discord nie powiodło się.");
-    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -187,7 +189,7 @@ export default function LoginPage() {
 
         {activeTab === "login" ? (
           <>
-            <h1 className="text-2xl font-bold mb-4 text-center text-white">Logowanie do portalu</h1>
+            <h1 className="text-2xl font-bold mb-4 text-center text-white">Logowanie do Portalu</h1>
 
             {error && (
               <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded mb-4 text-center text-sm">
@@ -197,11 +199,10 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm text-slate-300">Nazwa użytkownika / nick</label>
+                <label className="text-sm text-slate-300">Nazwa Użytkownika / Nick</label>
                 <input
                   type="text"
                   required
-                  maxLength={128}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500 text-white text-sm"
@@ -226,7 +227,6 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
-                  maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500 text-white text-sm"
@@ -265,7 +265,7 @@ export default function LoginPage() {
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold mb-4 text-center text-white">Zmiana hasła</h1>
+            <h1 className="text-2xl font-bold mb-4 text-center text-white">Zmiana Hasła</h1>
 
             {cpError && (
               <div className="bg-red-500/20 border border-red-500 text-red-200 p-3 rounded mb-4 text-center text-sm">
@@ -281,11 +281,10 @@ export default function LoginPage() {
 
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Nazwa użytkownika / nick *</label>
+                <label className="text-xs font-semibold text-slate-300">Nazwa Użytkownika / Nick *</label>
                 <input
                   type="text"
                   required
-                  maxLength={128}
                   value={cpUsername}
                   onChange={(e) => setCpUsername(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-amber-500 text-white text-sm"
@@ -298,7 +297,6 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
-                  maxLength={128}
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-amber-500 text-white text-sm"
@@ -311,14 +309,11 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
-                  minLength={8}
-                  maxLength={128}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-amber-500 text-white text-sm"
-                  placeholder="Minimum 8 znaków"
+                  placeholder="Minimum 4 znaki"
                 />
-                <p className="text-[11px] text-slate-400">Minimum 8 znaków</p>
               </div>
 
               <div className="space-y-1">
@@ -326,8 +321,6 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
-                  minLength={8}
-                  maxLength={128}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-amber-500 text-white text-sm"
@@ -349,7 +342,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center text-sm text-slate-400">
           Nie masz konta?{" "}
           <a href="/register" className="text-emerald-400 hover:underline">
-            Złóż wniosek (zarejestruj się)
+            Złóż wniosek (Zarejestruj się)
           </a>
         </div>
       </div>

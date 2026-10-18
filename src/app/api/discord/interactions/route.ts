@@ -58,7 +58,14 @@ export async function POST(req: Request) {
     return new NextResponse("invalid request signature", { status: 401 });
   }
 
-  let body: any;
+  interface DiscordInteractionBody {
+    type?: number;
+    data?: { name?: string };
+    member?: { user?: { id?: string } };
+    user?: { id?: string };
+  }
+
+  let body: DiscordInteractionBody;
   try {
     body = JSON.parse(raw);
   } catch {
@@ -68,7 +75,7 @@ export async function POST(req: Request) {
   if (body.type === 1) return NextResponse.json({ type: 1 }); // PING
   if (body.type !== 2) return NextResponse.json({ type: 1 });
 
-  const name: string = body.data?.name;
+  const name: string | undefined = body.data?.name;
   const discordId: string | undefined = body.member?.user?.id ?? body.user?.id;
   const site = siteUrl();
 
@@ -92,18 +99,21 @@ export async function POST(req: Request) {
       const vehicles = await prisma.vehicle.findMany({ select: { carrier: true, status: true } });
       const counts: Record<string, Record<string, number>> = {};
       for (const v of vehicles) {
-        const c = (counts[v.carrier] ||= {});
-        c[v.status] = (c[v.status] ?? 0) + 1;
+        const c = v.carrier || "Inne";
+        const st = (v.status || "SPRAWNY").toLowerCase();
+        counts[c] = counts[c] || {};
+        counts[c][st] = (counts[c][st] || 0) + 1;
       }
-      const byCarrier: Record<string, string[]> = {};
-      for (const [carrier, statuses] of Object.entries(counts)) {
-        byCarrier[carrier] = Object.entries(statuses).map(([status, n]) => `${status.toLowerCase()}: **${n}**`);
-      }
+      const fields = Object.entries(counts).map(([carrier, statusMap]) => ({
+        name: carrier,
+        value: Object.entries(statusMap).map(([st, cnt]) => `${st}: **${cnt}**`).join("\n") || "Brak pojazdów",
+        inline: true,
+      }));
       return reply([
         {
           title: "Stan taboru",
           color: COLORS.info,
-          fields: Object.entries(byCarrier).map(([carrier, rows]) => ({ name: carrier, value: rows.join("\n"), inline: true })),
+          fields,
           url: `${site}/tabor`,
         },
       ]);

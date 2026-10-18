@@ -119,7 +119,7 @@ export const ADMIN_ALIASES = [
   "ksawe",
 ];
 
-export function isUserAdminOrOwner(role?: string | null, username?: string | null): boolean {
+export function isUserAdminOrOwner(role?: string | null, _username?: string | null): boolean {
   // Uprawnienia wynikają wyłącznie z roli (nick nie nadaje już uprawnień).
   if (role) {
     const norm = role.toUpperCase();

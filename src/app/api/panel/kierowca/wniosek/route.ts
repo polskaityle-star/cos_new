@@ -90,6 +90,7 @@ export async function POST(req: Request) {
   revalidatePath("/panel/kierowca");
   revalidatePath("/panel/zarzad");
 
+  const driverLabel = `${session.user.username}${session.user.badgeNumber ? ` [${session.user.badgeNumber}]` : ""}`;
   await runAfter(() =>
     sendToChannel("WNIOSKI", [
       {
@@ -97,7 +98,7 @@ export async function POST(req: Request) {
         color: COLORS.warn,
         description: finalReason,
         fields: [
-          { name: "Kierowca", value: `${session.user.username}${session.user.badgeNumber ? ` [${session.user.badgeNumber}]` : ""}`, inline: true },
+          { name: "Kierowca", value: driverLabel, inline: true },
           ...(dateStartStr ? [{ name: "Od", value: dateStartStr, inline: true }] : []),
           ...(dateEndStr ? [{ name: "Do", value: dateEndStr, inline: true }] : []),
         ],

@@ -186,7 +186,7 @@ export async function POST(req: Request) {
       : null;
 
     // Tworzenie raportu i aktualizacja statusu służby
-    const transactions: any[] = [
+    const transactions = [
       prisma.report.create({
         data: {
           dutyId,
@@ -206,13 +206,14 @@ export async function POST(req: Request) {
 
     await prisma.$transaction(transactions);
 
+    const driverName = session.user.username;
     await runAfter(() =>
       sendToChannel("RAPORTY", [
         {
           title: "Nowy raport do sprawdzenia",
           color: COLORS.info,
           fields: [
-            { name: "Kierowca", value: session.user.username, inline: true },
+            { name: "Kierowca", value: driverName, inline: true },
             { name: "Służba", value: `${dutyStr}${duty.brigade ? ` • ${duty.brigade}` : ""}`, inline: true },
             { name: "Przebieg", value: `${Math.max(0, endMileage - startMileage)} km`, inline: true },
           ],

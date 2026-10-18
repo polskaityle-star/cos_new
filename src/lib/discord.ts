@@ -139,11 +139,14 @@ export async function runAfter(task: () => Promise<unknown>): Promise<void> {
     }
   };
   try {
-    const { after } = await import("next/server");
-    after(safe);
-    return;
+    const mod = await import("next/server");
+    const maybeAfter = (mod as { after?: (fn: () => Promise<void>) => void }).after;
+    if (typeof maybeAfter === "function") {
+      maybeAfter(safe);
+      return;
+    }
   } catch {
-    // brak kontekstu żądania dla `after` - wykonaj od razu
+    // brak `after` - wykonaj od razu
   }
   await safe();
 }

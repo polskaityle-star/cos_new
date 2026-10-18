@@ -92,6 +92,7 @@ export async function POST(req: Request) {
   revalidatePath("/panel/kierowca");
   revalidatePath("/panel/zarzad");
 
+  const reporterUsername = session.user.username;
   await runAfter(async () => {
     const veh = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
     const e = {
@@ -100,7 +101,7 @@ export async function POST(req: Request) {
       color: COLORS.bad,
       fields: [
         { name: "Pojazd", value: veh ? `#${veh.fleetNumber} ${veh.model} (${veh.registration})` : vehicleId, inline: true },
-        { name: "Zgłosił", value: session.user.username, inline: true },
+        { name: "Zgłosił", value: reporterUsername, inline: true },
         { name: "Zdjęcia", value: String(photosList.length), inline: true },
       ],
     };

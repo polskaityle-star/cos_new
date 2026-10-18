@@ -21,7 +21,11 @@ const FLAGS: Record<string, { text: string; ok: boolean }> = {
 export default function DiscordLinkCard() {
   const [state, setState] = useState<DiscordState | null>(null);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const flag = new URLSearchParams(window.location.search).get("discord");
+    return flag && FLAGS[flag] ? FLAGS[flag] : null;
+  });
 
   const load = async () => {
     try {
@@ -33,12 +37,20 @@ export default function DiscordLinkCard() {
   };
 
   useEffect(() => {
-    load();
     const flag = new URLSearchParams(window.location.search).get("discord");
     if (flag && FLAGS[flag]) {
-      setMsg(FLAGS[flag]);
       window.history.replaceState(null, "", window.location.pathname + window.location.hash);
     }
+    let ignore = false;
+    fetch("/api/discord/me", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && !ignore) setState(data);
+      })
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   if (!state || !state.enabled) return null;

@@ -42,14 +42,15 @@ export async function GET(req: Request) {
   const taken = await prisma.user.findUnique({ where: { discordId: profile.id }, select: { id: true } });
   if (taken && taken.id !== session.user.id) return back("taken");
 
+  const userId = session.user.id;
   await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: userId },
     data: { discordId: profile.id, discordUsername: profile.global_name || profile.username, discordNotify: true },
   });
 
   await runAfter(async () => {
-    await syncDiscordRoles(session.user.id);
-    await notifyUser(session.user.id, [
+    await syncDiscordRoles(userId);
+    await notifyUser(userId, [
       {
         title: "Konto Discord powiązane",
         description: "Od teraz będziesz dostawać tutaj powiadomienia z systemu VZTM Kielce. Możesz je wyłączyć w panelu.",

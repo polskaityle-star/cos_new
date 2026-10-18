@@ -2,8 +2,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign, createHmac } from "node:crypto";
-import { createLinkState, verifyLinkState } from "../src/lib/discordOauth.ts";
-import { verifyDiscordRequest } from "../src/lib/discordVerify.ts";
+import { createLinkState, verifyLinkState } from "../src/lib/discordOauth";
+import { verifyDiscordRequest } from "../src/lib/discordVerify";
 
 process.env.NEXTAUTH_SECRET = "test-secret-test-secret-test-secret";
 

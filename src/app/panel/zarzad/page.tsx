@@ -239,7 +239,7 @@ export default async function AdminPanel({
             href="/brygady"
             className="bg-amber-700 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
           >
-            <span>📋 Wykaz brygad</span>
+            <span>📋 Wykaz Brygad</span>
           </Link>
           <Link
             href="/"
@@ -251,7 +251,7 @@ export default async function AdminPanel({
             href="/panel/kierowca"
             className="bg-orange-600 hover:bg-orange-500 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
           >
-            <span>Panel kierowcy &rarr;</span>
+            <span>Panel Kierowcy &rarr;</span>
           </Link>
         </div>
       </div>
@@ -330,7 +330,7 @@ export default async function AdminPanel({
             </span>
           </div>
           <p className="text-slate-400 text-sm">
-            Zarządzanie personelem, taborem, liniami, brygadami, wnioskami i ruchem VZTM Kielce
+            Zarządzanie personelem, flotą taboru, liniami, brygadami, wnioskami i ruchem VZTM Kielce (v0.4.5.0)
           </p>
         </div>
         <div className="flex flex-col md:items-end gap-3">
@@ -339,13 +339,13 @@ export default async function AdminPanel({
               href="/panel/kierowca"
               className="bg-emerald-700 hover:bg-emerald-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
             >
-              <span>🚌 Panel kierowcy &rarr;</span>
+              <span>🚌 Panel Kierowcy &rarr;</span>
             </Link>
             <Link
               href="/"
               className="bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-600 shadow"
             >
-              <span>🌐 Strona główna</span>
+              <span>🌐 Strona Główna</span>
             </Link>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
@@ -1729,7 +1729,7 @@ export default async function AdminPanel({
         <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
             <div>
-              <h2 className="text-2xl font-bold text-amber-400">📋 Wykaz brygad (harmonogram, godziny wyjazdu i zjazdu)</h2>
+              <h2 className="text-2xl font-bold text-amber-400">📋 Wykaz Brygad (Harmonogram, Godziny Wyjazdu i Zjazdu)</h2>
               <p className="text-xs text-slate-400 mt-0.5">Wprowadzaj godziny wyjazdu, zjazdu oraz odjazdów z pierwszego i ostatniego przystanku.</p>
             </div>
             <a href="/brygady" target="_blank" className="text-xs text-amber-400 hover:underline">

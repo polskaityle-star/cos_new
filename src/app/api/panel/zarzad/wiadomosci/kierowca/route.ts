@@ -25,10 +25,11 @@ export async function POST(req: Request) {
 
   const senderRole = getRoleLabel(session.user.role);
 
+  const senderLabel = `${session.user.username} (${senderRole})`;
   await prisma.driverNotification.create({
     data: {
       userId,
-      sender: `${session.user.username} (${senderRole})`,
+      sender: senderLabel,
       title,
       message,
     },
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
   revalidatePath("/panel/kierowca");
 
   await runAfter(() =>
-    notifyUser(userId, [{ title: `Wiadomość od Zarządu: ${title}`, description: message, color: COLORS.info, fields: [{ name: "Od", value: `${session.user.username} (${senderRole})` }] }])
+    notifyUser(userId, [{ title: `Wiadomość od Zarządu: ${title}`, description: message, color: COLORS.info, fields: [{ name: "Od", value: senderLabel }] }])
   );
 
   redirect("/panel/zarzad");

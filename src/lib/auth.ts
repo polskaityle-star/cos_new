@@ -141,16 +141,18 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ account }) {
       if (account?.provider !== "discord") return true;
+      if (!account?.providerAccountId) return false;
       const dbUser = await prisma.user.findUnique({ where: { discordId: account.providerAccountId } });
       // Brak powiązanego konta lub konto nieaktywne -> odmowa (nie tworzymy kont automatycznie)
       if (!dbUser || dbUser.status !== "ACCEPTED") return "/login?error=DiscordNotLinked";
       return true;
     },
     async jwt({ token, user, account }) {
-      if (account?.provider === "discord") {
+      let currentUser = user;
+      if (account?.provider === "discord" && account.providerAccountId) {
         const dbUser = await prisma.user.findUnique({ where: { discordId: account.providerAccountId } });
         if (dbUser && dbUser.status === "ACCEPTED") {
-          user = {
+          currentUser = {
             id: dbUser.id,
             username: dbUser.username,
             role: dbUser.role,
@@ -162,24 +164,24 @@ export const authOptions: NextAuthOptions = {
           } as typeof user;
         }
       }
-      if (user) {
-        token.id = user.id;
-        token.username = user.username;
-        token.role = user.role;
-        token.carrier = user.carrier;
-        token.badgeNumber = user.badgeNumber;
+      if (currentUser) {
+        token.id = currentUser.id;
+        token.username = currentUser.username;
+        token.role = currentUser.role;
+        token.carrier = currentUser.carrier;
+        token.badgeNumber = currentUser.badgeNumber;
         
         // Zabezpieczenie przed przepełnieniem ciasteczka:
-        if (user.avatar && (user.avatar.startsWith("http://") || user.avatar.startsWith("https://"))) {
-          token.avatar = user.avatar;
-        } else if (user.avatar) {
-          token.avatar = `/api/panel/avatar?userId=${user.id}`;
+        if (currentUser.avatar && (currentUser.avatar.startsWith("http://") || currentUser.avatar.startsWith("https://"))) {
+          token.avatar = currentUser.avatar;
+        } else if (currentUser.avatar) {
+          token.avatar = `/api/panel/avatar?userId=${currentUser.id}`;
         } else {
           token.avatar = null;
         }
 
-        token.workingDays = user.workingDays;
-        token.assignedVehicleId = user.assignedVehicleId;
+        token.workingDays = currentUser.workingDays;
+        token.assignedVehicleId = currentUser.assignedVehicleId;
       }
       return token;
     },

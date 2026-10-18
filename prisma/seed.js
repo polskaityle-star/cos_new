@@ -50,9 +50,9 @@ async function main() {
   }
 
   // 2. Driver
-  const existingDriver = await prisma.user.findUnique({ where: { username: "kierowca1" } });
+  let existingDriver = await prisma.user.findUnique({ where: { username: "kierowca1" } });
   if (!existingDriver && driverPassword) {
-    await prisma.user.create({
+    existingDriver = await prisma.user.create({
       data: {
         username: "kierowca1",
         password: driverPassword,
@@ -119,14 +119,14 @@ async function main() {
   }
 
   // 5. Example scheduled duty for kierowca1 if none exists
-  if (line34 && driver) {
+  if (line34 && existingDriver) {
     const existingDuty = await prisma.duty.findFirst({
-      where: { userId: driver.id }
+      where: { userId: existingDriver.id }
     });
     if (!existingDuty) {
       await prisma.duty.create({
         data: {
-          userId: driver.id,
+          userId: existingDriver.id,
           lineId: line34.id,
           date: new Date(),
           brigade: "34/1 - dni robocze",
