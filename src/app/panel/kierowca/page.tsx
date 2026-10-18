@@ -179,7 +179,7 @@ export default async function DriverPanel() {
             href="/brygady"
             className="bg-amber-700/80 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 border border-amber-600/60 shadow"
           >
-            <span>📋 Wykaz Brygad</span>
+            <span>📋 Wykaz brygad</span>
           </Link>
           <Link
             href="/"
@@ -550,12 +550,12 @@ export default async function DriverPanel() {
         )}
       </section>
 
-      {/* 📋 Wykaz Brygad (Harmonogram dla Kierowców) */}
+      {/* 📋 Wykaz brygad (harmonogram dla kierowców) */}
       <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2 text-amber-400">
-              <span>📋 Wykaz Brygad i Harmonogram Odjazdów ({brigadeSchedules.length})</span>
+              <span>📋 Wykaz brygad i harmonogram odjazdów ({brigadeSchedules.length})</span>
             </h2>
             <p className="text-slate-400 text-xs mt-1">
               Sprawdź godziny wyjazdów, zjazdów do zajezdni oraz zaplanowane punkty przesiadek dla wszystkich linii i brygad.

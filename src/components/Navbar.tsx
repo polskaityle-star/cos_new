@@ -10,30 +10,30 @@ export default function Navbar() {
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  let navBg = "bg-slate-800";
+  let navBg = "bg-slate-900";
   if (pathname.startsWith("/vmpk")) navBg = "bg-[#E31837] text-white"; // VMPK Red
   if (pathname.startsWith("/vbp")) navBg = "bg-[#005A9C] text-white"; // VBP Blue
 
   const hasManagementAccess = session?.user?.role ? canAccessManagementPanel(session.user.role) : false;
 
   return (
-    <nav className={`${navBg} shadow-md transition-colors duration-300`}>
+    <nav className={`${navBg} text-white shadow-md transition-colors duration-300`}>
       <div className="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
         <Link href="/" className="flex items-center group">
-          <span className="text-xl font-bold font-mono tracking-wider flex items-center gap-2 group-hover:text-amber-300 transition-colors">
+          <span className="text-xl font-bold font-mono tracking-wider flex items-center gap-2 text-white group-hover:text-amber-300 transition-colors">
             🚍 VZTM KIELCE
           </span>
         </Link>
         <div className="flex gap-4 md:gap-5 items-center flex-wrap">
-          <Link href="/" className="hover:text-amber-300 font-semibold transition-colors">Strona główna</Link>
-          <Link href="/vmpk" className="hover:text-yellow-300 font-semibold transition-colors">VMPK</Link>
-          <Link href="/vbp" className="hover:text-gray-300 font-semibold transition-colors">VBP</Link>
-          <Link href="/kontakt" className="hover:opacity-80 transition-opacity">Kontakt</Link>
+          <Link href="/" className="text-white hover:text-amber-300 font-semibold transition-colors">Strona główna</Link>
+          <Link href="/vmpk" className="text-white hover:text-yellow-300 font-semibold transition-colors">VMPK</Link>
+          <Link href="/vbp" className="text-white hover:text-gray-300 font-semibold transition-colors">VBP</Link>
+          <Link href="/kontakt" className="text-white hover:opacity-80 transition-opacity">Kontakt</Link>
           
           <ThemeToggle />
 
           {session?.user ? (
-            <div className="flex items-center gap-3 bg-slate-900/60 py-1 px-3 rounded-lg border border-slate-700/50">
+            <div className="flex items-center gap-3 bg-slate-900/80 py-1 px-3 rounded-lg border border-slate-700/80">
               <div className="flex items-center gap-2">
                 {session.user.avatar ? (
                   <img
@@ -46,7 +46,7 @@ export default function Navbar() {
                     {session.user.username?.slice(0, 2).toUpperCase() || "👤"}
                   </div>
                 )}
-                <span className="text-xs text-slate-200 font-mono font-bold">
+                <span className="text-xs text-white font-mono font-bold">
                   {session.user.username}
                   {session.user.badgeNumber && (
                     <span className="ml-1 text-[11px] text-amber-300 font-semibold">
@@ -86,7 +86,7 @@ export default function Navbar() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Link href="/login" className="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
+              <Link href="/login" className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
                 Logowanie
               </Link>
               <Link href="/register" className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors">
