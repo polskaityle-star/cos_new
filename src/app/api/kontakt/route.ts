@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
+import { COLORS, runAfter, sendToChannel } from "@/lib/discord";
 
 const HOUR_MS = 60 * 60 * 1000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,6 +41,20 @@ export async function POST(req: Request) {
     });
 
     revalidatePath("/panel/zarzad");
+
+    await runAfter(() =>
+      sendToChannel("KONTAKT", [
+        {
+          title: `Formularz kontaktowy: ${subject}`,
+          description: message,
+          color: COLORS.info,
+          fields: [
+            { name: "Od", value: name, inline: true },
+            { name: "E-mail", value: email || "brak", inline: true },
+          ],
+        },
+      ])
+    );
 
     return NextResponse.json({ message: "Wiadomość została wysłana pomyślnie!" }, { status: 201 });
   } catch (error) {

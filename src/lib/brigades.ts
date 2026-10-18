@@ -25,9 +25,7 @@ export interface BrigadeScheduleLike {
     id?: string;
     number: string;
     carrier?: string | null;
-    [key: string]: any;
   } | null;
-  [key: string]: any;
 }
 
 /**

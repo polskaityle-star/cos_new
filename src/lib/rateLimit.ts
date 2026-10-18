@@ -9,12 +9,13 @@ function prune(now: number) {
   }
 }
 
-export function getClientIp(headers: any): string {
+export function getClientIp(headers: Headers | Record<string, string | string[] | undefined> | null | undefined): string {
   let v: unknown;
-  if (headers && typeof headers.get === "function") {
+  if (headers instanceof Headers) {
     v = headers.get("x-forwarded-for") ?? headers.get("x-real-ip");
-  } else {
-    v = headers?.["x-forwarded-for"] ?? headers?.["x-real-ip"];
+  } else if (headers) {
+    v = headers["x-forwarded-for"] ?? headers["x-real-ip"];
+    if (Array.isArray(v)) v = v[0];
   }
   if (typeof v !== "string" || !v) return "unknown";
   return v.split(",")[0].trim().slice(0, 64) || "unknown";

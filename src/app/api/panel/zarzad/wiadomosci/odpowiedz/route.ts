@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { COLORS, notifyUser, runAfter } from "@/lib/discord";
 import { canAccessManagementPanel, getRoleLabel } from "@/lib/roles";
 
 export async function POST(req: Request) {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   const badge = session.user.badgeNumber ? ` [${session.user.badgeNumber}]` : "";
   const replyAuthor = `${session.user.username}${badge} (${roleLabel})`;
 
-  await prisma.driverNotification.update({
+  const updated = await prisma.driverNotification.update({
     where: { id: notificationId },
     data: {
       reply: replyText,
@@ -33,6 +34,12 @@ export async function POST(req: Request) {
       replyBy: replyAuthor,
     },
   });
+
+  await runAfter(() =>
+    notifyUser(updated.userId, [
+      { title: `Odpowiedź na: ${updated.title}`, description: replyText, color: COLORS.info, fields: [{ name: "Od", value: replyAuthor }] },
+    ])
+  );
 
   revalidatePath("/panel/zarzad");
   revalidatePath("/panel/kierowca");

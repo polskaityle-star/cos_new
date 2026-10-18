@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { generateBadgeNumber } from "@/lib/roles";
 import { getClientIp, rateLimit } from "@/lib/rateLimit";
+import { COLORS, runAfter, sendToChannel } from "@/lib/discord";
 
 const HOUR_MS = 60 * 60 * 1000;
 const NAME_RE = new RegExp("^[\\p{L}\\p{N}_. -]{3,32}$", "u");
@@ -78,6 +79,24 @@ export async function POST(req: Request) {
         badgeNumber,
       },
     });
+
+    if (status === "PENDING") {
+      await runAfter(() =>
+        sendToChannel("REKRUTACJA", [
+          {
+            title: "Nowe zgłoszenie rekrutacyjne",
+            color: COLORS.info,
+            fields: [
+              { name: "Nick", value: username, inline: true },
+              { name: "Numer", value: badgeNumber, inline: true },
+              { name: "Przewoźnik", value: assignedCarrier, inline: true },
+              { name: "Wiek", value: user.age ? String(user.age) : "-", inline: true },
+              { name: "O sobie", value: bio || "-" },
+            ],
+          },
+        ])
+      );
+    }
 
     return NextResponse.json(
       {

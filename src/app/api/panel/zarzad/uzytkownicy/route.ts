@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageUsers, generateBadgeNumber } from "@/lib/roles";
+import { COLORS, notifyUser, runAfter, syncDiscordRoles } from "@/lib/discord";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -46,6 +47,15 @@ export async function POST(req: Request) {
 
   revalidatePath("/panel/zarzad");
   revalidatePath("/panel/kierowca");
+
+  if (user.role !== newRole) {
+    await runAfter(async () => {
+      await syncDiscordRoles(userId);
+      await notifyUser(userId, [
+        { title: "Zmiana roli w systemie", description: `Twoja nowa rola: ${newRole} (numer ${finalBadge}).`, color: COLORS.info },
+      ]);
+    });
+  }
 
   redirect("/panel/zarzad");
 }
