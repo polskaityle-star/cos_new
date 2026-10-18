@@ -92,6 +92,22 @@ export default function DiscordLinkCard() {
     setBusy(false);
   };
 
+  const registerCommands = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/panel/zarzad/discord-commands", { method: "POST" });
+      const data = await res.json();
+      setMsg({
+        text: data.message || (res.ok ? "Zarejestrowano komendy na Discordzie." : "Błąd rejestracji komend."),
+        ok: res.ok,
+      });
+    } catch {
+      setMsg({ text: "Błąd połączenia podczas rejestracji komend.", ok: false });
+    }
+    setBusy(false);
+  };
+
   const syncAll = async () => {
     setBusy(true);
     setMsg(null);
@@ -124,7 +140,7 @@ export default function DiscordLinkCard() {
           ) : (
             <p className="text-sm text-slate-400">
               Powiąż konto, aby dostawać wiadomości prywatne (wnioski, grafik, raporty), logować się przez Discord i używać komend bota
-              (<code>/grafik</code>, <code>/sluzba</code>, <code>/status</code>).
+              (<code>/panel</code>, <code>/raport</code>, <code>/usterka</code>, <code>/wniosek</code>, <code>/grafik</code>).
             </p>
           )}
         </div>
@@ -164,13 +180,23 @@ export default function DiscordLinkCard() {
             </a>
           )}
           {state.canSync && (
-            <button
-              onClick={syncAll}
-              disabled={busy}
-              className="bg-amber-700/80 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg text-xs font-semibold border border-amber-600/60 disabled:opacity-50 cursor-pointer"
-            >
-              Synchronizuj role na serwerze
-            </button>
+            <>
+              <button
+                onClick={registerCommands}
+                disabled={busy}
+                className="bg-purple-700/80 hover:bg-purple-600 text-white px-3.5 py-2 rounded-lg text-xs font-semibold border border-purple-500/60 disabled:opacity-50 cursor-pointer shadow-xs"
+                title="Zarejestruj komendy /panel, /raport, /usterka, /wniosek w API Discorda"
+              >
+                ⚡ Aktywuj/Odśwież komendy bota na DC
+              </button>
+              <button
+                onClick={syncAll}
+                disabled={busy}
+                className="bg-amber-700/80 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg text-xs font-semibold border border-amber-600/60 disabled:opacity-50 cursor-pointer"
+              >
+                Synchronizuj role na serwerze
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -173,6 +173,23 @@ function dutyLine(d: Awaited<ReturnType<typeof dutiesBetween>>[number]): string 
   return parts.join(" • ");
 }
 
+export async function GET(req: Request) {
+  const site = siteUrl(req);
+  return NextResponse.json({
+    status: "ok",
+    service: "VZTM Kielce Discord Interactions Endpoint",
+    configured: {
+      hasPublicKey: !!process.env.DISCORD_PUBLIC_KEY,
+      hasBotToken: !!process.env.DISCORD_BOT_TOKEN,
+      hasGuildId: !!process.env.DISCORD_GUILD_ID,
+      hasAppId: !!(process.env.DISCORD_APP_ID || process.env.DISCORD_CLIENT_ID),
+    },
+    endpointUrl: `${site}/api/discord/interactions`,
+    instructions:
+      "Wklej ten adres w Discord Developer Portal -> Twoja Aplikacja -> General Information -> Interactions Endpoint URL.",
+  });
+}
+
 export async function POST(req: Request) {
   const raw = await req.text();
   if (!verifyDiscordRequest(raw, req.headers.get("x-signature-ed25519"), req.headers.get("x-signature-timestamp"))) {
