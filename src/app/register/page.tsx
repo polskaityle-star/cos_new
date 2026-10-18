@@ -56,7 +56,7 @@ export default function RegisterPage() {
   return (
     <div className="flex justify-center items-center py-8">
       <div className="bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-xl w-full max-w-lg">
-        <h1 className="text-3xl font-bold mb-2 text-center">Rekrutacja (Wniosek o pracę)</h1>
+        <h1 className="text-3xl font-bold mb-2 text-center">Rekrutacja (wniosek o pracę)</h1>
         <p className="text-xs text-slate-400 text-center mb-6">
           Dołącz do zespołu VZTM Kielce. Po złożeniu wniosku system przydzieli Ci unikalny numer służbowy.
         </p>
@@ -70,11 +70,14 @@ export default function RegisterPage() {
             <input
               type="text"
               required
+              minLength={3}
+              maxLength={32}
               placeholder="np. Janek_Kielce"
               value={username}
               onChange={e => setUsername(e.target.value)}
               className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
             />
+            <p className="text-[11px] text-slate-400">3-32 znaki: litery, cyfry, spacja, _ . -</p>
           </div>
           
           <div className="space-y-1.5">
@@ -82,11 +85,14 @@ export default function RegisterPage() {
             <input
               type="password"
               required
-              placeholder="Minimum 6 znaków"
+              minLength={8}
+              maxLength={128}
+              placeholder="Minimum 8 znaków"
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
             />
+            <p className="text-[11px] text-slate-400">Minimum 8 znaków</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -121,6 +127,7 @@ export default function RegisterPage() {
             <label className="text-xs font-semibold text-slate-300">Powiedz coś o sobie *</label>
             <textarea
               required
+              maxLength={500}
               rows={3}
               placeholder="Doświadczenie w OMSI 2, ulubione linie, dlaczego chcesz dołączyć do VZTM Kielce..."
               value={bio}

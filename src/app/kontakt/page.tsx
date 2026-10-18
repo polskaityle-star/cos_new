@@ -69,6 +69,7 @@ export default function ContactPage() {
                 type="text"
                 id="name"
                 required
+                maxLength={60}
                 value={name}
                 onChange={e => setName(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
@@ -80,6 +81,7 @@ export default function ContactPage() {
               <input
                 type="email"
                 id="email"
+                maxLength={120}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
@@ -94,6 +96,7 @@ export default function ContactPage() {
               type="text"
               id="subject"
               required
+              maxLength={150}
               value={subject}
               onChange={e => setSubject(e.target.value)}
               className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
@@ -107,11 +110,15 @@ export default function ContactPage() {
               id="message"
               rows={5}
               required
+              maxLength={2000}
               value={message}
               onChange={e => setMessage(e.target.value)}
               className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all resize-none"
               placeholder="Twoja wiadomość..."
             ></textarea>
+            <div className="flex justify-end text-xs text-slate-400 font-mono">
+              <span>{message.length}/2000</span>
+            </div>
           </div>
 
           <button

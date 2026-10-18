@@ -103,8 +103,8 @@ export default function LoginPage() {
       return;
     }
 
-    if (newPassword.length < 4) {
-      setCpError("Nowe hasło musi zawierać co najmniej 4 znaki.");
+    if (newPassword.length < 8) {
+      setCpError("Nowe hasło musi zawierać co najmniej 8 znaków.");
       setCpLoading(false);
       return;
     }
@@ -186,6 +186,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   required
+                  maxLength={128}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500 text-white text-sm"
@@ -210,6 +211,7 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
+                  maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-emerald-500 text-white text-sm"
@@ -248,6 +250,7 @@ export default function LoginPage() {
                 <input
                   type="text"
                   required
+                  maxLength={128}
                   value={cpUsername}
                   onChange={(e) => setCpUsername(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-amber-500 text-white text-sm"
@@ -260,6 +263,7 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
+                  maxLength={128}
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-amber-500 text-white text-sm"
@@ -272,11 +276,14 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
+                  minLength={8}
+                  maxLength={128}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-amber-500 text-white text-sm"
-                  placeholder="Minimum 4 znaki"
+                  placeholder="Minimum 8 znaków"
                 />
+                <p className="text-[11px] text-slate-400">Minimum 8 znaków</p>
               </div>
 
               <div className="space-y-1">
@@ -284,6 +291,8 @@ export default function LoginPage() {
                 <input
                   type="password"
                   required
+                  minLength={8}
+                  maxLength={128}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 outline-none focus:border-amber-500 text-white text-sm"
