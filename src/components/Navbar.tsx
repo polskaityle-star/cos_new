@@ -14,9 +14,9 @@ export default function Navbar() {
   const isVbp = pathname.startsWith("/vbp");
   const isCarrier = isVmpk || isVbp;
 
-  let navClasses = "bg-white text-slate-900 border-b border-slate-200 shadow-xs";
-  if (isVmpk) navClasses = "bg-[#E31837] text-white shadow-md carrier-nav";
-  if (isVbp) navClasses = "bg-[#005A9C] text-white shadow-md carrier-nav";
+  let navClasses = "main-nav bg-white dark:bg-black text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 shadow-xs";
+  if (isVmpk) navClasses = "carrier-nav bg-[#E31837] text-white shadow-md";
+  if (isVbp) navClasses = "carrier-nav bg-[#005A9C] text-white shadow-md";
 
   const hasManagementAccess = session?.user?.role ? canAccessManagementPanel(session.user.role) : false;
 
@@ -25,10 +25,10 @@ export default function Navbar() {
       <div className="container mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
         <Link href="/" className="flex items-center group">
           <span
-            className={`text-xl font-bold font-mono tracking-wider flex items-center gap-2 transition-colors ${
+            className={`nav-logo text-xl font-bold font-mono tracking-wider flex items-center gap-2 transition-colors ${
               isCarrier
                 ? "text-white group-hover:text-amber-200"
-                : "text-slate-900 group-hover:text-amber-600"
+                : "text-slate-900 dark:text-white group-hover:text-amber-500"
             }`}
           >
             🚍 VZTM KIELCE
@@ -37,32 +37,32 @@ export default function Navbar() {
         <div className="flex gap-4 md:gap-5 items-center flex-wrap">
           <Link
             href="/"
-            className={`font-semibold transition-colors ${
-              isCarrier ? "text-white hover:text-amber-200" : "text-slate-700 hover:text-amber-600"
+            className={`nav-link font-semibold transition-colors ${
+              isCarrier ? "text-white hover:text-amber-200" : "text-slate-700 dark:text-slate-200 hover:text-amber-500"
             }`}
           >
             Strona główna
           </Link>
           <Link
             href="/vmpk"
-            className={`font-semibold transition-colors ${
-              isCarrier ? "text-white hover:text-yellow-200" : "text-slate-700 hover:text-red-600"
+            className={`nav-link font-semibold transition-colors ${
+              isCarrier ? "text-white hover:text-yellow-200" : "text-slate-700 dark:text-slate-200 hover:text-red-500"
             }`}
           >
             VMPK
           </Link>
           <Link
             href="/vbp"
-            className={`font-semibold transition-colors ${
-              isCarrier ? "text-white hover:text-gray-200" : "text-slate-700 hover:text-blue-600"
+            className={`nav-link font-semibold transition-colors ${
+              isCarrier ? "text-white hover:text-gray-200" : "text-slate-700 dark:text-slate-200 hover:text-blue-500"
             }`}
           >
             VBP
           </Link>
           <Link
             href="/kontakt"
-            className={`font-semibold transition-colors ${
-              isCarrier ? "text-white hover:opacity-80" : "text-slate-700 hover:text-amber-600"
+            className={`nav-link font-semibold transition-colors ${
+              isCarrier ? "text-white hover:opacity-80" : "text-slate-700 dark:text-slate-200 hover:text-amber-500"
             }`}
           >
             Kontakt
@@ -72,10 +72,10 @@ export default function Navbar() {
 
           {session?.user ? (
             <div
-              className={`flex items-center gap-3 py-1 px-3 rounded-lg border shadow-xs transition-colors ${
+              className={`nav-user-capsule flex items-center gap-3 py-1 px-3 rounded-lg border shadow-xs transition-colors ${
                 isCarrier
                   ? "bg-black/30 border-white/20 text-white"
-                  : "bg-slate-100 border-slate-300 text-slate-900"
+                  : "bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -98,14 +98,14 @@ export default function Navbar() {
                 )}
                 <span
                   className={`text-xs font-mono font-bold ${
-                    isCarrier ? "text-white" : "text-slate-900"
+                    isCarrier ? "text-white" : "text-slate-900 dark:text-white"
                   }`}
                 >
                   {session.user.username}
                   {session.user.badgeNumber && (
                     <span
                       className={`ml-1 text-[11px] font-bold ${
-                        isCarrier ? "text-amber-300" : "text-amber-700"
+                        isCarrier ? "text-amber-300" : "text-amber-700 dark:text-amber-400"
                       }`}
                     >
                       [{session.user.badgeNumber}]
@@ -116,7 +116,7 @@ export default function Navbar() {
                   className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
                     isCarrier
                       ? getRoleBadgeClass(session.user.role)
-                      : "bg-white text-slate-800 border-slate-300 shadow-2xs"
+                      : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700 shadow-2xs"
                   }`}
                 >
                   {getRoleLabel(session.user.role)}

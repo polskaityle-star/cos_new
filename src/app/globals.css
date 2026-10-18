@@ -360,34 +360,146 @@ html[data-theme="light"] [class*="text-blue-400"] {
 }
 
 /* -------------------------------------------------------------
-   Pasek nawigacyjny (Navbar) - Białe tło z wysokim kontrastem
+   Pasek nawigacyjny (Navbar) - Czarny w ciemnym, biały w jasnym
    ------------------------------------------------------------- */
-nav:not(.carrier-nav) {
+
+/* JASNY MOTYW: Biały pasek z ciemnym tekstem */
+html.light nav:not(.carrier-nav),
+html[data-theme="light"] nav:not(.carrier-nav) {
   background-color: #ffffff !important;
   color: #0f172a !important;
   border-bottom: 1px solid #e2e8f0 !important;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
-/* Logo w białym pasku */
-nav:not(.carrier-nav) .font-mono {
+html.light nav:not(.carrier-nav) .font-mono,
+html[data-theme="light"] nav:not(.carrier-nav) .font-mono {
   color: #0f172a !important;
 }
-nav:not(.carrier-nav) a:hover .font-mono {
+html.light nav:not(.carrier-nav) a:hover .font-mono,
+html[data-theme="light"] nav:not(.carrier-nav) a:hover .font-mono {
   color: #d97706 !important;
 }
 
-/* Standardowe linki (Strona główna, VMPK, VBP, Kontakt) */
-nav:not(.carrier-nav) a:not([class*="bg-"]) {
+html.light nav:not(.carrier-nav) a:not([class*="bg-"]),
+html[data-theme="light"] nav:not(.carrier-nav) a:not([class*="bg-"]) {
   color: #1e293b !important;
   font-weight: 600 !important;
 }
 
-nav:not(.carrier-nav) a:not([class*="bg-"]):hover {
+html.light nav:not(.carrier-nav) a:not([class*="bg-"]):hover,
+html[data-theme="light"] nav:not(.carrier-nav) a:not([class*="bg-"]):hover {
   color: #d97706 !important;
 }
 
-/* Kolorowe paski dla VMPK i VBP */
+html.light nav:not(.carrier-nav) div.nav-user-capsule,
+html.light nav:not(.carrier-nav) div[class*="bg-slate-100"],
+html[data-theme="light"] nav:not(.carrier-nav) div.nav-user-capsule,
+html[data-theme="light"] nav:not(.carrier-nav) div[class*="bg-slate-100"] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light nav:not(.carrier-nav) div.nav-user-capsule span,
+html.light nav:not(.carrier-nav) span.text-slate-900,
+html[data-theme="light"] nav:not(.carrier-nav) div.nav-user-capsule span,
+html[data-theme="light"] nav:not(.carrier-nav) span.text-slate-900 {
+  color: #0f172a !important;
+}
+
+html.light nav:not(.carrier-nav) span[class*="text-amber-700"],
+html[data-theme="light"] nav:not(.carrier-nav) span[class*="text-amber-700"] {
+  color: #b45309 !important;
+  font-weight: 700 !important;
+}
+
+html.light nav:not(.carrier-nav) div.nav-user-capsule span[class*="border"],
+html[data-theme="light"] nav:not(.carrier-nav) div.nav-user-capsule span[class*="border"] {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]),
+html[data-theme="light"] nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) *,
+html[data-theme="light"] nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) * {
+  color: #0f172a !important;
+}
+
+/* CIEMNY MOTYW: Czarny pasek z jasnym/białym tekstem */
+html:not(.light) nav:not(.carrier-nav),
+html[data-theme="dark"] nav:not(.carrier-nav) {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid #1e293b !important;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.4) !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) .font-mono,
+html[data-theme="dark"] nav:not(.carrier-nav) .font-mono {
+  color: #ffffff !important;
+}
+html:not(.light) nav:not(.carrier-nav) a:hover .font-mono,
+html[data-theme="dark"] nav:not(.carrier-nav) a:hover .font-mono {
+  color: #fbbf24 !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) a:not([class*="bg-"]),
+html[data-theme="dark"] nav:not(.carrier-nav) a:not([class*="bg-"]) {
+  color: #f1f5f9 !important;
+  font-weight: 600 !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) a:not([class*="bg-"]):hover,
+html[data-theme="dark"] nav:not(.carrier-nav) a:not([class*="bg-"]):hover {
+  color: #fbbf24 !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) div.nav-user-capsule,
+html[data-theme="dark"] nav:not(.carrier-nav) div.nav-user-capsule {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border-color: #334155 !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) div.nav-user-capsule span,
+html[data-theme="dark"] nav:not(.carrier-nav) div.nav-user-capsule span {
+  color: #ffffff !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) span[class*="text-amber-400"],
+html:not(.light) nav:not(.carrier-nav) span[class*="text-amber-300"],
+html[data-theme="dark"] nav:not(.carrier-nav) span[class*="text-amber-400"],
+html[data-theme="dark"] nav:not(.carrier-nav) span[class*="text-amber-300"] {
+  color: #fbbf24 !important;
+  font-weight: 700 !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) div.nav-user-capsule span[class*="border"],
+html[data-theme="dark"] nav:not(.carrier-nav) div.nav-user-capsule span[class*="border"] {
+  background-color: rgba(30, 41, 59, 0.8) !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]),
+html[data-theme="dark"] nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) *,
+html[data-theme="dark"] nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) * {
+  color: #ffffff !important;
+}
+
+/* Kolorowe paski dla VMPK i VBP (niezależne od motywu) */
 nav.carrier-nav.bg-\[\#E31837\],
 nav.carrier-nav[class*="E31837"] {
   background-color: #E31837 !important;
@@ -408,7 +520,7 @@ nav.carrier-nav a:not([class*="bg-"]):hover {
   opacity: 0.85 !important;
 }
 
-/* Przyciski-linki w navbarze (Logowanie, Panel zarządu, Panel kierowcy, Złóż wniosek, Wyloguj) - BIAŁY TEKST */
+/* Przyciski-linki w navbarze (Logowanie, Panel zarządu, Panel kierowcy, Złóż wniosek, Wyloguj) - BIAŁY TEKST W OBU MOTYWACH */
 nav a[class*="bg-"],
 nav button[class*="bg-red"],
 nav button[class*="bg-emerald"],
@@ -416,40 +528,6 @@ nav a[class*="bg-"] *,
 nav button[class*="bg-red"] *,
 nav button[class*="bg-emerald"] * {
   color: #ffffff !important;
-}
-
-/* Kapsuła użytkownika w białym pasku */
-nav:not(.carrier-nav) div[class*="bg-slate-100"] {
-  background-color: #f8fafc !important;
-  border-color: #cbd5e1 !important;
-}
-
-nav:not(.carrier-nav) span.text-slate-900,
-nav:not(.carrier-nav) div[class*="bg-slate-100"] span {
-  color: #0f172a !important;
-}
-
-nav:not(.carrier-nav) span[class*="text-amber-700"] {
-  color: #b45309 !important;
-  font-weight: 700 !important;
-}
-
-/* Plakietka roli w kapsule */
-nav:not(.carrier-nav) div[class*="bg-slate-100"] span[class*="border"] {
-  background-color: #ffffff !important;
-  color: #1e293b !important;
-  border-color: #cbd5e1 !important;
-}
-
-/* Przycisk motywu (ThemeToggle) w białym pasku */
-nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) {
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
-}
-
-nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) * {
-  color: #0f172a !important;
 }
 
 /* Przycisk motywu w pasku przewoźnika */

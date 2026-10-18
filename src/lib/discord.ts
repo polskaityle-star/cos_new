@@ -153,6 +153,32 @@ export async function runAfter(task: () => Promise<unknown>): Promise<void> {
 
 // ---------- Synchronizacja ról Discord ----------
 
+export interface DiscordRoleItem {
+  id: string;
+  name: string;
+  position: number;
+}
+
+let cachedGuildRoles: { at: number; roles: DiscordRoleItem[] } | null = null;
+
+export async function fetchGuildRoles(): Promise<DiscordRoleItem[]> {
+  const guild = process.env.DISCORD_GUILD_ID;
+  if (!guild || !process.env.DISCORD_BOT_TOKEN) return [];
+  const now = Date.now();
+  if (cachedGuildRoles && now - cachedGuildRoles.at < 60000) {
+    return cachedGuildRoles.roles;
+  }
+  const res = await discordFetch(`${API}/guilds/${guild}/roles`, { headers: botHeaders() });
+  if (!res || !res.ok) return cachedGuildRoles?.roles || [];
+  try {
+    const roles = (await res.json()) as DiscordRoleItem[];
+    cachedGuildRoles = { at: now, roles };
+    return roles;
+  } catch {
+    return [];
+  }
+}
+
 const ROLE_ENV: Record<string, string> = {
   WLASCICIEL: "DISCORD_ROLE_WLASCICIEL",
   ZARZAD: "DISCORD_ROLE_WLASCICIEL",
@@ -162,60 +188,194 @@ const ROLE_ENV: Record<string, string> = {
   SPRAWDZAJACY: "DISCORD_ROLE_SPRAWDZAJACY",
   KIEROWCA: "DISCORD_ROLE_KIEROWCA",
 };
+
 const CARRIER_ENV: Record<string, string> = {
   VMPK: "DISCORD_ROLE_VMPK",
   VBP: "DISCORD_ROLE_VBP",
 };
 
-function managedRoleIds(): string[] {
-  const ids = [...Object.values(ROLE_ENV), ...Object.values(CARRIER_ENV)]
-    .map((k) => process.env[k])
-    .filter((v): v is string => !!v);
-  return Array.from(new Set(ids));
+const ROLE_NAMES_MAP: Record<string, string[]> = {
+  WLASCICIEL: ["właściciel", "wlasciciel", "zarząd", "zarzad", "head admin", "owner"],
+  ZARZAD: ["zarząd", "zarzad", "właściciel", "wlasciciel", "zarządca"],
+  DYSPOZYTOR: ["dyspozytor", "dyspozytornia", "dyspozytorzy"],
+  KIEROWNIK_PRZEWOZOW: ["kierownik przewozów", "kierownik przewozow", "kierownik działu przewozów", "kierownik dzialu przewozow", "kierownik"],
+  MECHANIK: ["mechanik", "serwis", "warsztat"],
+  SPRAWDZAJACY: ["sprawdzający", "sprawdzajacy", "weryfikator"],
+  KIEROWCA: ["kierowca", "kierowcy", "driver"],
+};
+
+const CARRIER_NAMES_MAP: Record<string, string[]> = {
+  VMPK: ["vmpk", "vmpk kielce"],
+  VBP: ["vbp", "vbp tour regio", "vbp kielce"],
+};
+
+export interface SyncRoleResult {
+  success: boolean;
+  message: string;
+  appliedRoles: string[];
+}
+
+/** Rozwiązuje ID roli Discord: najpierw po zmiennej środowiskowej (ID lub nazwa), a w razie braku po nazwie na serwerze. */
+function resolveDiscordRole(
+  envKey: string | undefined,
+  fallbackNames: string[],
+  guildRoles: DiscordRoleItem[]
+): DiscordRoleItem | null {
+  const envVal = envKey ? process.env[envKey]?.trim() : undefined;
+  if (envVal) {
+    const byId = guildRoles.find((r) => r.id === envVal);
+    if (byId) return byId;
+    const byEnvName = guildRoles.find((r) => r.name.toLowerCase() === envVal.toLowerCase());
+    if (byEnvName) return byEnvName;
+    if (/^\d{15,25}$/.test(envVal)) return { id: envVal, name: envVal, position: 0 };
+  }
+
+  for (const name of fallbackNames) {
+    const found = guildRoles.find((r) => r.name.toLowerCase() === name.toLowerCase());
+    if (found) return found;
+  }
+  return null;
+}
+
+/** Nadaje role Discord zgodnie z rolą i przewoźnikiem w systemie ze szczegółowym raportem. */
+export async function syncDiscordRolesDetailed(userId: string): Promise<SyncRoleResult> {
+  const guild = process.env.DISCORD_GUILD_ID;
+  if (!guild || !process.env.DISCORD_BOT_TOKEN) {
+    return { success: false, message: "Brak konfiguracji bota Discord (ustaw DISCORD_BOT_TOKEN i DISCORD_GUILD_ID w Vercel).", appliedRoles: [] };
+  }
+
+  try {
+    const u = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { discordId: true, role: true, carrier: true, status: true, suspended: true, username: true },
+    });
+    if (!u?.discordId) {
+      return { success: false, message: "Konto użytkownika nie jest powiązane z Discordem.", appliedRoles: [] };
+    }
+
+    const guildRoles = await fetchGuildRoles();
+
+    const roleItem = resolveDiscordRole(ROLE_ENV[u.role], ROLE_NAMES_MAP[u.role] || [], guildRoles);
+    const carrierItem = u.carrier ? resolveDiscordRole(CARRIER_ENV[u.carrier], CARRIER_NAMES_MAP[u.carrier] || [], guildRoles) : null;
+
+    const mRes = await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}`, { headers: botHeaders() });
+    if (!mRes) {
+      return { success: false, message: "Błąd połączenia z API Discorda.", appliedRoles: [] };
+    }
+    if (mRes.status === 404) {
+      return {
+        success: false,
+        message: `Użytkownik (${u.username}) nie dołączył do Twojego serwera Discord. Dołącz do serwera, a następnie kliknij synchronizację.`,
+        appliedRoles: [],
+      };
+    }
+    if (!mRes.ok) {
+      return { success: false, message: `Błąd Discord API: kod ${mRes.status}.`, appliedRoles: [] };
+    }
+
+    const member = (await mRes.json()) as { roles: string[] };
+    const currentRoles = new Set(member.roles);
+    const applied: string[] = [];
+
+    if (u.status === "ACCEPTED" && !u.suspended) {
+      // 1. Rola stanowiskowa
+      if (roleItem) {
+        if (!currentRoles.has(roleItem.id)) {
+          const putRes = await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}/roles/${roleItem.id}`, {
+            method: "PUT",
+            headers: botHeaders(),
+          });
+          if (putRes && (putRes.status === 204 || putRes.ok)) {
+            applied.push(roleItem.name);
+          } else if (putRes?.status === 403) {
+            console.error(`[discord] 403 Forbidden dla roli ${roleItem.name}: rola bota musi być wyżej niż przypisywana rola na liście ról w Discordzie!`);
+          }
+        } else {
+          applied.push(roleItem.name);
+        }
+      }
+
+      // 2. Rola przewoźnika (VMPK / VBP)
+      if (carrierItem) {
+        if (!currentRoles.has(carrierItem.id)) {
+          const putRes = await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}/roles/${carrierItem.id}`, {
+            method: "PUT",
+            headers: botHeaders(),
+          });
+          if (putRes && (putRes.status === 204 || putRes.ok)) {
+            applied.push(carrierItem.name);
+          } else if (putRes?.status === 403) {
+            console.error(`[discord] 403 Forbidden dla roli przewoźnika ${carrierItem.name}`);
+          }
+        } else {
+          applied.push(carrierItem.name);
+        }
+      }
+
+      // 3. Usuń inne role funkcyjne z systemu po ewentualnej zmianie roli
+      for (const [rKey, envVar] of Object.entries(ROLE_ENV)) {
+        if (rKey === u.role || (u.role === "WLASCICIEL" && rKey === "ZARZAD") || (u.role === "ZARZAD" && rKey === "WLASCICIEL")) continue;
+        const otherRole = resolveDiscordRole(envVar, ROLE_NAMES_MAP[rKey] || [], guildRoles);
+        if (otherRole && currentRoles.has(otherRole.id) && otherRole.id !== roleItem?.id) {
+          await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}/roles/${otherRole.id}`, {
+            method: "DELETE",
+            headers: botHeaders(),
+          });
+        }
+      }
+
+      // 4. Usuń drugiego przewoźnika jeśli zmieniono
+      for (const [cKey, envVar] of Object.entries(CARRIER_ENV)) {
+        if (cKey === u.carrier) continue;
+        const otherCarrier = resolveDiscordRole(envVar, CARRIER_NAMES_MAP[cKey] || [], guildRoles);
+        if (otherCarrier && currentRoles.has(otherCarrier.id) && otherCarrier.id !== carrierItem?.id) {
+          await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}/roles/${otherCarrier.id}`, {
+            method: "DELETE",
+            headers: botHeaders(),
+          });
+        }
+      }
+    } else {
+      // Konto nieaktywne/zawieszone - usuń zarządzane role
+      for (const [rKey, envVar] of Object.entries(ROLE_ENV)) {
+        const otherRole = resolveDiscordRole(envVar, ROLE_NAMES_MAP[rKey] || [], guildRoles);
+        if (otherRole && currentRoles.has(otherRole.id)) {
+          await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}/roles/${otherRole.id}`, {
+            method: "DELETE",
+            headers: botHeaders(),
+          });
+        }
+      }
+      for (const [cKey, envVar] of Object.entries(CARRIER_ENV)) {
+        const otherCarrier = resolveDiscordRole(envVar, CARRIER_NAMES_MAP[cKey] || [], guildRoles);
+        if (otherCarrier && currentRoles.has(otherCarrier.id)) {
+          await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}/roles/${otherCarrier.id}`, {
+            method: "DELETE",
+            headers: botHeaders(),
+          });
+        }
+      }
+    }
+
+    if (applied.length > 0) {
+      return { success: true, message: `Pomyślnie zsynchronizowano role na Discordzie: ${applied.join(", ")}`, appliedRoles: applied };
+    }
+
+    return {
+      success: true,
+      message: `Role użytkownika (${u.role}${u.carrier ? `, ${u.carrier}` : ""}) zostały zaktualizowane na serwerze Discord.`,
+      appliedRoles: applied,
+    };
+  } catch (err) {
+    console.error("[discord] syncDiscordRoles error:", (err as Error)?.message);
+    return { success: false, message: `Błąd podczas synchronizacji ról: ${(err as Error)?.message}`, appliedRoles: [] };
+  }
 }
 
 /** Nadaje/zabiera role Discord zgodnie z rolą i przewoźnikiem w systemie. Zwraca true, gdy się udało. */
 export async function syncDiscordRoles(userId: string): Promise<boolean> {
-  const guild = process.env.DISCORD_GUILD_ID;
-  if (!guild || !process.env.DISCORD_BOT_TOKEN) return false;
-  try {
-    const u = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { discordId: true, role: true, carrier: true, status: true, suspended: true },
-    });
-    if (!u?.discordId) return false;
-
-    const wanted = new Set<string>();
-    if (u.status === "ACCEPTED" && !u.suspended) {
-      const roleId = process.env[ROLE_ENV[u.role] ?? ""];
-      if (roleId) wanted.add(roleId);
-      const carrierId = process.env[CARRIER_ENV[u.carrier ?? ""] ?? ""];
-      if (carrierId) wanted.add(carrierId);
-    }
-
-    const mRes = await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}`, { headers: botHeaders() });
-    if (!mRes || !mRes.ok) return false; // użytkownik nie jest na serwerze lub brak uprawnień bota
-    const member = (await mRes.json()) as { roles: string[] };
-    const current = new Set(member.roles);
-    const managed = managedRoleIds();
-
-    const finalRoles = new Set([...current].filter((r) => !managed.includes(r)));
-    wanted.forEach((r) => finalRoles.add(r));
-
-    const same = finalRoles.size === current.size && [...finalRoles].every((r) => current.has(r));
-    if (same) return true;
-
-    const res = await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}`, {
-      method: "PATCH",
-      headers: botHeaders(),
-      body: JSON.stringify({ roles: [...finalRoles] }),
-    });
-    if (res && !res.ok) console.error("[discord] role sync", res.status);
-    return !!res?.ok;
-  } catch (err) {
-    console.error("[discord] syncDiscordRoles", (err as Error)?.message);
-    return false;
-  }
+  const res = await syncDiscordRolesDetailed(userId);
+  return res.success;
 }
 
 // ---------- OAuth (logowanie i powiązanie konta) ----------

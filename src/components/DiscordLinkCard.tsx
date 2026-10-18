@@ -76,6 +76,22 @@ export default function DiscordLinkCard() {
     setBusy(false);
   };
 
+  const syncMe = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/discord/sync-me", { method: "POST" });
+      const data = await res.json();
+      setMsg({
+        text: data.message || (res.ok ? "Role zostały zsynchronizowane." : "Błąd synchronizacji ról."),
+        ok: res.ok,
+      });
+    } catch {
+      setMsg({ text: "Błąd połączenia podczas synchronizacji ról.", ok: false });
+    }
+    setBusy(false);
+  };
+
   const syncAll = async () => {
     setBusy(true);
     setMsg(null);
@@ -116,6 +132,14 @@ export default function DiscordLinkCard() {
         <div className="flex flex-wrap gap-2">
           {state.linked ? (
             <>
+              <button
+                onClick={syncMe}
+                disabled={busy}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-lg text-xs font-semibold border border-indigo-500/60 disabled:opacity-50 cursor-pointer shadow-xs"
+                title="Przypisz aktualną rolę i przewoźnika do swojego konta na Discordzie"
+              >
+                🔄 Nadaj/Zaktualizuj role na DC
+              </button>
               <button
                 onClick={toggleNotify}
                 disabled={busy}
