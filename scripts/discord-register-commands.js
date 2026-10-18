@@ -11,6 +11,10 @@ if (!token || !appId) {
 }
 
 const commands = [
+  { name: "panel", description: "Twój panel kierowcy - szybkie akcje, raporty, status", type: 1 },
+  { name: "raport", description: "Złóż raport ze zrealizowanej służby (wybór i formularz)", type: 1 },
+  { name: "usterka", description: "Zgłoś awarię lub usterkę pojazdu do warsztatu", type: 1 },
+  { name: "wniosek", description: "Złóż wniosek kierowcy (urlop, dodatkowa służba, etat)", type: 1 },
   { name: "grafik", description: "Twój grafik służb na najbliższe 7 dni", type: 1 },
   { name: "sluzba", description: "Twoja służba na dziś i jutro", type: 1 },
   { name: "status", description: "Status Twojego konta w VZTM Kielce", type: 1 },
