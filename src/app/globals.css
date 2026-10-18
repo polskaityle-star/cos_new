@@ -360,151 +360,107 @@ html[data-theme="light"] [class*="text-blue-400"] {
 }
 
 /* -------------------------------------------------------------
-   Pasek nawigacyjny (Navbar) - w OBU trybach ciemnogranatowy z białym tekstem
+   Pasek nawigacyjny (Navbar) - Białe tło z wysokim kontrastem
    ------------------------------------------------------------- */
-html.light nav,
-html[data-theme="light"] nav,
-html nav,
-nav {
-  background-color: #0f172a !important;
-  color: #ffffff !important;
+nav:not(.carrier-nav) {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
-html.light nav.bg-\[\#E31837\],
-html[data-theme="light"] nav.bg-\[\#E31837\],
-nav.bg-\[\#E31837\] {
+/* Logo w białym pasku */
+nav:not(.carrier-nav) .font-mono {
+  color: #0f172a !important;
+}
+nav:not(.carrier-nav) a:hover .font-mono {
+  color: #d97706 !important;
+}
+
+/* Standardowe linki (Strona główna, VMPK, VBP, Kontakt) */
+nav:not(.carrier-nav) a:not([class*="bg-"]) {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+nav:not(.carrier-nav) a:not([class*="bg-"]):hover {
+  color: #d97706 !important;
+}
+
+/* Kolorowe paski dla VMPK i VBP */
+nav.carrier-nav.bg-\[\#E31837\],
+nav.carrier-nav[class*="E31837"] {
   background-color: #E31837 !important;
   color: #ffffff !important;
 }
 
-html.light nav.bg-\[\#005A9C\],
-html[data-theme="light"] nav.bg-\[\#005A9C\],
-nav.bg-\[\#005A9C\] {
+nav.carrier-nav.bg-\[\#005A9C\],
+nav.carrier-nav[class*="005A9C"] {
   background-color: #005A9C !important;
   color: #ffffff !important;
 }
 
-/* Wszystkie standardowe linki w navbarze (w tym VMPK, VBP, Kontakt, Strona główna) */
-html.light nav a:not([class*="bg-"]),
-html[data-theme="light"] nav a:not([class*="bg-"]),
-nav a:not([class*="bg-"]) {
+nav.carrier-nav a:not([class*="bg-"]) {
   color: #ffffff !important;
 }
 
-html.light nav a:not([class*="bg-"]):hover,
-html[data-theme="light"] nav a:not([class*="bg-"]):hover,
-nav a:not([class*="bg-"]):hover {
-  color: #fcd34d !important;
+nav.carrier-nav a:not([class*="bg-"]):hover {
+  opacity: 0.85 !important;
 }
 
-/* Przyciski-linki w navbarze (Logowanie, Panel zarządu, Panel kierowcy, Złóż wniosek) */
-html.light nav a[class*="bg-"],
-html[data-theme="light"] nav a[class*="bg-"],
+/* Przyciski-linki w navbarze (Logowanie, Panel zarządu, Panel kierowcy, Złóż wniosek, Wyloguj) - BIAŁY TEKST */
 nav a[class*="bg-"],
-html.light nav a[class*="bg-"] *,
-html[data-theme="light"] nav a[class*="bg-"] *,
-nav a[class*="bg-"] * {
+nav button[class*="bg-red"],
+nav button[class*="bg-emerald"],
+nav a[class*="bg-"] *,
+nav button[class*="bg-red"] *,
+nav button[class*="bg-emerald"] * {
   color: #ffffff !important;
 }
 
-/* Kapsuła użytkownika */
-html.light nav [class*="bg-slate-900"],
-html[data-theme="light"] nav [class*="bg-slate-900"],
-nav [class*="bg-slate-900"] {
-  background-color: rgba(15, 23, 42, 0.85) !important;
-  border-color: rgba(71, 85, 105, 0.8) !important;
+/* Kapsuła użytkownika w białym pasku */
+nav:not(.carrier-nav) div[class*="bg-slate-100"] {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
 }
 
-/* Nick użytkownika w kapsule */
-html.light nav span[class*="text-slate-200"],
-html[data-theme="light"] nav span[class*="text-slate-200"],
-html.light nav span[class*="text-white"],
-html[data-theme="light"] nav span[class*="text-white"],
-nav span[class*="text-slate-200"],
-nav span[class*="text-white"] {
+nav:not(.carrier-nav) span.text-slate-900,
+nav:not(.carrier-nav) div[class*="bg-slate-100"] span {
+  color: #0f172a !important;
+}
+
+nav:not(.carrier-nav) span[class*="text-amber-700"] {
+  color: #b45309 !important;
+  font-weight: 700 !important;
+}
+
+/* Plakietka roli w kapsule */
+nav:not(.carrier-nav) div[class*="bg-slate-100"] span[class*="border"] {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Przycisk motywu (ThemeToggle) w białym pasku */
+nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+nav:not(.carrier-nav) button:not([class*="bg-red"]):not([class*="bg-emerald"]) * {
+  color: #0f172a !important;
+}
+
+/* Przycisk motywu w pasku przewoźnika */
+nav.carrier-nav button:not([class*="bg-red"]):not([class*="bg-emerald"]) {
+  background-color: rgba(0, 0, 0, 0.25) !important;
   color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
-/* Numer służbowy [numer] */
-html.light nav [class*="text-amber-300"],
-html[data-theme="light"] nav [class*="text-amber-300"],
-nav [class*="text-amber-300"],
-html.light nav [class*="text-amber-400"],
-html[data-theme="light"] nav [class*="text-amber-400"],
-nav [class*="text-amber-400"] {
-  color: #fcd34d !important;
-}
-
-/* Plakietki ról w kapsule użytkownika - wysoki kontrast na ciemnym tle kapsuły */
-html.light nav [class*="border-amber-500"],
-html[data-theme="light"] nav [class*="border-amber-500"],
-nav [class*="border-amber-500"] {
-  color: #fcd34d !important;
-  background-color: rgba(245, 158, 11, 0.25) !important;
-  border-color: rgba(245, 158, 11, 0.6) !important;
-}
-
-html.light nav [class*="border-blue-500"],
-html[data-theme="light"] nav [class*="border-blue-500"],
-nav [class*="border-blue-500"] {
-  color: #93c5fd !important;
-  background-color: rgba(59, 130, 246, 0.25) !important;
-  border-color: rgba(59, 130, 246, 0.6) !important;
-}
-
-html.light nav [class*="border-indigo-500"],
-html[data-theme="light"] nav [class*="border-indigo-500"],
-nav [class*="border-indigo-500"] {
-  color: #c7d2fe !important;
-  background-color: rgba(99, 102, 241, 0.25) !important;
-  border-color: rgba(99, 102, 241, 0.6) !important;
-}
-
-html.light nav [class*="border-emerald-500"],
-html[data-theme="light"] nav [class*="border-emerald-500"],
-nav [class*="border-emerald-500"] {
-  color: #6ee7b7 !important;
-  background-color: rgba(16, 185, 129, 0.25) !important;
-  border-color: rgba(16, 185, 129, 0.6) !important;
-}
-
-html.light nav [class*="border-purple-500"],
-html[data-theme="light"] nav [class*="border-purple-500"],
-nav [class*="border-purple-500"] {
-  color: #e9d5ff !important;
-  background-color: rgba(168, 85, 247, 0.25) !important;
-  border-color: rgba(168, 85, 247, 0.6) !important;
-}
-
-html.light nav [class*="border-slate-500"],
-html[data-theme="light"] nav [class*="border-slate-500"],
-nav [class*="border-slate-500"] {
-  color: #f1f5f9 !important;
-  background-color: rgba(100, 116, 139, 0.3) !important;
-  border-color: rgba(148, 163, 184, 0.6) !important;
-}
-
-/* Przycisk motywu (ThemeToggle) oraz przyciski w navbarze */
-html.light nav button,
-html[data-theme="light"] nav button,
-nav button,
-html.light nav button *,
-html[data-theme="light"] nav button *,
-nav button * {
+nav.carrier-nav button:not([class*="bg-red"]):not([class*="bg-emerald"]) * {
   color: #ffffff !important;
-}
-
-html.light nav button[class*="bg-slate-"],
-html[data-theme="light"] nav button[class*="bg-slate-"],
-nav button[class*="bg-slate-"] {
-  background-color: #1e293b !important;
-  border-color: #475569 !important;
-}
-
-html.light nav button[class*="bg-slate-"]:hover,
-html[data-theme="light"] nav button[class*="bg-slate-"]:hover,
-nav button[class*="bg-slate-"]:hover {
-  background-color: #334155 !important;
 }
 
 /* Stopka */

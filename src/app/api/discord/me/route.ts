@@ -17,6 +17,7 @@ export async function GET() {
   return NextResponse.json({
     enabled: discordOAuthConfigured(),
     botEnabled: !!process.env.DISCORD_BOT_TOKEN,
+    webhookEnabled: !!(process.env.DISCORD_WEBHOOK_URL || process.env.DISCORD_WEBHOOK_WIADOMOSCI),
     linked: !!u?.discordId,
     username: u?.discordUsername ?? null,
     notify: u?.discordNotify ?? true,

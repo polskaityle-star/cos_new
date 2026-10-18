@@ -36,7 +36,11 @@ export default function ThemeToggle() {
     <button
       onClick={toggleTheme}
       type="button"
-      className="p-1.5 rounded-lg border border-slate-600 bg-slate-800/90 hover:bg-slate-700 text-white transition-colors flex items-center gap-1.5 text-xs font-semibold"
+      className={`p-1.5 rounded-lg border transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer shadow-2xs ${
+        theme === "light"
+          ? "border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800"
+          : "border-slate-600 bg-slate-800/90 hover:bg-slate-700 text-white"
+      }`}
       title={theme === "dark" ? "Przełącz na jasny motyw" : "Przełącz na ciemny motyw"}
     >
       {theme === "dark" ? (

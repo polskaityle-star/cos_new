@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DiscordMessageForm from "@/components/DiscordMessageForm";
 
 interface DiscordState {
   enabled: boolean;
   botEnabled: boolean;
+  webhookEnabled: boolean;
   linked: boolean;
   username: string | null;
   notify: boolean;
@@ -53,7 +55,7 @@ export default function DiscordLinkCard() {
     };
   }, []);
 
-  if (!state || !state.enabled) return null;
+  if (!state || (!state.enabled && !state.webhookEnabled && !state.linked)) return null;
 
   const unlink = async () => {
     if (!confirm("Odłączyć konto Discord? Przestaniesz dostawać powiadomienia i stracisz role na serwerze.")) return;
@@ -155,6 +157,11 @@ export default function DiscordLinkCard() {
       {msg && (
         <p className={`text-xs ${msg.ok ? "text-emerald-300" : "text-red-300"}`}>{msg.text}</p>
       )}
+
+      {/* Formularz wysyłania wiadomości na Discord */}
+      <div className="pt-2 border-t border-slate-700/60">
+        <DiscordMessageForm isManagement={state.canSync} />
+      </div>
     </section>
   );
 }
