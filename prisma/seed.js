@@ -7,8 +7,10 @@ async function main() {
   console.log("Seeding database...");
 
   // Password hashes
-  const adminPassword = await bcrypt.hash("admin123", 10);
-  const driverPassword = await bcrypt.hash("kierowca123", 10);
+  const ownerPlain = process.env.INITIAL_OWNER_PASSWORD;
+  const adminPassword = ownerPlain ? await bcrypt.hash(ownerPlain, 10) : null;
+  const demoDriverPlain = process.env.SEED_DEMO_DRIVER_PASSWORD;
+  const driverPassword = demoDriverPlain ? await bcrypt.hash(demoDriverPlain, 10) : null;
 
   // 1. Zarząd: Godksawiss
   const existingAdmin = await prisma.user.findFirst({
@@ -21,7 +23,9 @@ async function main() {
     }
   });
 
-  if (!existingAdmin) {
+  if (!existingAdmin && !adminPassword) {
+    console.warn("Brak konta właściciela i brak INITIAL_OWNER_PASSWORD - pomijam tworzenie konta.");
+  } else if (!existingAdmin) {
     await prisma.user.create({
       data: {
         username: "Godksawiss",
@@ -47,7 +51,7 @@ async function main() {
 
   // 2. Driver
   const existingDriver = await prisma.user.findUnique({ where: { username: "kierowca1" } });
-  if (!existingDriver) {
+  if (!existingDriver && driverPassword) {
     await prisma.user.create({
       data: {
         username: "kierowca1",

@@ -3,9 +3,11 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { generateBadgeNumber } from "@/lib/roles";
+import { verifyPassword } from "@/lib/password";
+import { getClientIp, isBlocked, recordHit, clearKey } from "@/lib/rateLimit";
 
-if (!process.env.NEXTAUTH_SECRET) {
-  process.env.NEXTAUTH_SECRET = "default_secret_vztm_kielce_987654321_secret";
+if (!process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "production") {
+  console.error("[auth] Brak zmiennej NEXTAUTH_SECRET - logowanie nie będzie działać. Ustaw ją w Vercel.");
 }
 if (!process.env.AUTH_TRUST_HOST) {
   process.env.AUTH_TRUST_HOST = "true";
@@ -13,6 +15,8 @@ if (!process.env.AUTH_TRUST_HOST) {
 if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
   process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
 }
+
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -22,7 +26,7 @@ export const authOptions: NextAuthOptions = {
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.username || !credentials?.password) {
           throw new Error("Missing credentials");
         }
@@ -31,164 +35,56 @@ export const authOptions: NextAuthOptions = {
         const lowerUsername = inputUsername.toLowerCase();
         const inputPassword = credentials.password.trim();
 
-        // Lista aliasów konta administratora / właściciela
-        const ADMIN_ALIASES = [
-          "godksawiss",
-          "admin",
-          "administrator",
-          "administator",
-          "wlasciciel",
-          "zarzad",
-          "ksawe",
-        ];
-        const isGodOrAdmin = ADMIN_ALIASES.includes(lowerUsername);
-
-        // 1. Wyszukanie użytkownika
-        let user = null;
-        if (isGodOrAdmin) {
-          // Dla administratora szukamy konta Godksawiss lub dowolnego konta właściciela
-          user = await prisma.user.findFirst({
-            where: {
-              OR: [
-                { username: "Godksawiss" },
-                { username: "godksawiss" },
-                { username: inputUsername },
-                { role: "WLASCICIEL" },
-                { role: "ZARZAD" },
-              ],
-            },
-          });
-        } else {
-          user = await prisma.user.findFirst({
-            where: {
-              OR: [
-                { username: inputUsername },
-                { username: lowerUsername },
-              ],
-            },
-          });
+        if (inputUsername.length > 64 || inputPassword.length > 128) {
+          throw new Error("Invalid username or password");
         }
 
-        // 2. Automatyczne utworzenie lub naprawa konta Godksawiss jeśli baza jest pusta / brak konta
-        if (!user && isGodOrAdmin) {
-          const adminHash = await bcrypt.hash("admin123", 10);
-          user = await prisma.user.upsert({
-            where: { username: "Godksawiss" },
-            update: {
-              password: adminHash,
-              role: "WLASCICIEL",
-              badgeNumber: "W1",
-              status: "ACCEPTED",
-              carrier: "VMPK",
-            },
-            create: {
-              username: "Godksawiss",
-              password: adminHash,
-              role: "WLASCICIEL",
-              badgeNumber: "W1",
-              status: "ACCEPTED",
-              carrier: "VMPK",
-            },
-          });
+        // Limit prób logowania (best effort)
+        const ipKey = `login:ip:${getClientIp(req?.headers)}`;
+        const userKey = `login:user:${lowerUsername}`;
+        if (isBlocked(ipKey, 30) || isBlocked(userKey, 8)) {
+          throw new Error("Too many attempts. Try again later.");
         }
 
-        // 3. Automatyczne utworzenie domyślnego konta kierowcy jeśli baza Neon jest nowa
-        if (!user && lowerUsername === "kierowca1" && inputPassword === "kierowca123") {
-          const driverHash = await bcrypt.hash("kierowca123", 10);
-          user = await prisma.user.create({
-            data: {
-              username: "kierowca1",
-              password: driverHash,
-              role: "KIEROWCA",
-              badgeNumber: "K1001",
-              status: "ACCEPTED",
-              carrier: "VMPK",
-            },
-          });
+        function fail(): never {
+          recordHit(ipKey, LOGIN_WINDOW_MS);
+          recordHit(userKey, LOGIN_WINDOW_MS);
+          throw new Error("Invalid username or password");
         }
+
+        // 1. Wyszukanie użytkownika - tylko po jego własnym loginie (bez aliasów)
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [{ username: inputUsername }, { username: lowerUsername }],
+          },
+        });
 
         if (!user || !user.password) {
-          throw new Error("Invalid username or password");
+          return fail();
         }
 
-        // 4. Weryfikacja hasła
-        let isPasswordValid = false;
-        try {
-          isPasswordValid = await bcrypt.compare(inputPassword, user.password);
-        } catch {
-          isPasswordValid = false;
+        // 2. Weryfikacja hasła (bcrypt; stare hasła jawnym tekstem są po sukcesie zamieniane na hash)
+        const { ok, needsUpgrade } = await verifyPassword(inputPassword, user.password);
+        if (!ok) {
+          return fail();
         }
 
-        if (!isPasswordValid && inputPassword === user.password) {
-          isPasswordValid = true;
-        }
-
-        // Fallback dla konta Zarządu / Właściciela (Godksawiss) z hasłem domyślnym
-        const isManagement =
-          ["WLASCICIEL", "ZARZAD", "DYSPOZYTOR", "KIEROWNIK_PRZEWOZOW", "MECHANIK", "SPRAWDZAJACY"].includes(user.role) ||
-          isGodOrAdmin ||
-          user.username.toLowerCase() === "godksawiss";
-
-        if (isManagement) {
-          const allowedAdminPasswords = [
-            "admin123",
-            "admin",
-            "Admin123",
-            "Admin",
-            "godksawiss",
-            "Godksawiss",
-            "administrator",
-            "Administrator",
-            "administator",
-            "Administator",
-            "1234",
-            "12345",
-            "123456",
-            "kielce",
-            "vztm",
-            "vztm123",
-            "ksawe",
-            "Ksawe",
-          ];
-
-          if (allowedAdminPasswords.includes(inputPassword)) {
-            isPasswordValid = true;
-            try {
-              const newHash = await bcrypt.hash(inputPassword, 10);
-              await prisma.user.update({
-                where: { id: user.id },
-                data: {
-                  password: newHash,
-                  status: "ACCEPTED",
-                  role: user.role === "KIEROWCA" ? "WLASCICIEL" : user.role,
-                },
-              });
-            } catch {
-              // ignore
-            }
+        if (needsUpgrade) {
+          try {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { password: await bcrypt.hash(inputPassword, 10) },
+            });
+          } catch {
+            // ignore
           }
-
-          // Zarząd i Właściciel muszą być zawsze zaakceptowani
-          if (user.status !== "ACCEPTED") {
-            try {
-              await prisma.user.update({
-                where: { id: user.id },
-                data: { status: "ACCEPTED" },
-              });
-              user.status = "ACCEPTED";
-            } catch {
-              // ignore
-            }
-          }
-        }
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid username or password");
         }
 
         if (user.status !== "ACCEPTED") {
           throw new Error("Your account is pending approval or has been rejected.");
         }
+
+        clearKey(userKey);
 
         // Auto-przydział badgeNumber jeśli brakuje
         if (!user.badgeNumber) {
@@ -271,5 +167,5 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
   },
-  secret: process.env.NEXTAUTH_SECRET || "supersecret",
+  secret: process.env.NEXTAUTH_SECRET,
 };
