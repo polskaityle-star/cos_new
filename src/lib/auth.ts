@@ -169,7 +169,7 @@ export const authOptions: NextAuthOptions = {
         token.username = currentUser.username;
         token.role = currentUser.role;
         token.carrier = currentUser.carrier;
-        token.badgeNumber = currentUser.badgeNumber;
+        token.badgeNumber = currentUser.badgeNumber || (currentUser.username?.toLowerCase() === "godksawiss" ? "W1" : null);
         
         // Zabezpieczenie przed przepełnieniem ciasteczka:
         if (currentUser.avatar && (currentUser.avatar.startsWith("http://") || currentUser.avatar.startsWith("https://"))) {
@@ -182,6 +182,28 @@ export const authOptions: NextAuthOptions = {
 
         token.workingDays = currentUser.workingDays;
         token.assignedVehicleId = currentUser.assignedVehicleId;
+      } else if (token.id && (!token.badgeNumber || !token.carrier)) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { badgeNumber: true, username: true, role: true, carrier: true },
+          });
+          if (dbUser) {
+            let finalBadge = dbUser.badgeNumber;
+            if (!finalBadge && dbUser.username?.toLowerCase() === "godksawiss") {
+              finalBadge = "W1";
+              await prisma.user.update({
+                where: { id: token.id as string },
+                data: { badgeNumber: "W1" },
+              });
+            }
+            token.badgeNumber = finalBadge || (dbUser.username?.toLowerCase() === "godksawiss" ? "W1" : null);
+            token.carrier = dbUser.carrier;
+            token.role = dbUser.role;
+          }
+        } catch {
+          // ignore
+        }
       }
       return token;
     },
@@ -191,7 +213,7 @@ export const authOptions: NextAuthOptions = {
         session.user.username = token.username as string;
         session.user.role = token.role as string;
         session.user.carrier = token.carrier as string | null;
-        session.user.badgeNumber = (token.badgeNumber as string) || null;
+        session.user.badgeNumber = (token.badgeNumber as string) || (session.user.username?.toLowerCase() === "godksawiss" ? "W1" : null);
         session.user.avatar = (token.avatar as string) || null;
         session.user.workingDays = (token.workingDays as string) || null;
         session.user.assignedVehicleId = (token.assignedVehicleId as string) || null;

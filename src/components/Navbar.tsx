@@ -97,20 +97,22 @@ export default function Navbar() {
                   </div>
                 )}
                 <span
-                  className={`text-xs font-mono font-bold ${
+                  className={`nav-username text-xs font-mono font-bold flex items-center gap-1.5 ${
                     isCarrier ? "text-white" : "text-slate-900 dark:text-white"
                   }`}
                 >
-                  {session.user.username}
-                  {session.user.badgeNumber && (
+                  {(session.user.badgeNumber || (session.user.username?.toLowerCase() === "godksawiss" ? "W1" : null)) && (
                     <span
-                      className={`ml-1 text-[11px] font-bold ${
-                        isCarrier ? "text-amber-300" : "text-amber-700 dark:text-amber-400"
+                      className={`nav-badge-number px-1.5 py-0.5 rounded text-[11px] font-extrabold shadow-2xs ${
+                        isCarrier
+                          ? "bg-white/20 text-amber-300 border border-white/30"
+                          : "bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-700"
                       }`}
                     >
-                      [{session.user.badgeNumber}]
+                      {session.user.badgeNumber || (session.user.username?.toLowerCase() === "godksawiss" ? "W1" : null)}
                     </span>
                   )}
+                  <span>{session.user.username}</span>
                 </span>
                 <span
                   className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
@@ -134,7 +136,11 @@ export default function Navbar() {
 
               <Link
                 href="/panel/kierowca"
-                className="bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1.5 shadow"
+                className={`nav-btn-driver px-2.5 py-1 rounded text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs ${
+                  isCarrier
+                    ? "bg-black/30 hover:bg-black/40 text-white border border-white/20"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white dark:border-slate-700"
+                }`}
               >
                 {session.user.avatar && (
                   <img
@@ -158,7 +164,11 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-md text-sm font-semibold transition-colors shadow"
+                className={`nav-btn-login px-3 py-1.5 rounded-md text-sm font-semibold transition-colors shadow-xs ${
+                  isCarrier
+                    ? "bg-black/30 hover:bg-black/40 text-white border border-white/20"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white dark:border-slate-700"
+                }`}
               >
                 Logowanie
               </Link>

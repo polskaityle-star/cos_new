@@ -141,14 +141,14 @@ export default async function DriverPanel() {
           />
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
+              {(currentUser?.badgeNumber || (currentUser?.username?.toLowerCase() === "godksawiss" ? "W1" : null)) && (
+                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2.5 py-1 rounded font-mono font-extrabold text-sm">
+                  {currentUser?.badgeNumber || (currentUser?.username?.toLowerCase() === "godksawiss" ? "W1" : null)}
+                </span>
+              )}
               <h1 className="text-3xl font-extrabold text-white">
                 {currentUser?.username || session.user.username}
               </h1>
-              {currentUser?.badgeNumber && (
-                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-mono font-bold text-xs">
-                  {currentUser.badgeNumber}
-                </span>
-              )}
               <span className={`px-2 py-0.5 rounded text-xs font-bold border ${getRoleBadgeClass(currentUser?.role || session.user.role)}`}>
                 {getRoleLabel(currentUser?.role || session.user.role)}
               </span>

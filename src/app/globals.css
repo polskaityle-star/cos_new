@@ -432,6 +432,38 @@ html[data-theme="light"] nav:not(.carrier-nav) button:not([class*="bg-red"]):not
   color: #0f172a !important;
 }
 
+/* Przycisk Panel kierowcy i Logowanie w jasnym motywie - JASNE TŁO, CIEMNY TEKST */
+html.light nav:not(.carrier-nav) .nav-btn-driver,
+html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-driver,
+html.light nav:not(.carrier-nav) .nav-btn-login,
+html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-login {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light nav:not(.carrier-nav) .nav-btn-driver *,
+html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-driver *,
+html.light nav:not(.carrier-nav) .nav-btn-login *,
+html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-login * {
+  color: #0f172a !important;
+}
+
+html.light nav:not(.carrier-nav) .nav-btn-driver:hover,
+html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-driver:hover,
+html.light nav:not(.carrier-nav) .nav-btn-login:hover,
+html[data-theme="light"] nav:not(.carrier-nav) .nav-btn-login:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Plakietka numeru służbowego (np. W1) w jasnym motywie */
+html.light nav:not(.carrier-nav) .nav-badge-number,
+html[data-theme="light"] nav:not(.carrier-nav) .nav-badge-number {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border: 1px solid #f59e0b !important;
+}
+
 /* CIEMNY MOTYW: Czarny pasek z jasnym/białym tekstem */
 html:not(.light) nav:not(.carrier-nav),
 html[data-theme="dark"] nav:not(.carrier-nav) {
@@ -499,6 +531,38 @@ html[data-theme="dark"] nav:not(.carrier-nav) button:not([class*="bg-red"]):not(
   color: #ffffff !important;
 }
 
+/* Przycisk Panel kierowcy i Logowanie w ciemnym motywie - CIEMNE TŁO, BIAŁY TEKST */
+html:not(.light) nav:not(.carrier-nav) .nav-btn-driver,
+html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-driver,
+html:not(.light) nav:not(.carrier-nav) .nav-btn-login,
+html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-login {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  border: 1px solid #334155 !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) .nav-btn-driver *,
+html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-driver *,
+html:not(.light) nav:not(.carrier-nav) .nav-btn-login *,
+html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-login * {
+  color: #ffffff !important;
+}
+
+html:not(.light) nav:not(.carrier-nav) .nav-btn-driver:hover,
+html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-driver:hover,
+html:not(.light) nav:not(.carrier-nav) .nav-btn-login:hover,
+html[data-theme="dark"] nav:not(.carrier-nav) .nav-btn-login:hover {
+  background-color: #334155 !important;
+}
+
+/* Plakietka numeru służbowego (np. W1) w ciemnym motywie */
+html:not(.light) nav:not(.carrier-nav) .nav-badge-number,
+html[data-theme="dark"] nav:not(.carrier-nav) .nav-badge-number {
+  background-color: rgba(120, 53, 15, 0.7) !important;
+  color: #fde68a !important;
+  border: 1px solid #d97706 !important;
+}
+
 /* Kolorowe paski dla VMPK i VBP (niezależne od motywu) */
 nav.carrier-nav.bg-\[\#E31837\],
 nav.carrier-nav[class*="E31837"] {
@@ -520,11 +584,19 @@ nav.carrier-nav a:not([class*="bg-"]):hover {
   opacity: 0.85 !important;
 }
 
-/* Przyciski-linki w navbarze (Logowanie, Panel zarządu, Panel kierowcy, Złóż wniosek, Wyloguj) - BIAŁY TEKST W OBU MOTYWACH */
-nav a[class*="bg-"],
+/* Kolorowe przyciski akcji (Panel zarządu: amber, Złóż wniosek: emerald, Wyloguj: red) - BIAŁY TEKST W OBU MOTYWACH */
+nav a[class*="bg-amber"],
+nav a[class*="bg-emerald"],
+nav a[class*="bg-red"],
+nav a[class*="bg-blue"],
+nav a[class*="bg-orange"],
 nav button[class*="bg-red"],
 nav button[class*="bg-emerald"],
-nav a[class*="bg-"] *,
+nav a[class*="bg-amber"] *,
+nav a[class*="bg-emerald"] *,
+nav a[class*="bg-red"] *,
+nav a[class*="bg-blue"] *,
+nav a[class*="bg-orange"] *,
 nav button[class*="bg-red"] *,
 nav button[class*="bg-emerald"] * {
   color: #ffffff !important;

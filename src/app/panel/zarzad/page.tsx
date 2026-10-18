@@ -200,14 +200,14 @@ export default async function AdminPanel({
 
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
+              {(currentDbUser?.badgeNumber || (currentDbUser?.username?.toLowerCase() === "godksawiss" ? "W1" : null)) && (
+                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2.5 py-1 rounded font-mono font-extrabold text-sm">
+                  {currentDbUser?.badgeNumber || (currentDbUser?.username?.toLowerCase() === "godksawiss" ? "W1" : null)}
+                </span>
+              )}
               <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
                 {currentDbUser?.username || session.user.username}
               </h2>
-              {currentDbUser?.badgeNumber && (
-                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-0.5 rounded font-mono font-bold text-xs">
-                  {currentDbUser.badgeNumber}
-                </span>
-              )}
               <span className={`px-2.5 py-0.5 rounded text-xs font-bold border ${getRoleBadgeClass(currentDbUser?.role || userRole)}`}>
                 {getRoleLabel(currentDbUser?.role || userRole)}
               </span>
@@ -251,7 +251,7 @@ export default async function AdminPanel({
             href="/panel/kierowca"
             className="bg-orange-600 hover:bg-orange-500 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
           >
-            <span>Panel Kierowcy &rarr;</span>
+            <span>Panel kierowcy &rarr;</span>
           </Link>
         </div>
       </div>
@@ -339,7 +339,7 @@ export default async function AdminPanel({
               href="/panel/kierowca"
               className="bg-emerald-700 hover:bg-emerald-600 text-white px-3.5 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shadow"
             >
-              <span>🚌 Panel Kierowcy &rarr;</span>
+              <span>🚌 Panel kierowcy &rarr;</span>
             </Link>
             <Link
               href="/"

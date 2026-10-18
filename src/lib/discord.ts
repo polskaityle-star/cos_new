@@ -247,7 +247,7 @@ export async function syncDiscordRolesDetailed(userId: string): Promise<SyncRole
   try {
     const u = await prisma.user.findUnique({
       where: { id: userId },
-      select: { discordId: true, role: true, carrier: true, status: true, suspended: true, username: true },
+      select: { discordId: true, role: true, carrier: true, status: true, suspended: true, username: true, badgeNumber: true },
     });
     if (!u?.discordId) {
       return { success: false, message: "Konto użytkownika nie jest powiązane z Discordem.", appliedRoles: [] };
@@ -333,6 +333,21 @@ export async function syncDiscordRolesDetailed(userId: string): Promise<SyncRole
             method: "DELETE",
             headers: botHeaders(),
           });
+        }
+      }
+
+      // 5. Aktualizacja pseudonimu na serwerze Discord (np. "W1 Godksawiss")
+      const effectiveBadge = u.badgeNumber || (u.username.toLowerCase() === "godksawiss" ? "W1" : null);
+      if (effectiveBadge) {
+        const targetNick = `${effectiveBadge} ${u.username}`;
+        try {
+          await discordFetch(`${API}/guilds/${guild}/members/${u.discordId}`, {
+            method: "PATCH",
+            headers: { ...botHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ nick: targetNick }),
+          });
+        } catch {
+          // Ignorujemy brak uprawnień bota (np. zmiana nicku właściciela serwera Discord)
         }
       }
     } else {
