@@ -10,6 +10,7 @@ import DutyAssignmentForm from "@/components/DutyAssignmentForm";
 import BrigadeCreationForm from "@/components/BrigadeCreationForm";
 import BrigadeEditCard from "@/components/BrigadeEditCard";
 import { sortBrigades, getDayLabel, getDayBadgeClass } from "@/lib/brigades";
+import { isSafeImageUrl } from "@/lib/files";
 import {
   canAccessManagementPanel,
   canManageDuties,
@@ -44,12 +45,12 @@ export default async function AdminPanel({
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
-    redirect("/");
+    redirect("/login");
   }
 
   const userName = session.user.username || "";
   if (!canAccessManagementPanel(session.user.role, userName)) {
-    redirect("/");
+    redirect("/panel/kierowca");
   }
 
   const resolvedParams = searchParams ? await searchParams : {};
@@ -200,9 +201,9 @@ export default async function AdminPanel({
 
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              {(currentDbUser?.badgeNumber || (currentDbUser?.username?.toLowerCase() === "godksawiss" ? "W1" : null)) && (
+              {currentDbUser?.badgeNumber && (
                 <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2.5 py-1 rounded font-mono font-extrabold text-sm">
-                  {currentDbUser?.badgeNumber || (currentDbUser?.username?.toLowerCase() === "godksawiss" ? "W1" : null)}
+                  {currentDbUser?.badgeNumber}
                 </span>
               )}
               <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
@@ -911,8 +912,9 @@ export default async function AdminPanel({
                       {/* Galeria zdjęć awarii ze zgłoszenia (Wymóg 6) */}
                       {def.photos && (() => {
                         try {
-                          const pList = JSON.parse(def.photos) as string[];
-                          if (Array.isArray(pList) && pList.length > 0) {
+                          const rawList = JSON.parse(def.photos) as string[];
+                          const pList = Array.isArray(rawList) ? rawList.filter(isSafeImageUrl) : [];
+                          if (pList.length > 0) {
                             return (
                               <div className="pt-2 border-t border-slate-800 space-y-1.5">
                                 <span className="text-xs text-amber-300 font-semibold block">

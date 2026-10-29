@@ -55,3 +55,24 @@ export function isSafeStoredFile(value: string | null | undefined, kind: "image"
 
   return false;
 }
+
+/**
+ * Waliduje czy URL obrazu jest bezpieczny do wyrenderowania w tagach <img src> lub <a href>.
+ * Dozwolone: data:image/(png|jpeg|webp);base64,..., ścieżki zaczynające się od /uploads/ oraz URL https://.
+ */
+export function isSafeImageUrl(url: string | null | undefined): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(trimmed)) return true;
+  if (trimmed.startsWith("/uploads/") && !trimmed.includes("..")) return true;
+  if (trimmed.startsWith("https://")) {
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}

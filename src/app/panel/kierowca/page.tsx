@@ -63,7 +63,7 @@ export default async function DriverPanel() {
     }),
   ]);
 
-  const isOwner = currentUser?.role === "WLASCICIEL" || session.user.role === "WLASCICIEL" || currentUser?.username === "Godksawiss" || session.user.username === "Godksawiss";
+  const isOwner = currentUser?.role === "WLASCICIEL" || session.user.role === "WLASCICIEL";
   const driverCarrier = currentUser?.carrier || session.user.carrier;
   const filteredBrigades = rawBrigadeSchedules.filter((b) => {
     if (isOwner) return true;
@@ -141,9 +141,9 @@ export default async function DriverPanel() {
           />
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              {(currentUser?.badgeNumber || (currentUser?.username?.toLowerCase() === "godksawiss" ? "W1" : null)) && (
+              {currentUser?.badgeNumber && (
                 <span className="bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2.5 py-1 rounded font-mono font-extrabold text-sm">
-                  {currentUser?.badgeNumber || (currentUser?.username?.toLowerCase() === "godksawiss" ? "W1" : null)}
+                  {currentUser?.badgeNumber}
                 </span>
               )}
               <h1 className="text-3xl font-extrabold text-white">

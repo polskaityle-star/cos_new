@@ -1,4 +1,5 @@
 import { isSafeStoredFile } from "@/lib/files";
+import { rateLimit } from "@/lib/rateLimit";
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyDiscordRequest } from "@/lib/discordVerify";
@@ -535,6 +536,8 @@ export async function POST(req: Request) {
           return;
         }
 
+
+
         if (name === "tabor") {
           const vehicles = await prisma.vehicle.findMany({ select: { carrier: true, status: true } });
           const counts: Record<string, Record<string, number>> = {};
@@ -585,7 +588,7 @@ export async function POST(req: Request) {
         return;
       }
 
-      const badge = user.role === "ZARZAD" ? "W1" : (user.badgeNumber || "Kierowca");
+      const badge = user.badgeNumber || "Kierowca";
       const driverLabel = `${badge} ${user.username}`;
 
       // Helper do budowania panelu kierowcy
@@ -946,6 +949,16 @@ export async function POST(req: Request) {
 
         // A. Raport ze służby
         if (customId.startsWith("modal_report_")) {
+          if (user.suspended) {
+            await updateDeferred(appId, token, [
+              {
+                title: "Konto zawieszone",
+                color: COLORS.bad,
+                description: "Twoje konto kierowcy jest zawieszone. Nie możesz składać raportów ze służb.",
+              },
+            ]);
+            return;
+          }
           const dutyId = customId.replace("modal_report_", "");
           const duty = await prisma.duty.findUnique({
             where: { id: dutyId },
@@ -974,8 +987,43 @@ export async function POST(req: Request) {
             return;
           }
 
-          const startMileage = parseInt(values.start_mileage || "0", 10);
-          const endMileage = parseInt(values.end_mileage || "0", 10);
+          const todayWarsaw = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
+          const dutyWarsaw = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(duty.date);
+          if (dutyWarsaw > todayWarsaw) {
+            await updateDeferred(appId, token, [
+              {
+                title: "Służba z przyszłości",
+                color: COLORS.warn,
+                description: `Służba jest zaplanowana na przyszłość (${fmtDate(duty.date)}). Raport możesz złożyć dopiero w dniu odbywania służby lub po jej zakończeniu.`,
+              },
+            ]);
+            return;
+          }
+
+          const startMileageNum = Number(values.start_mileage);
+          const endMileageNum = Number(values.end_mileage);
+
+          if (
+            !Number.isInteger(startMileageNum) ||
+            !Number.isInteger(endMileageNum) ||
+            startMileageNum < 0 ||
+            endMileageNum < 0 ||
+            endMileageNum < startMileageNum ||
+            endMileageNum - startMileageNum > 2000 ||
+            endMileageNum > 2_000_000_000
+          ) {
+            await updateDeferred(appId, token, [
+              {
+                title: "Nieprawidłowy przebieg",
+                color: COLORS.bad,
+                description: "Przebiegi muszą być liczbami całkowitymi >= 0, stan końcowy nie może być mniejszy niż początkowy, maksymalny dystans na służbie to 2000 km, a licznik nie może przekraczać 2 000 000 000 km.",
+              },
+            ]);
+            return;
+          }
+          const startMileage = startMileageNum;
+          const endMileage = endMileageNum;
+
           const rawStart = (values.start_screenshot || "").trim();
           const rawEnd = (values.end_screenshot || "").trim();
           if (
@@ -999,17 +1047,6 @@ export async function POST(req: Request) {
           const rawSummary = (values.summary_file || "Raport złożony przez bota Discord").trim();
           const summaryFile = rawSummary.slice(0, 1000);
 
-          if (isNaN(startMileage) || isNaN(endMileage) || endMileage < startMileage) {
-            await updateDeferred(appId, token, [
-              {
-                title: "Nieprawidłowy przebieg",
-                color: COLORS.bad,
-                description: `Stan końcowy licznika (${endMileage} km) nie może być mniejszy niż początkowy (${startMileage} km). Złóż raport ponownie z poprawnymi danymi.`,
-              },
-            ]);
-            return;
-          }
-
           const veh = duty.replacementVehicle || duty.vehicle;
           const kmDiff = Math.max(0, endMileage - startMileage);
 
@@ -1029,7 +1066,7 @@ export async function POST(req: Request) {
               where: { id: duty.id },
               data: { status: "COMPLETED" },
             }),
-            ...(veh && endMileage > veh.mileage
+            ...(veh && endMileage > veh.mileage && (endMileage - startMileage) <= 2000
               ? [
                   prisma.vehicle.update({
                     where: { id: veh.id },
@@ -1092,6 +1129,19 @@ export async function POST(req: Request) {
 
         // B. Usterka pojazdu
         if (customId === "modal_defect") {
+          // Rate limit: 5 zgłoszeń na godzinę na użytkownika
+          const rlKey = `defect:discord:${user.id}`;
+          if (!rateLimit(rlKey, 5, 60 * 60 * 1000)) {
+            await updateDeferred(appId, token, [
+              {
+                title: "Zbyt wiele zgłoszeń",
+                color: COLORS.bad,
+                description: "Przekroczono limit zgłoszeń usterek (maksymalnie 5 na godzinę). Spróbuj ponownie później.",
+              },
+            ]);
+            return;
+          }
+
           const fleetNum = values.fleet_number?.trim();
           const title = values.title?.trim();
           const description = values.description?.trim();
@@ -1108,37 +1158,58 @@ export async function POST(req: Request) {
             return;
           }
 
-          const vehicle = await prisma.vehicle.findFirst({
-            where: { fleetNumber: fleetNum },
+          const vehicles = await prisma.vehicle.findMany({
+            where: {
+              fleetNumber: fleetNum,
+              carrier: user.carrier ?? undefined,
+            },
           });
 
-          if (!vehicle) {
+          if (vehicles.length === 0) {
             await updateDeferred(appId, token, [
               {
                 title: "Nie znaleziono pojazdu",
                 color: COLORS.bad,
-                description: `W bazie taboru VZTM Kielce nie ma pojazdu o numerze taborowym **#${fleetNum}**.\nSprawdź poprawny numer za pomocą komendy \`/tabor\` i spróbuj ponownie.`,
+                description: `W bazie taboru VZTM Kielce nie ma pojazdu o numerze taborowym **#${fleetNum}**${user.carrier ? ` u przewoźnika **${user.carrier}**` : ""}.\nSprawdź poprawny numer za pomocą komendy \`/tabor\` i spróbuj ponownie.`,
               },
             ]);
             return;
           }
 
-          const photoList = photoUrl ? [photoUrl] : ["brak"];
-          await prisma.vehicleDefect.create({
-            data: {
-              userId: user.id,
-              vehicleId: vehicle.id,
-              title: title.slice(0, 100),
-              description: description.slice(0, 1000),
-              photos: JSON.stringify(photoList),
-              status: "NOWE",
-            },
-          });
+          if (vehicles.length > 1) {
+            await updateDeferred(appId, token, [
+              {
+                title: "Niejednoznaczny numer pojazdu",
+                color: COLORS.warn,
+                description: `Znaleziono więcej niż jeden pojazd o numerze **#${fleetNum}**. Prosimy o zgłoszenie usterki przez panel WWW lub doprecyzowanie pojazdu.`,
+              },
+            ]);
+            return;
+          }
 
-          await prisma.vehicle.update({
-            where: { id: vehicle.id },
-            data: { status: "WARSZTAT" },
-          });
+          const vehicle = vehicles[0];
+
+          let photoList: string[] = [];
+          if (photoUrl && photoUrl.startsWith("https://") && isSafeStoredFile(photoUrl, "image")) {
+            photoList = [photoUrl];
+          }
+
+          await prisma.$transaction([
+            prisma.vehicleDefect.create({
+              data: {
+                userId: user.id,
+                vehicleId: vehicle.id,
+                title: title.slice(0, 100),
+                description: description.slice(0, 1000),
+                photos: JSON.stringify(photoList),
+                status: "NOWE",
+              },
+            }),
+            prisma.vehicle.update({
+              where: { id: vehicle.id },
+              data: { status: "WARSZTAT" },
+            }),
+          ]);
 
           await runAfter(() =>
             sendToChannel("USTERKI", [
@@ -1153,7 +1224,7 @@ export async function POST(req: Request) {
                   { name: "Status pojazdu", value: "WARSZTAT", inline: true },
                   {
                     name: "Zdjęcie",
-                    value: photoUrl && photoUrl.startsWith("http") ? `[Zobacz zdjęcie](${photoUrl})` : "Brak zdjęcia",
+                    value: photoList.length > 0 ? `[Zobacz zdjęcie](${photoList[0]})` : "Brak zdjęcia",
                     inline: true,
                   },
                 ],
@@ -1204,13 +1275,36 @@ export async function POST(req: Request) {
             return;
           }
 
-          let requestType = "INNE";
+          const ALLOWED_REQUEST_TYPES = [
+            "URLOP",
+            "DODATKOWA_SLUZBA",
+            "ZMIANA_ETATU",
+            "ANULOWANIE_SLUZBY",
+            "ODWIESZENIE",
+            "STALY_POJAZD",
+            "INNE",
+          ] as const;
+
+          let requestType: (typeof ALLOWED_REQUEST_TYPES)[number] = "INNE";
           if (rawType.includes("URLOP")) requestType = "URLOP";
           else if (rawType.includes("DODATKOW")) requestType = "DODATKOWA_SLUZBA";
           else if (rawType.includes("ETAT")) requestType = "ZMIANA_ETATU";
           else if (rawType.includes("ANULOW")) requestType = "ANULOWANIE_SLUZBY";
           else if (rawType.includes("ODWIESZ")) requestType = "ODWIESZENIE";
           else if (rawType.includes("POJAZD")) requestType = "STALY_POJAZD";
+          else if (ALLOWED_REQUEST_TYPES.includes(rawType as any)) requestType = rawType as any;
+          else requestType = "INNE";
+
+          if (user.suspended && requestType !== "ODWIESZENIE") {
+            await updateDeferred(appId, token, [
+              {
+                title: "Konto zawieszone",
+                color: COLORS.bad,
+                description: "Twoje konto jest zawieszone. Możesz złożyć wyłącznie wniosek o ODWIESZENIE.",
+              },
+            ]);
+            return;
+          }
 
           let dStart: Date | null = null;
           let dEnd: Date | null = null;
@@ -1222,6 +1316,40 @@ export async function POST(req: Request) {
           if (values.date_end) {
             const e = new Date(values.date_end.trim());
             if (!isNaN(e.getTime())) dEnd = e;
+          }
+
+          if (requestType === "URLOP") {
+            if (!dStart || !dEnd) {
+              await updateDeferred(appId, token, [
+                {
+                  title: "Wymagane daty urlopu",
+                  color: COLORS.bad,
+                  description: "Dla wniosku o urlop wymagane jest podanie obu poprawnych dat (od i do) w formacie RRRR-MM-DD.",
+                },
+              ]);
+              return;
+            }
+            if (dEnd.getTime() < dStart.getTime()) {
+              await updateDeferred(appId, token, [
+                {
+                  title: "Nieprawidłowy zakres dat",
+                  color: COLORS.bad,
+                  description: "Data zakończenia urlopu nie może być wcześniejsza niż data rozpoczęcia.",
+                },
+              ]);
+              return;
+            }
+            const diffDays = Math.floor((dEnd.getTime() - dStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+            if (diffDays > 14) {
+              await updateDeferred(appId, token, [
+                {
+                  title: "Zbyt długi urlop",
+                  color: COLORS.warn,
+                  description: "Urlop przez wniosek może wynosić maksymalnie 14 dni. W przypadku dłuższego urlopu skontaktuj się z Zarządem.",
+                },
+              ]);
+              return;
+            }
           }
 
           await prisma.driverRequest.create({

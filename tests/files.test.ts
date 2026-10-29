@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isSafeStoredFile } from "../src/lib/files.ts";
+import { isSafeStoredFile, isSafeImageUrl } from "../src/lib/files.ts";
 
 test("isSafeStoredFile: akceptuje bezpieczne pliki graficzne", () => {
   assert.equal(
@@ -39,4 +39,15 @@ test("isSafeStoredFile: odrzuca niebezpieczne schematy i formaty XSS", () => {
   assert.equal(isSafeStoredFile("", "image"), false);
   assert.equal(isSafeStoredFile(null, "image"), false);
   assert.equal(isSafeStoredFile(undefined, "image"), false);
+});
+
+test("isSafeImageUrl: akceptuje tylko bezpieczne obrazy", () => {
+  assert.equal(isSafeImageUrl("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="), true);
+  assert.equal(isSafeImageUrl("/uploads/defects/photo1.jpg"), true);
+  assert.equal(isSafeImageUrl("https://cdn.example.com/photo.webp"), true);
+  assert.equal(isSafeImageUrl("javascript:alert(1)"), false);
+  assert.equal(isSafeImageUrl("/uploads/../.env"), false);
+  assert.equal(isSafeImageUrl("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="), false);
+  assert.equal(isSafeImageUrl(null), false);
+  assert.equal(isSafeImageUrl(""), false);
 });
