@@ -37,8 +37,9 @@ System łączy zarządzanie przewoźnikami **VMPK Kielce** (malowanie żółto-c
 8. [Zmienne środowiskowe i wdrożenie](#-zmienne-środowiskowe-i-wdrożenie)
    - [Tabela zmiennych środowiskowych](#tabela-zmiennych-środowiskowych)
    - [Baza danych i wdrożenie](#baza-danych-i-wdrożenie)
-9. [Historia zmian – Wersja 0.5.0](#-historia-zmian--wersja-050)
-10. [Historia wcześniejszych wydań](#-historia-wcześniejszych-wydań)
+9. [Historia zmian – Wersja 0.5.1](#-historia-zmian--wersja-051)
+10. [Historia zmian – Wersja 0.5.0](#-historia-zmian--wersja-050)
+11. [Historia wcześniejszych wydań](#-historia-wcześniejszych-wydań)
 
 ---
 
@@ -281,13 +282,32 @@ Bot działa bez stałego procesu: Discord wysyła komendy na adres strony.
 
 | Komenda | Opis |
 | :--- | :--- |
+| `/zarzad` | Panel zarządu: liczniki spraw, przegląd i szybkie decyzje (wnioski, raporty, usterki, rekrutacja) |
 | `/grafik` | Twój grafik na 7 dni |
 | `/sluzba` | Twoja służba na dziś i jutro |
 | `/status` | Rola, przewoźnik, etat, niezaliczone służby, wnioski |
 | `/linie` | Lista linii (dostępna dla każdego) |
 | `/tabor` | Stan taboru VMPK i VBP (dostępna dla każdego) |
 
-Odpowiedzi są widoczne tylko dla osoby, która użyła komendy.
+Odpowiedzi są widoczne tylko dla osoby, która użyła komendy (flaga `flags: 64` / ephemeral).
+
+#### Panel Zarządu w bocie Discord (`/zarzad`)
+Komenda `/zarzad` zapewnia bezpieczny mobilny dostęp do najważniejszych funkcji zarządczych bezpośrednio w Discordzie:
+- **Wymagane role:** Dostępna wyłącznie dla zweryfikowanych i aktywnych członków kadry (`canAccessManagementPanel`): `WLASCICIEL`, `ZARZAD`, `KIEROWNIK`, `DYSPOZYTOR`, `SPRAWDZAJACY`, `MECHANIK`. Dla zwykłego kierowcy (`KIEROWCA`) oraz osób bez powiązanego konta bot zwraca komunikat *Brak uprawnień*.
+- **Liczniki spraw:** Embed wyświetla bieżące liczniki spraw wymagających decyzji: wnioski `PENDING` (`canManageRequests`), raporty `PENDING` (`canManageRequests`), nowe usterki `NOWE` (`canManageFleet`) oraz oczekujących kandydatów `PENDING` (`canManageUsers`). Użytkownik widzi wyłącznie liczniki, do których posiada uprawnienia.
+- **Dostępne moduły akcji:**
+  - **Wnioski kierowców (`DriverRequest`)**: przeglądanie do 5 najstarszych wniosków oczekujących, przyciski *Zatwierdź* / *Odrzuć* dla aktualnie wyświetlanego wniosku oraz strzałki paginacji. Zatwierdzenie wykonuje wszystkie skutki uboczne w atomowej transakcji (`STALY_POJAZD`, `ZMIANA_ETATU`, `ODWIESZENIE`, `ANULOWANIE_SLUZBY`) i wysyła powiadomienie kierowcy (wymaga `canManageRequests`).
+  - **Raporty ze służb (`Report`)**: weryfikacja raportów ze służb z bezpiecznymi odnośnikami do zrzutów ekranu i linkiem do panelu WWW. Zatwierdzenie aktualizuje przebieg przypisanego pojazdu i powiadamia kierowcę (wymaga `canManageRequests`).
+  - **Usterki techniczne (`VehicleDefect`)**: lista nowych usterek (status `NOWE`) z możliwością natychmiastowego skierowania na warsztat (`WARSZTAT`) lub oznaczenia jako naprawione (`NAPRAWIONE`) wraz ze spójną aktualizacją stanu pojazdu w transakcji (wymaga `canManageFleet`).
+  - **Rekrutacja kandydatów (`User`)**: akceptacja i odrzucanie oczekujących zgłoszeń kandydatów (`PENDING`) z automatycznym nadaniem numeru służbowego (badge) i natychmiastową synchronizacją ról na serwerze Discord (wymaga `canManageUsers`).
+- **Bezpieczeństwo i zasady operacyjne:**
+  - **Wszystkie odpowiedzi są efemeryczne** (niewidoczne dla osób trzecich).
+  - **Brak operacji destrukcyjnych:** bot nie pozwala na usuwanie kont, modyfikację ról, zawieszanie użytkowników ani zmiany w taborze, liniach czy grafikach.
+  - **Ochrona przed powtórzeniami i atakami:** ścisła weryfikacja uprawnień przy każdej akcji, ponowne sprawdzanie statusu `PENDING` przed wykonaniem decyzji, walidacja formatu parametrów `custom_id` (regex cuid/uuid) oraz rate limit 30 akcji na 10 minut na użytkownika (`rateLimit` z `@/lib/rateLimit`).
+  - **Rejestracja komend:** po wdrożeniu zmian należy zarejestrować komendę w Discord API:
+    ```bash
+    node scripts/discord-register-commands.js
+    ```
 
 ### 4. Role na serwerze
 
@@ -322,6 +342,32 @@ Wszystkie zmienne konfiguracyjne aplikacji definiowane są w pliku `.env` (lokal
 - **Zasilenie bazy danymi (seed):** Wykonuje się jednorazowo poleceniem `npm run db:seed`.
 - **Automatyczny build:** Skrypt `npm run build` wykonuje kolejno `prisma generate && next build`, generując klienta Prisma przed kompilacją Next.js.
 - **Środowisko Preview na Vercelu:** Powinno korzystać z osobnej gałęzi bazy danych (np. dedykowanego brancha w Neon) niż baza produkcyjna, aby zapobiec modyfikacjom danych produkcyjnych przez wdrożenia testowe.
+
+---
+
+## 🚀 Historia zmian – Wersja 0.5.1
+
+Wydanie **0.5.1** rozbudowuje integrację z Discordem o dedykowany mobilny Panel Zarządu (`/zarzad`), architekturę współdzielonych modułów logiki biznesowej oraz testy jednostkowe:
+
+1. **Mobilny Panel Zarządu w bocie Discord (`/zarzad`):**
+   - Dodano komendę `/zarzad` wraz z bezpieczną obsługą komponentów interaktywnych (przyciski decyzji i nawigacji).
+   - Liczniki spraw oczekujących (`PENDING`/`NOWE`) z automatycznym filtrowaniem pod kątem uprawnień zalogowanego użytkownika.
+   - Paginowany przegląd i zatwierdzanie/odrzucanie wniosków kierowców z atomowym stosowaniem skutków ubocznych w transakcji (`STALY_POJAZD`, `ZMIANA_ETATU`, `ODWIESZENIE`, `ANULOWANIE_SLUZBY`).
+   - Weryfikacja i rozpatrywanie raportów ze służb z aktualizacją licznika pojazdu i bezpiecznymi odnośnikami do załączników.
+   - Obsługa zgłoszeń warsztatowych (kierowanie pojazdu do warsztatu `WARSZTAT` lub oznaczenie usterki jako naprawionej `NAPRAWIONE` wraz z aktualizacją statusu pojazdu w transakcji).
+   - Rekrutacja kandydatów: akceptacja i odrzucanie zgłoszeń z przydzieleniem unikalnego numeru służbowego (badge) oraz automatyczną synchronizacją ról na serwerze Discord.
+   - Rygorystyczne bezpieczeństwo: odpowiedzi wyłącznie efemeryczne (`flags: 64`), brak operacji destrukcyjnych, walidacja formatu identyfikatorów w `custom_id` (regex), ochrona przed podwójnym kliknięciem (`status === "PENDING"`) oraz rate limit 30 akcji / 10 min na użytkownika.
+
+2. **Architektura Single Source of Truth (współdzielona logika domenowa):**
+   - Wyekstrahowano logikę biznesową do dedykowanych modułów w `src/lib/`:
+     - `src/lib/requests.ts` (`reviewRequest`) – wspólna logika dla endpointu WWW `/api/panel/zarzad/wnioski` oraz bota Discord.
+     - `src/lib/reports.ts` (`reviewReport`) – wspólna logika dla endpointu WWW `/api/panel/zarzad/raporty` oraz bota Discord.
+     - `src/lib/defects.ts` (`reviewDefect`) – transakcyjna obsługa usterek dla WWW `/api/panel/zarzad/usterki` i bota Discord.
+     - `src/lib/recruitment.ts` (`reviewCandidate`) – obsługa akceptacji/odrzucania kandydatów dla WWW `/api/panel/zarzad/akceptacja` i bota Discord.
+   - Wyeliminowano duplikację kodu, zapewniając 100% spójności zachowania, powiadomień i skutków ubocznych między interfejsem webowym a Discordem.
+
+3. **Testy jednostkowe (`tests/discordZarzad.test.ts`):**
+   - Wdrożono zestaw testów dla parsera akcji `parseZarzadCustomId`, walidatora identyfikatorów `ID_REGEX` oraz mapowania uprawnień zarządczych `getZarzadPermissions`.
 
 ---
 
