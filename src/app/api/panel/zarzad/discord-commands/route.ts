@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       console.error("[discord-commands] Discord API error:", res.status, responseText);
       return NextResponse.json(
         {
-          message: `Discord API zwróciło błąd ${res.status}: ${responseText}`,
+          message: "Wystąpił błąd podczas rejestracji komend w API Discorda.",
         },
         { status: 400 }
       );
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     console.error("[discord-commands] error:", err);
     return NextResponse.json(
       {
-        message: `Błąd połączenia z API Discorda: ${(err as Error)?.message}`,
+        message: "Wystąpił błąd połączenia z API Discorda.",
       },
       { status: 500 }
     );

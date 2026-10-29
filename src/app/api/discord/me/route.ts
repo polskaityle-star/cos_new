@@ -15,19 +15,27 @@ export async function GET(req: Request) {
     select: { discordId: true, discordUsername: true, discordNotify: true },
   });
 
+  const baseResponse = {
+    enabled: discordOAuthConfigured(),
+    linked: !!u?.discordId,
+    username: u?.discordUsername ?? null,
+    notify: u?.discordNotify ?? true,
+  };
+
+  if (!canManageUsers(session.user.role)) {
+    return NextResponse.json(baseResponse);
+  }
+
   const site = siteUrl(req);
 
   return NextResponse.json({
-    enabled: discordOAuthConfigured(),
+    ...baseResponse,
     botEnabled: !!process.env.DISCORD_BOT_TOKEN,
     webhookEnabled: !!(process.env.DISCORD_WEBHOOK_URL || process.env.DISCORD_WEBHOOK_WIADOMOSCI),
     hasPublicKey: !!process.env.DISCORD_PUBLIC_KEY,
     hasAppId: !!(process.env.DISCORD_APP_ID || process.env.DISCORD_CLIENT_ID),
     hasGuildId: !!process.env.DISCORD_GUILD_ID,
     interactionsEndpoint: `${site}/api/discord/interactions`,
-    linked: !!u?.discordId,
-    username: u?.discordUsername ?? null,
-    notify: u?.discordNotify ?? true,
-    canSync: canManageUsers(session.user.role),
+    canSync: true,
   });
 }

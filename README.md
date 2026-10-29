@@ -369,3 +369,12 @@ Odpowiedzi są widoczne tylko dla osoby, która użyła komendy.
 ### 4. Role na serwerze
 
 Po akceptacji konta, zmianie roli lub przycisku **Synchronizuj role na serwerze** (Panel Zarządu) bot nadaje rolę Discord odpowiadającą roli w systemie oraz przewoźnikowi (`DISCORD_ROLE_*`). Osoba musi być na serwerze. Role spoza listy zarządzanej przez system nie są ruszane.
+
+---
+
+## 🗄️ Baza danych i wdrożenie
+
+- **Wdrożenie schematu bazy danych:** Wykonuje się ręcznie za pomocą polecenia `npm run db:push` lub `npm run db:migrate`.
+- **Zasilenie bazy danymi (seed):** Wykonuje się jednorazowo poleceniem `npm run db:seed`.
+- **Środowisko Preview na Vercelu:** Powinno korzystać z osobnej bazy danych (np. dedykowanej gałęzi Neon) niż baza produkcyjna, aby zapobiec modyfikacjom danych produkcyjnych.
+

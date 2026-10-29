@@ -5,6 +5,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { canManageRequests, isUserAdminOrOwner } from "@/lib/roles";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const csrfError = assertSameOrigin(req);
@@ -31,9 +34,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Wniosek nie istnieje" }, { status: 404 });
   }
 
-  const isOwnerOrAdmin = ["WLASCICIEL", "ZARZAD", "SPRAWDZAJACY"].includes(session.user.role) || session.user.username?.toLowerCase() === "godksawiss";
-  if (vacationReq.userId !== session.user.id && !isOwnerOrAdmin) {
-    return NextResponse.json({ message: "Brak uprawnień do usunięcia tego urlopu" }, { status: 403 });
+  const isPrivileged = canManageRequests(session.user.role) || isUserAdminOrOwner(session.user.role);
+
+  if (!isPrivileged) {
+    if (vacationReq.userId !== session.user.id || vacationReq.type !== "URLOP") {
+      return NextResponse.json({ message: "Brak uprawnień do usunięcia tego wniosku" }, { status: 403 });
+    }
   }
 
   await prisma.driverRequest.delete({
