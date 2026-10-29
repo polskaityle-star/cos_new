@@ -34,7 +34,7 @@ export const authOptions: NextAuthOptions = {
 
         const inputUsername = credentials.username.trim();
         const lowerUsername = inputUsername.toLowerCase();
-        const inputPassword = credentials.password.trim();
+        const inputPassword = credentials.password;
 
         if (inputUsername.length > 64 || inputPassword.length > 128) {
           throw new Error("Invalid username or password");
@@ -139,6 +139,7 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60,
   },
   callbacks: {
     async signIn({ account }) {
@@ -192,23 +193,34 @@ export const authOptions: NextAuthOptions = {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { badgeNumber: true, username: true, role: true, carrier: true, discordId: true, discordUsername: true },
+            select: { status: true, badgeNumber: true, username: true, role: true, carrier: true, discordId: true, discordUsername: true },
           });
-          if (dbUser) {
-            let finalBadge = dbUser.badgeNumber;
-            if (!finalBadge && dbUser.username?.toLowerCase() === "godksawiss") {
-              finalBadge = "W1";
-              await prisma.user.update({
-                where: { id: token.id as string },
-                data: { badgeNumber: "W1" },
-              });
-            }
-            token.badgeNumber = finalBadge || (dbUser.username?.toLowerCase() === "godksawiss" ? "W1" : null);
-            token.carrier = dbUser.carrier;
-            token.role = dbUser.role;
-            token.discordId = dbUser.discordId || null;
-            token.discordUsername = dbUser.discordUsername || null;
+          if (!dbUser || dbUser.status !== "ACCEPTED") {
+            delete token.id;
+            delete token.username;
+            delete token.role;
+            delete token.carrier;
+            delete token.badgeNumber;
+            delete token.avatar;
+            delete token.workingDays;
+            delete token.assignedVehicleId;
+            delete token.discordId;
+            delete token.discordUsername;
+            return token;
           }
+          let finalBadge = dbUser.badgeNumber;
+          if (!finalBadge && dbUser.username?.toLowerCase() === "godksawiss") {
+            finalBadge = "W1";
+            await prisma.user.update({
+              where: { id: token.id as string },
+              data: { badgeNumber: "W1" },
+            });
+          }
+          token.badgeNumber = finalBadge || (dbUser.username?.toLowerCase() === "godksawiss" ? "W1" : null);
+          token.carrier = dbUser.carrier;
+          token.role = dbUser.role;
+          token.discordId = dbUser.discordId || null;
+          token.discordUsername = dbUser.discordUsername || null;
         } catch {
           // ignore
         }
@@ -216,6 +228,23 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      if (!token.id || !token.role) {
+        return {
+          ...session,
+          user: {
+            id: "",
+            username: "",
+            role: "",
+            carrier: null,
+            badgeNumber: null,
+            avatar: null,
+            workingDays: null,
+            assignedVehicleId: null,
+            discordId: null,
+            discordUsername: null,
+          },
+        };
+      }
       if (session.user) {
         session.user.id = token.id as string;
         session.user.username = token.username as string;

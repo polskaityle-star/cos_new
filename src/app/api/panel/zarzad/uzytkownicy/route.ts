@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { canManageUsers, generateBadgeNumber } from "@/lib/roles";
+import { canManageUsers, generateBadgeNumber, ROLES } from "@/lib/roles";
 import { COLORS, notifyUser, runAfter, syncDiscordRoles } from "@/lib/discord";
 
 export async function POST(req: Request) {
