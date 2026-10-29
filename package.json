@@ -7,6 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "seed": "node prisma/seed.js",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",

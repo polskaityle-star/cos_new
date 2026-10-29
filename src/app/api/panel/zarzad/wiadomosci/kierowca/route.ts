@@ -19,17 +19,36 @@ export async function POST(req: Request) {
   }
 
   const formData = await req.formData();
-  const userId = formData.get("userId") as string;
-  const title = formData.get("title") as string;
-  const message = formData.get("message") as string;
+  const rawUserId = formData.get("userId");
+  const userId = typeof rawUserId === "string" ? rawUserId.trim() : "";
+  const rawTitle = formData.get("title");
+  const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
+  const rawMessage = formData.get("message");
+  const message = typeof rawMessage === "string" ? rawMessage.trim() : "";
 
   if (!userId || !title || !message) {
     return NextResponse.json({ message: "Wszystkie pola są wymagane" }, { status: 400 });
   }
 
-  const senderRole = getRoleLabel(session.user.role);
+  if (title.length > 120) {
+    return NextResponse.json({ message: "Tytuł wiadomości może mieć maksymalnie 120 znaków" }, { status: 400 });
+  }
 
+  if (message.length > 2000) {
+    return NextResponse.json({ message: "Treść wiadomości może mieć maksymalnie 2000 znaków" }, { status: 400 });
+  }
+
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!targetUser) {
+    return NextResponse.json({ message: "Wskazany kierowca nie istnieje" }, { status: 404 });
+  }
+
+  const senderRole = getRoleLabel(session.user.role);
   const senderLabel = `${session.user.username} (${senderRole})`;
+
   await prisma.driverNotification.create({
     data: {
       userId,
@@ -43,7 +62,14 @@ export async function POST(req: Request) {
   revalidatePath("/panel/kierowca");
 
   await runAfter(() =>
-    notifyUser(userId, [{ title: `Wiadomość od Zarządu: ${title}`, description: message, color: COLORS.info, fields: [{ name: "Od", value: senderLabel }] }])
+    notifyUser(userId, [
+      {
+        title: `Wiadomość od Zarządu: ${title}`,
+        description: message,
+        color: COLORS.info,
+        fields: [{ name: "Od", value: senderLabel }],
+      },
+    ])
   );
 
   redirect("/panel/zarzad");

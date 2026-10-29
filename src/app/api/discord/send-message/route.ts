@@ -1,8 +1,10 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { COLORS, DiscordChannel, sendToChannel } from "@/lib/discord";
-import { getRoleLabel } from "@/lib/roles";
+import { canAccessManagementPanel, getRoleLabel } from "@/lib/roles";
+import { rateLimit } from "@/lib/rateLimit";
 
 const ALLOWED_CHANNELS: DiscordChannel[] = [
   "WIADOMOSCI",
@@ -14,9 +16,21 @@ const ALLOWED_CHANNELS: DiscordChannel[] = [
 ];
 
 export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ message: "Musisz być zalogowany, aby wysyłać wiadomości na Discord." }, { status: 401 });
+  }
+
+  // Rate limit: 10 na minutę na użytkownika
+  const rlKey = `discord-send:user:${session.user.id}`;
+  if (!rateLimit(rlKey, 10, 60 * 1000)) {
+    return NextResponse.json(
+      { message: "Zbyt wiele wiadomości. Limit to 10 wiadomości na minutę." },
+      { status: 429 }
+    );
   }
 
   try {
@@ -29,15 +43,28 @@ export async function POST(req: Request) {
       channel = body.channel;
     }
 
+    // Uprawnienia do kanałów: kanały poza WIADOMOSCI wymagają canAccessManagementPanel
+    const hasStaffAccess = canAccessManagementPanel(session.user.role);
+    if (!hasStaffAccess && channel !== "WIADOMOSCI") {
+      return NextResponse.json(
+        { message: "Brak uprawnień do wysyłania wiadomości na ten kanał Discord." },
+        { status: 403 }
+      );
+    }
+
     if (!content) {
       return NextResponse.json({ message: "Treść wiadomości nie może być pusta." }, { status: 400 });
+    }
+
+    if (title.length > 100) {
+      return NextResponse.json({ message: "Tytuł wiadomości może mieć maksymalnie 100 znaków." }, { status: 400 });
     }
 
     if (content.length > 2000) {
       return NextResponse.json({ message: "Wiadomość może mieć maksymalnie 2000 znaków." }, { status: 400 });
     }
 
-    const badge = session.user.badgeNumber || (session.user.username?.toLowerCase() === "godksawiss" ? "W1" : null);
+    const badge = session.user.badgeNumber || null;
     const displayName = session.user.discordUsername || session.user.username;
     const roleLabel = getRoleLabel(session.user.role);
     const sender = badge ? `${badge} ${displayName}` : displayName;
@@ -57,7 +84,6 @@ export async function POST(req: Request) {
           timestamp: new Date().toISOString(),
         },
       ],
-      // Opcjonalna wzmianka lub krótki nagłówek tekstowy przed embedem
       `💬 **Wiadomość z portalu VZTM Kielce** od **${sender}**:`
     );
 
