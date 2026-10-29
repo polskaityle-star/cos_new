@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isSafeImageUrl } from "@/lib/files";
 
 interface ReportFileListProps {
   reportId: string;
@@ -133,7 +134,7 @@ export default function ReportFileList({
             🏢 Zrzuty ekranu z zajezdni (wyjazd / zjazd):
           </span>
           <div className="flex flex-wrap gap-2">
-            {depotObj.depotDep1 && (
+            {depotObj.depotDep1 && isSafeImageUrl(depotObj.depotDep1) && (
               <button
                 type="button"
                 onClick={() => setModalType("depotDep1")}
@@ -142,7 +143,7 @@ export default function ReportFileList({
                 📸 I Wyjazd z zajezdni
               </button>
             )}
-            {depotObj.depotArr1 && (
+            {depotObj.depotArr1 && isSafeImageUrl(depotObj.depotArr1) && (
               <button
                 type="button"
                 onClick={() => setModalType("depotArr1")}
@@ -151,7 +152,7 @@ export default function ReportFileList({
                 📸 I Zjazd do zajezdni
               </button>
             )}
-            {depotObj.depotDep2 && (
+            {depotObj.depotDep2 && isSafeImageUrl(depotObj.depotDep2) && (
               <button
                 type="button"
                 onClick={() => setModalType("depotDep2")}
@@ -160,7 +161,7 @@ export default function ReportFileList({
                 📸 II Wyjazd z zajezdni
               </button>
             )}
-            {depotObj.depotArr2 && (
+            {depotObj.depotArr2 && isSafeImageUrl(depotObj.depotArr2) && (
               <button
                 type="button"
                 onClick={() => setModalType("depotArr2")}
@@ -224,27 +225,39 @@ export default function ReportFileList({
             {/* Treść modalu */}
             <div className="p-4 overflow-auto flex-grow flex items-center justify-center bg-slate-950/60">
               {modalType === "start" && (
-                <img
-                  src={startScreenshot.startsWith("data:") ? startScreenshot : startUrl}
-                  alt="Zrzut ekranu start"
-                  className="max-h-[75vh] max-w-full object-contain rounded border border-slate-800"
-                />
+                isSafeImageUrl(startScreenshot) ? (
+                  <img
+                    src={startScreenshot}
+                    alt="Zrzut ekranu start"
+                    className="max-h-[75vh] max-w-full object-contain rounded border border-slate-800"
+                  />
+                ) : (
+                  <div className="text-amber-400 text-xs py-8">Nieobsługiwany lub nieprawidłowy format zrzutu ekranu.</div>
+                )
               )}
 
               {modalType === "end" && (
-                <img
-                  src={endScreenshot.startsWith("data:") ? endScreenshot : endUrl}
-                  alt="Zrzut ekranu koniec"
-                  className="max-h-[75vh] max-w-full object-contain rounded border border-slate-800"
-                />
+                isSafeImageUrl(endScreenshot) ? (
+                  <img
+                    src={endScreenshot}
+                    alt="Zrzut ekranu koniec"
+                    className="max-h-[75vh] max-w-full object-contain rounded border border-slate-800"
+                  />
+                ) : (
+                  <div className="text-amber-400 text-xs py-8">Nieobsługiwany lub nieprawidłowy format zrzutu ekranu.</div>
+                )
               )}
 
               {modalType.startsWith("depot") && (
-                <img
-                  src={depotObj[modalType]?.startsWith("data:") ? depotObj[modalType] : `/api/panel/zarzad/raporty/plik?reportId=${reportId}&type=${modalType}`}
-                  alt="Zrzut ekranu z zajezdni"
-                  className="max-h-[75vh] max-w-full object-contain rounded border border-slate-800"
-                />
+                isSafeImageUrl(depotObj[modalType]) ? (
+                  <img
+                    src={depotObj[modalType]}
+                    alt="Zrzut ekranu z zajezdni"
+                    className="max-h-[75vh] max-w-full object-contain rounded border border-slate-800"
+                  />
+                ) : (
+                  <div className="text-amber-400 text-xs py-8">Nieobsługiwany lub nieprawidłowy format zrzutu ekranu.</div>
+                )
               )}
 
               {modalType === "summary" && (

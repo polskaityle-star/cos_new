@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { sortBrigades, getDayLabel, getDayBadgeClass, isPeakBrigade, getBrigadeTypeBadgeClass } from "@/lib/brigades";
 import { getRoleLabel, getRoleBadgeClass, canAccessManagementPanel } from "@/lib/roles";
+import { isSafeImageUrl } from "@/lib/files";
 import DriverEtatModal from "@/components/DriverEtatModal";
 import AvatarManager from "@/components/AvatarManager";
 import DriverRequestForm from "@/components/DriverRequestForm";
@@ -738,7 +739,7 @@ export default async function DriverPanel() {
                 key={veh.id}
                 className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden flex flex-col justify-between hover:border-slate-500 transition-colors shadow-md"
               >
-                {veh.imageUrl ? (
+                {veh.imageUrl && isSafeImageUrl(veh.imageUrl) ? (
                   <div className="h-36 w-full overflow-hidden bg-slate-950 relative">
                     <img
                       src={veh.imageUrl}

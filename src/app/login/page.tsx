@@ -64,21 +64,6 @@ export default function LoginPage() {
         }
         setLoading(false);
       } else {
-        // Natychmiastowe przekierowanie dla konta administratora
-        const lower = username.trim().toLowerCase();
-        const adminAliases = [
-          "godksawiss",
-          "admin",
-          "administrator",
-          "administator",
-          "wlasciciel",
-          "zarzad",
-          "ksawe",
-        ];
-        if (adminAliases.includes(lower)) {
-          window.location.href = "/panel/zarzad";
-          return;
-        }
 
         // Sprawdź rolę i wykonaj pełne przekierowanie
         try {

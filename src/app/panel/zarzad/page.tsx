@@ -1641,7 +1641,7 @@ export default async function AdminPanel({
                   <form action="/api/panel/zarzad/tabor/edit" method="POST" encType="multipart/form-data" className="space-y-2">
                     <input type="hidden" name="id" value={veh.id} />
                     
-                    {veh.imageUrl && (
+                    {veh.imageUrl && isSafeImageUrl(veh.imageUrl) && (
                       <div className="flex items-center gap-3 bg-slate-950 p-2 rounded border border-slate-800">
                         <img src={veh.imageUrl} alt={veh.fleetNumber} className="h-12 w-20 object-cover rounded" />
                         <span className="text-xs text-slate-400">Aktualne zdjęcie przypisane</span>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { isSafeImageUrl } from "@/lib/files";
 
 export const dynamic = "force-dynamic";
 
@@ -123,7 +124,7 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
                   {veh.status === "SPRAWNY" ? "● Sprawny" : veh.status === "WARSZTAT" ? "🛠 Warsztat" : "✕ Wyłączony"}
                 </span>
               </div>
-              {veh.imageUrl && (
+              {veh.imageUrl && isSafeImageUrl(veh.imageUrl) && (
                 <div className="h-44 w-full overflow-hidden bg-slate-900 border-b border-slate-700">
                   <img
                     src={veh.imageUrl}
