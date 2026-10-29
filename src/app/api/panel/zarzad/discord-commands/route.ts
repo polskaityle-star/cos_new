@@ -1,3 +1,4 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -5,7 +6,10 @@ import { canManageUsers } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await getServerSession(authOptions);
   if (!session?.user || !canManageUsers(session.user.role)) {
     return NextResponse.json({ message: "Brak uprawnień" }, { status: 403 });
@@ -64,7 +68,7 @@ export async function POST() {
       console.error("[discord-commands] Discord API error:", res.status, responseText);
       return NextResponse.json(
         {
-          message: `Discord API zwróciło błąd ${res.status}: ${responseText}`,
+          message: "Wystąpił błąd podczas rejestracji komend w API Discorda.",
         },
         { status: 400 }
       );
@@ -89,7 +93,7 @@ export async function POST() {
     console.error("[discord-commands] error:", err);
     return NextResponse.json(
       {
-        message: `Błąd połączenia z API Discorda: ${(err as Error)?.message}`,
+        message: "Wystąpił błąd połączenia z API Discorda.",
       },
       { status: 500 }
     );

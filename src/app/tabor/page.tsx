@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { isSafeImageUrl } from "@/lib/files";
 
 export const dynamic = "force-dynamic";
 
@@ -14,16 +16,20 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
   const { carrier: carrierFilter } = await searchParams;
   const session = await getServerSession(authOptions);
 
-  const isOwner = session?.user?.role === "WLASCICIEL" || session?.user?.role === "ZARZAD" || session?.user?.username === "Godksawiss";
-  const isDriver = session?.user?.role === "KIEROWCA" && !isOwner;
-  const driverCarrier = isDriver ? session?.user?.carrier : null;
+  if (!session || !session.user) {
+    redirect("/login");
+  }
+
+  const isOwner = session.user.role === "WLASCICIEL" || session.user.role === "ZARZAD";
+  const isDriver = session.user.role === "KIEROWCA" && !isOwner;
+  const driverCarrier = isDriver ? session.user.carrier : null;
 
   // Jeśli użytkownik jest zwykłym kierowcą, ograniczamy tabor do jego przewoźnika. Właściciel widzi wszystko.
   const effectiveCarrier = isOwner ? carrierFilter : (driverCarrier || carrierFilter);
-  
+
   const vehicles = await prisma.vehicle.findMany({
     where: effectiveCarrier ? { carrier: effectiveCarrier } : undefined,
-    orderBy: { fleetNumber: 'asc' }
+    orderBy: { fleetNumber: "asc" },
   });
 
   return (
@@ -38,19 +44,50 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
           </p>
         </div>
       </div>
-      
+
       {!isDriver && (
         <div className="flex gap-4 mb-8">
-          <a href="/tabor" className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${!carrierFilter ? 'bg-slate-700 border-slate-600 text-white' : 'border-slate-700 hover:bg-slate-800 text-slate-300'}`}>Wszystkie</a>
-          <a href="/tabor?carrier=VMPK" className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${carrierFilter === 'VMPK' ? 'bg-[#E31837] border-red-500 text-white' : 'border-slate-700 hover:bg-slate-800 text-slate-300'}`}>Tylko VMPK</a>
-          <a href="/tabor?carrier=VBP" className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${carrierFilter === 'VBP' ? 'bg-[#005A9C] border-blue-500 text-white' : 'border-slate-700 hover:bg-slate-800 text-slate-300'}`}>Tylko VBP</a>
+          <a
+            href="/tabor"
+            className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+              !carrierFilter
+                ? "bg-slate-700 border-slate-600 text-white"
+                : "border-slate-700 hover:bg-slate-800 text-slate-300"
+            }`}
+          >
+            Wszystkie
+          </a>
+          <a
+            href="/tabor?carrier=VMPK"
+            className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+              carrierFilter === "VMPK"
+                ? "bg-[#E31837] border-red-500 text-white"
+                : "border-slate-700 hover:bg-slate-800 text-slate-300"
+            }`}
+          >
+            Tylko VMPK
+          </a>
+          <a
+            href="/tabor?carrier=VBP"
+            className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors ${
+              carrierFilter === "VBP"
+                ? "bg-[#005A9C] border-blue-500 text-white"
+                : "border-slate-700 hover:bg-slate-800 text-slate-300"
+            }`}
+          >
+            Tylko VBP
+          </a>
         </div>
       )}
 
       {isDriver && (
         <div className="bg-slate-800/80 border border-slate-700 p-3 rounded-lg text-xs text-slate-300 flex items-center justify-between">
-          <span>Przewoźnik przypisany do Twojego etatu: <b className="text-amber-400">{driverCarrier}</b></span>
-          <span className="text-[11px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">Dostęp ograniczony do {driverCarrier}</span>
+          <span>
+            Przewoźnik przypisany do Twojego etatu: <b className="text-amber-400">{driverCarrier}</b>
+          </span>
+          <span className="text-[11px] bg-slate-700 px-2 py-0.5 rounded text-slate-300">
+            Dostęp ograniczony do {driverCarrier}
+          </span>
         </div>
       )}
 
@@ -61,20 +98,33 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {vehicles.map((veh) => (
-            <div key={veh.id} className={`bg-slate-800 border-l-4 rounded-r-xl overflow-hidden shadow-md ${veh.carrier === 'VMPK' ? 'border-[#E31837]' : 'border-[#005A9C]'}`}>
+            <div
+              key={veh.id}
+              className={`bg-slate-800 border-l-4 rounded-r-xl overflow-hidden shadow-md ${
+                veh.carrier === "VMPK" ? "border-[#E31837]" : "border-[#005A9C]"
+              }`}
+            >
               <div className="p-4 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center">
-                <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${veh.carrier === 'VMPK' ? 'bg-red-900/50 text-red-200' : 'bg-blue-900/50 text-blue-200'}`}>
+                <span
+                  className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${
+                    veh.carrier === "VMPK" ? "bg-red-900/50 text-red-200" : "bg-blue-900/50 text-blue-200"
+                  }`}
+                >
                   {veh.carrier}
                 </span>
-                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                  veh.status === 'SPRAWNY' ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-600/40' :
-                  veh.status === 'WARSZTAT' ? 'bg-amber-900/60 text-amber-300 border border-amber-600/40' :
-                  'bg-rose-900/60 text-rose-300 border border-rose-600/40'
-                }`}>
-                  {veh.status === 'SPRAWNY' ? '● Sprawny' : veh.status === 'WARSZTAT' ? '🛠 Warsztat' : '✕ Wyłączony'}
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                    veh.status === "SPRAWNY"
+                      ? "bg-emerald-900/60 text-emerald-300 border border-emerald-600/40"
+                      : veh.status === "WARSZTAT"
+                      ? "bg-amber-900/60 text-amber-300 border border-amber-600/40"
+                      : "bg-rose-900/60 text-rose-300 border border-rose-600/40"
+                  }`}
+                >
+                  {veh.status === "SPRAWNY" ? "● Sprawny" : veh.status === "WARSZTAT" ? "🛠 Warsztat" : "✕ Wyłączony"}
                 </span>
               </div>
-              {veh.imageUrl && (
+              {veh.imageUrl && isSafeImageUrl(veh.imageUrl) && (
                 <div className="h-44 w-full overflow-hidden bg-slate-900 border-b border-slate-700">
                   <img
                     src={veh.imageUrl}
@@ -94,7 +144,9 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
                 </div>
                 <div>
                   <div className="text-xs text-slate-400 uppercase tracking-wider">Rejestracja</div>
-                  <div className="font-mono text-sm bg-white text-black px-2 py-0.5 rounded inline-block border border-gray-400">{veh.registration}</div>
+                  <div className="font-mono text-sm bg-white text-black px-2 py-0.5 rounded inline-block border border-gray-400">
+                    {veh.registration}
+                  </div>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-slate-700/60">
                   <span className="text-xs text-slate-400 uppercase tracking-wider">Przebieg / Postęp</span>

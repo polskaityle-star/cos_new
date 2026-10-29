@@ -17,8 +17,8 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => null);
     const username = typeof body?.username === "string" ? body.username.trim() : "";
-    const oldPassword = typeof body?.oldPassword === "string" ? body.oldPassword.trim() : "";
-    const newPassword = typeof body?.newPassword === "string" ? body.newPassword.trim() : "";
+    const oldPassword = typeof body?.oldPassword === "string" ? body.oldPassword : "";
+    const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
 
     if (!username || !oldPassword || !newPassword) {
       return NextResponse.json({ message: "Wszystkie pola są wymagane" }, { status: 400 });

@@ -358,8 +358,8 @@ export async function syncDiscordRolesDetailed(userId: string): Promise<SyncRole
         }
       }
 
-      // 5. Aktualizacja pseudonimu na serwerze Discord (np. "W1 Godksawiss")
-      const effectiveBadge = u.badgeNumber || (u.username.toLowerCase() === "godksawiss" ? "W1" : null);
+      // 5. Aktualizacja pseudonimu na serwerze Discord (np. "W1 Jan")
+      const effectiveBadge = u.badgeNumber;
       if (effectiveBadge) {
         // Użyj nicku z Discorda jeśli istnieje, inaczej z systemu
         const dcRawName = member.nick || member.user?.global_name || member.user?.username || u.discordUsername || u.username;

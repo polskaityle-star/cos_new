@@ -4,12 +4,16 @@ import packageInfo from "@/../package.json";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const commitSha = process.env.VERCEL_GIT_COMMIT_SHA || null;
+  const deploymentId = process.env.VERCEL_DEPLOYMENT_ID || null;
+
   return NextResponse.json(
     {
       version: packageInfo.version,
       release: `${packageInfo.version}-beta`,
       status: "online",
-      deployedAt: new Date().toISOString(),
+      ...(commitSha ? { commitSha } : {}),
+      ...(deploymentId ? { deploymentId } : {}),
     },
     {
       headers: {

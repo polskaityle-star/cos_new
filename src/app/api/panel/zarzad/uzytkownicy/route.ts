@@ -1,13 +1,17 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { canManageUsers, generateBadgeNumber } from "@/lib/roles";
+import { canManageUsers, generateUniqueBadgeNumber, ROLES } from "@/lib/roles";
 import { COLORS, notifyUser, runAfter, syncDiscordRoles } from "@/lib/discord";
 
 export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user || !canManageUsers(session.user.role)) {
@@ -23,6 +27,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Brak wymaganych parametrów" }, { status: 400 });
   }
 
+  if (!(newRole in ROLES)) {
+    return NextResponse.json({ message: "Nieprawidłowa rola" }, { status: 400 });
+  }
+
+  if (session.user.id === userId) {
+    return NextResponse.json({ message: "Nie możesz zmienić własnej roli" }, { status: 403 });
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
@@ -31,10 +43,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Użytkownik nie istnieje" }, { status: 404 });
   }
 
+  if (user.role === "WLASCICIEL" && session.user.role !== "WLASCICIEL") {
+    return NextResponse.json({ message: "Tylko Właściciel może modyfikować konto Właściciela" }, { status: 403 });
+  }
+
   // Jeśli nie podano customowego numeru, albo jeśli rola się zmieniła, generujemy numer dla nowej roli
   let finalBadge = customBadge?.trim();
   if (!finalBadge || user.role !== newRole) {
-    finalBadge = generateBadgeNumber(newRole);
+    finalBadge = await generateUniqueBadgeNumber(newRole, prisma);
   }
 
   await prisma.user.update({

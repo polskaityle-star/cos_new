@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isSafeImageUrl } from "@/lib/files";
 
 interface VehicleOption {
   id: string;
@@ -66,8 +67,9 @@ export default function DefectReportForm({
     setSelectedFiles((prev) => [...prev, ...filesArray]);
 
     filesArray.forEach((file) => {
-      const url = URL.createObjectURL(file);
-      setPreviews((prev) => [...prev, url]);
+      compressImageToDataUrl(file).then((dataUrl) => {
+        setPreviews((prev) => [...prev, dataUrl]);
+      });
     });
   };
 
@@ -215,9 +217,9 @@ export default function DefectReportForm({
         </p>
 
         {/* Podgląd wybranych zdjęć */}
-        {previews.length > 0 && (
+        {previews.filter(isSafeImageUrl).length > 0 && (
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
-            {previews.map((src, idx) => (
+            {previews.filter(isSafeImageUrl).map((src, idx) => (
               <div key={idx} className="relative group rounded-lg overflow-hidden border border-slate-700 aspect-video bg-black">
                 <img src={src} alt={`Zdjęcie ${idx + 1}`} className="w-full h-full object-cover" />
                 <button

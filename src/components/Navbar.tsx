@@ -101,7 +101,7 @@ export default function Navbar() {
                     isCarrier ? "text-white" : "text-slate-900 dark:text-white"
                   }`}
                 >
-                  {(session.user.badgeNumber || (session.user.username?.toLowerCase() === "godksawiss" ? "W1" : null)) && (
+                  {session.user.badgeNumber && (
                     <span
                       className={`nav-badge-number px-1.5 py-0.5 rounded text-[11px] font-extrabold shadow-2xs ${
                         isCarrier
@@ -109,7 +109,7 @@ export default function Navbar() {
                           : "bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-700"
                       }`}
                     >
-                      {session.user.badgeNumber || (session.user.username?.toLowerCase() === "godksawiss" ? "W1" : null)}
+                      {session.user.badgeNumber}
                     </span>
                   )}
                   <span>{session.user.discordUsername || session.user.username}</span>

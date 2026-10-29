@@ -1,4 +1,9 @@
-// Prosty limiter w pamięci (best effort: każda instancja serwera ma własny licznik).
+/**
+ * Prosty limiter w pamięci (best effort: per-instancja serwera).
+ * UWAGA: W środowisku wieloinstancyjnym / serverless z wieloma lambdami
+ * limiter działa niezależnie w każdej instancji. Do wdrożeń produkcyjnych
+ * o wysokiej skali zalecany jest Upstash Redis (@upstash/ratelimit).
+ */
 type Bucket = { count: number; resetAt: number };
 const store = new Map<string, Bucket>();
 
@@ -9,17 +14,25 @@ function prune(now: number) {
   }
 }
 
+/**
+ * Pobiera IP klienta w bezpiecznej kolejności:
+ * 1. x-vercel-forwarded-for (pierwsze IP)
+ * 2. x-real-ip
+ * 3. x-forwarded-for (pierwsze IP)
+ * Fallback: "127.0.0.1"
+ */
 export function getClientIp(headers: Headers | Record<string, string | string[] | undefined> | null | undefined): string {
   let v: unknown;
   if (headers && typeof (headers as Headers).get === "function") {
-    v = (headers as Headers).get("x-forwarded-for") ?? (headers as Headers).get("x-real-ip");
+    const h = headers as Headers;
+    v = h.get("x-vercel-forwarded-for") ?? h.get("x-real-ip") ?? h.get("x-forwarded-for");
   } else if (headers && typeof headers === "object") {
     const record = headers as Record<string, string | string[] | undefined>;
-    v = record["x-forwarded-for"] ?? record["x-real-ip"];
+    v = record["x-vercel-forwarded-for"] ?? record["x-real-ip"] ?? record["x-forwarded-for"];
   }
   if (Array.isArray(v)) v = v[0];
-  if (typeof v !== "string" || !v) return "unknown";
-  return v.split(",")[0].trim().slice(0, 64) || "unknown";
+  if (typeof v !== "string" || !v) return "127.0.0.1";
+  return v.split(",")[0].trim().slice(0, 64) || "127.0.0.1";
 }
 
 /** Zlicza próbę. Zwraca false, gdy limit został przekroczony. */

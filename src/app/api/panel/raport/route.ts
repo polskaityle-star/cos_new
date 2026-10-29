@@ -1,3 +1,7 @@
+import { assertSameOrigin } from "@/lib/csrf";
+import { isSafeStoredFile } from "@/lib/files";
+import { isUserAdminOrOwner } from "@/lib/roles";
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -7,26 +11,47 @@ import { revalidatePath } from "next/cache";
 import fs from "fs";
 import path from "path";
 
-async function saveUploadFile(file: File, prefix: string): Promise<string> {
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const mimeType = file.type || (prefix.includes("summary") ? "text/plain" : "image/png");
+const ALLOWED_UPLOAD_MIME = ["image/png", "image/jpeg", "image/webp", "text/plain"];
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
 
-  // Bezpośredni fallback Base64 dla serverless (Vercel) zapobiegający utracie plików i błędom EROFS
+class FileValidationError extends Error {
+  constructor(message: string, public status = 400) {
+    super(message);
+  }
+}
+
+async function saveUploadFile(file: File, prefix: string): Promise<string> {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new FileValidationError(`Plik ${file.name} przekracza maksymalny dopuszczalny rozmiar 5 MB.`, 400);
+  }
+
+  const mimeType = (file.type || (prefix.includes("summary") ? "text/plain" : "image/png")).toLowerCase();
+  if (!ALLOWED_UPLOAD_MIME.includes(mimeType)) {
+    throw new FileValidationError(`Plik ${file.name} ma niedozwolony typ MIME (${mimeType}). Dozwolone: PNG, JPEG, WebP, TXT.`, 400);
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
   if (process.env.VERCEL) {
     return `data:${mimeType};base64,${buffer.toString("base64")}`;
   }
 
   try {
-    const ext = path.extname(file.name) || (prefix.includes("summary") ? ".txt" : ".png");
-    const fileName = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
+    const extMap: Record<string, string> = {
+      "image/png": ".png",
+      "image/jpeg": ".jpg",
+      "image/webp": ".webp",
+      "text/plain": ".txt",
+    };
+    const safeExt = extMap[mimeType] || (prefix.includes("summary") ? ".txt" : ".png");
+    const safeName = `${prefix}_${Date.now()}_${crypto.randomBytes(6).toString("hex")}${safeExt}`;
     const uploadDir = path.join(process.cwd(), "public", "uploads", "reports");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
-    fs.writeFileSync(path.join(uploadDir, fileName), buffer);
-    return `/uploads/reports/${fileName}`;
+    fs.writeFileSync(path.join(uploadDir, safeName), buffer);
+    return `/uploads/reports/${safeName}`;
   } catch {
-    // Fallback dla hostingu serverless (np. Vercel)
     return `data:${mimeType};base64,${buffer.toString("base64")}`;
   }
 }
@@ -59,7 +84,7 @@ export async function GET(req: Request) {
     }
 
     // Check if user is owner of duty or ZARZAD
-    if (duty.userId !== session.user.id && session.user.role !== "ZARZAD") {
+    if (duty.userId !== session.user.id && !isUserAdminOrOwner(session.user.role)) {
       return NextResponse.json({ message: "Brak uprawnień do tej służby" }, { status: 403 });
     }
 
@@ -71,6 +96,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -147,8 +175,35 @@ export async function POST(req: Request) {
       }
     }
 
+        if (
+      !isSafeStoredFile(startScreenshot, "image") ||
+      !isSafeStoredFile(endScreenshot, "image") ||
+      !isSafeStoredFile(summaryFile, "text")
+    ) {
+      return NextResponse.json(
+        { message: "Nieprawidłowy format lub ścieżka pliku raportu (dozwolone: data URI, https:// lub /uploads/reports/ bez ..)." },
+        { status: 400 }
+      );
+    }
+
+    for (const val of Object.values(depotScreenshotsObj)) {
+      if (!isSafeStoredFile(val, "image")) {
+        return NextResponse.json(
+          { message: "Nieprawidłowy format lub ścieżka zdjęcia z zajezdni." },
+          { status: 400 }
+        );
+      }
+    }
+
     if (!dutyId || isNaN(startMileage) || isNaN(endMileage) || !startScreenshot || !endScreenshot || !summaryFile) {
       return NextResponse.json({ message: "Wszystkie podstawowe pola i pliki raportu są wymagane." }, { status: 400 });
+    }
+
+    if (!Number.isInteger(startMileage) || !Number.isInteger(endMileage) || startMileage < 0 || endMileage < 0 || endMileage < startMileage) {
+      return NextResponse.json(
+        { message: "Nieprawidłowy przebieg: wartości muszą być liczbami całkowitymi >= 0, a stan końcowy musi być większy lub równy początkowemu." },
+        { status: 400 }
+      );
     }
 
     // Weryfikacja czy służba należy do tego kierowcy i nie ma jeszcze raportu
@@ -161,7 +216,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Służba nie znaleziona" }, { status: 404 });
     }
 
-    if (duty.userId !== session.user.id && session.user.role !== "ZARZAD") {
+    if (duty.userId !== session.user.id && !isUserAdminOrOwner(session.user.role)) {
       return NextResponse.json({ message: "To nie jest twoja służba" }, { status: 403 });
     }
 
@@ -226,8 +281,11 @@ export async function POST(req: Request) {
     revalidatePath("/tabor");
 
     return NextResponse.json({ message: "Raport został wysłany pomyślnie." }, { status: 201 });
-  } catch (error) {
-    console.error("REPORT ERROR", error);
+  } catch (err) {
+    if (err instanceof FileValidationError) {
+      return NextResponse.json({ message: err.message }, { status: err.status });
+    }
+    console.error("REPORT ERROR", err instanceof Error ? err.message : String(err));
     return NextResponse.json({ message: "Błąd serwera podczas zapisywania raportu." }, { status: 500 });
   }
 }
