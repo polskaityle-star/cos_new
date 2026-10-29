@@ -2,18 +2,17 @@ import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageRequests } from "@/lib/roles";
-import { COLORS, notifyUser, runAfter } from "@/lib/discord";
+import { reviewReport } from "@/lib/reports";
 
 export async function POST(req: Request) {
   const csrfError = assertSameOrigin(req);
   if (csrfError) return csrfError;
 
   const session = await getServerSession(authOptions);
-  
+
   if (!session || !session.user || !canManageRequests(session.user.role)) {
     return NextResponse.json({ message: "Brak uprawnień do sprawdzania raportów" }, { status: 403 });
   }
@@ -21,55 +20,24 @@ export async function POST(req: Request) {
   const { searchParams } = new URL(req.url);
   const reportId = searchParams.get("reportId");
   const action = searchParams.get("action");
-  
+
   if (!reportId || !action) {
     return NextResponse.json({ message: "Brak parametrów" }, { status: 400 });
   }
 
-  if (action === "accept") {
-    const existingReport = await prisma.report.findUnique({
-      where: { id: reportId },
-      include: { duty: true },
-    });
-
-    if (existingReport && existingReport.status !== "ACCEPTED") {
-      const distance = Math.max(0, existingReport.endMileage - existingReport.startMileage);
-
-      await prisma.report.update({
-        where: { id: reportId },
-        data: { status: "ACCEPTED" },
-      });
-
-      if (existingReport.duty?.vehicleId && distance > 0) {
-        await prisma.vehicle.update({
-          where: { id: existingReport.duty.vehicleId },
-          data: {
-            mileage: { increment: distance },
-          },
-        });
-        revalidatePath("/tabor");
-      }
-    }
-  } else if (action === "reject") {
-    await prisma.report.update({
-      where: { id: reportId },
-      data: { status: "REJECTED" },
-    });
+  if (action !== "accept" && action !== "reject") {
+    return NextResponse.json({ message: "Nieprawidłowa akcja" }, { status: 400 });
   }
 
-  if (action === "accept" || action === "reject") {
-    await runAfter(async () => {
-      const rep = await prisma.report.findUnique({ where: { id: reportId }, include: { duty: { include: { line: true } } } });
-      if (!rep?.duty) return;
-      const ok = action === "accept";
-      await notifyUser(rep.duty.userId, [
-        {
-          title: ok ? "Raport zaakceptowany" : "Raport odrzucony",
-          color: ok ? COLORS.ok : COLORS.bad,
-          description: `Służba z ${rep.duty.date.toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}, linia ${rep.duty.line?.number ?? "-"}.`,
-        },
-      ]);
-    });
+  const result = await reviewReport({
+    reportId,
+    action,
+    reviewerId: session.user.id,
+    reviewerRole: session.user.role,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json({ message: result.message }, { status: result.status });
   }
 
   revalidatePath("/panel/zarzad");
