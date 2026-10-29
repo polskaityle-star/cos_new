@@ -1,3 +1,4 @@
+import { isSafeStoredFile } from "@/lib/files";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -144,6 +145,26 @@ export async function POST(req: Request) {
       summaryFile = body.summaryFile;
       if (body.depotScreenshots) {
         Object.assign(depotScreenshotsObj, body.depotScreenshots);
+      }
+    }
+
+        if (
+      !isSafeStoredFile(startScreenshot, "image") ||
+      !isSafeStoredFile(endScreenshot, "image") ||
+      !isSafeStoredFile(summaryFile, "text")
+    ) {
+      return NextResponse.json(
+        { message: "Nieprawidłowy format lub ścieżka pliku raportu (dozwolone: data URI, https:// lub /uploads/reports/ bez ..)." },
+        { status: 400 }
+      );
+    }
+
+    for (const val of Object.values(depotScreenshotsObj)) {
+      if (!isSafeStoredFile(val, "image")) {
+        return NextResponse.json(
+          { message: "Nieprawidłowy format lub ścieżka zdjęcia z zajezdni." },
+          { status: 400 }
+        );
       }
     }
 

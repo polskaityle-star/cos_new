@@ -1,3 +1,4 @@
+import { isSafeStoredFile } from "@/lib/files";
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyDiscordRequest } from "@/lib/discordVerify";
@@ -972,9 +973,28 @@ export async function POST(req: Request) {
 
           const startMileage = parseInt(values.start_mileage || "0", 10);
           const endMileage = parseInt(values.end_mileage || "0", 10);
-          const startScreenshot = values.start_screenshot || "Discord link";
-          const endScreenshot = values.end_screenshot || "Discord link";
-          const summaryFile = values.summary_file || "Raport złożony przez bota Discord";
+          const rawStart = (values.start_screenshot || "").trim();
+          const rawEnd = (values.end_screenshot || "").trim();
+          if (
+            !rawStart.startsWith("https://") ||
+            !isSafeStoredFile(rawStart, "image") ||
+            !rawEnd.startsWith("https://") ||
+            !isSafeStoredFile(rawEnd, "image")
+          ) {
+            await updateDeferred(appId, token, [
+              {
+                title: "Nieprawidłowe linki do zrzutów ekranu",
+                color: COLORS.bad,
+                description: "Zrzuty ekranu muszą być prawidłowymi linkami zaczynającymi się od https://.",
+              },
+            ]);
+            return;
+          }
+          const startScreenshot = rawStart;
+          const endScreenshot = rawEnd;
+
+          const rawSummary = (values.summary_file || "Raport złożony przez bota Discord").trim();
+          const summaryFile = rawSummary.slice(0, 1000);
 
           if (isNaN(startMileage) || isNaN(endMileage) || endMileage < startMileage) {
             await updateDeferred(appId, token, [
