@@ -38,12 +38,33 @@ test("parseZarzadCustomId: akcje na obiektach z walidacją ID", () => {
     action: "rep_approve",
     targetId: "rep_abc-123",
   });
+  assert.deepEqual(parseZarzadCustomId("zarzad_rep_reject:rep_abc-123"), {
+    action: "rep_reject",
+    targetId: "rep_abc-123",
+  });
+  assert.deepEqual(parseZarzadCustomId("zarzad_def_repair:def_456"), {
+    action: "def_repair",
+    targetId: "def_456",
+  });
+  assert.deepEqual(parseZarzadCustomId("zarzad_def_fixed:def_456"), {
+    action: "def_fixed",
+    targetId: "def_456",
+  });
+  assert.deepEqual(parseZarzadCustomId("zarzad_cand_approve:usr_789"), {
+    action: "cand_approve",
+    targetId: "usr_789",
+  });
+  assert.deepEqual(parseZarzadCustomId("zarzad_cand_reject:usr_789"), {
+    action: "cand_reject",
+    targetId: "usr_789",
+  });
 });
 
 test("parseZarzadCustomId: odrzuca nieznane lub sfałszowane identyfikatory", () => {
   assert.equal(parseZarzadCustomId("other_action"), null);
   assert.equal(parseZarzadCustomId("zarzad_unknown:123"), null);
   assert.equal(parseZarzadCustomId("zarzad_req_approve:bad/id"), null);
+  assert.equal(parseZarzadCustomId("zarzad_def_repair:bad id"), null);
   assert.equal(parseZarzadCustomId("zarzad_req_list:-1"), null);
   assert.equal(parseZarzadCustomId("zarzad_req_list:abc"), null);
 });
@@ -56,12 +77,26 @@ test("getZarzadPermissions: poprawne mapowanie ról", () => {
   assert.equal(owner.canFleet, true);
   assert.equal(owner.canUsers, true);
 
+  const zarzad = getZarzadPermissions("ZARZAD");
+  assert.equal(zarzad.canAccess, true);
+  assert.equal(zarzad.canRequests, true);
+  assert.equal(zarzad.canReports, true);
+  assert.equal(zarzad.canFleet, true);
+  assert.equal(zarzad.canUsers, true);
+
   const sprawdzajacy = getZarzadPermissions("SPRAWDZAJACY");
   assert.equal(sprawdzajacy.canAccess, true);
   assert.equal(sprawdzajacy.canRequests, true);
   assert.equal(sprawdzajacy.canReports, true);
   assert.equal(sprawdzajacy.canFleet, false);
   assert.equal(sprawdzajacy.canUsers, false);
+
+  const dyspozytor = getZarzadPermissions("DYSPOZYTOR");
+  assert.equal(dyspozytor.canAccess, true);
+  assert.equal(dyspozytor.canRequests, false);
+  assert.equal(dyspozytor.canReports, false);
+  assert.equal(dyspozytor.canFleet, false);
+  assert.equal(dyspozytor.canUsers, false);
 
   const mechanik = getZarzadPermissions("MECHANIK");
   assert.equal(mechanik.canAccess, true);

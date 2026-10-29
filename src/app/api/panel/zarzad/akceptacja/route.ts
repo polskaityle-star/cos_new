@@ -2,11 +2,11 @@ import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageUsers } from "@/lib/roles";
-import { COLORS, notifyUser, runAfter, syncDiscordRoles } from "@/lib/discord";
+import { reviewCandidate } from "@/lib/recruitment";
 
 export async function POST(req: Request) {
   const csrfError = assertSameOrigin(req);
@@ -34,37 +34,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Nieprawidłowa akcja (dozwolone: accept, reject)" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    const result = await reviewCandidate({
+      userId,
+      action: action as "accept" | "reject",
+      carrier,
     });
 
-    if (!user) {
-      return NextResponse.json({ message: "Użytkownik nie został odnaleziony" }, { status: 404 });
+    if (!result.ok) {
+      return NextResponse.json({ message: result.message }, { status: result.status });
     }
-
-    if (action === "accept") {
-      if (!carrier || (carrier !== "VMPK" && carrier !== "VBP")) {
-        return NextResponse.json({ message: "Brak lub nieprawidłowy przewoźnik (dozwolone: VMPK, VBP)" }, { status: 400 });
-      }
-      await prisma.user.update({
-        where: { id: userId },
-        data: { status: "ACCEPTED", carrier },
-      });
-    } else {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { status: "REJECTED" },
-      });
-    }
-
-    await runAfter(async () => {
-      await syncDiscordRoles(userId);
-      await notifyUser(userId, [
-        action === "accept"
-          ? { title: "Konto zaakceptowane", description: `Witamy w VZTM Kielce! Przewoźnik: ${carrier}.`, color: COLORS.ok }
-          : { title: "Zgłoszenie odrzucone", description: "Twoje zgłoszenie do VZTM Kielce zostało odrzucone.", color: COLORS.bad },
-      ]);
-    });
 
     revalidatePath("/panel/zarzad");
   } catch (error: unknown) {

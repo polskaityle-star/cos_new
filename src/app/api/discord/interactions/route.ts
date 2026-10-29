@@ -8,6 +8,8 @@ import { getRoleLabel } from "@/lib/roles";
 import { getZarzadPermissions, parseZarzadCustomId } from "@/lib/discordZarzad";
 import { reviewRequest } from "@/lib/requests";
 import { reviewReport } from "@/lib/reports";
+import { reviewDefect } from "@/lib/defects";
+import { reviewCandidate } from "@/lib/recruitment";
 
 export const dynamic = "force-dynamic";
 
@@ -842,6 +844,12 @@ export async function POST(req: Request) {
         if (perms.canReports) {
           actionButtons.push({ type: 2, style: 1, custom_id: "zarzad_rep_list:0", label: "📝 Raporty" });
         }
+        if (perms.canFleet) {
+          actionButtons.push({ type: 2, style: 1, custom_id: "zarzad_def_list:0", label: "🔧 Usterki" });
+        }
+        if (perms.canUsers) {
+          actionButtons.push({ type: 2, style: 1, custom_id: "zarzad_cand_list:0", label: "👥 Rekrutacja" });
+        }
 
         const navButtons: unknown[] = [
           { type: 2, style: 2, custom_id: "btn_action_panel", label: "⬅️ Panel kierowcy" },
@@ -1076,6 +1084,172 @@ export async function POST(req: Request) {
           [
             {
               title: `Raport [${index + 1}/${pendingReports.length}]: Linia ${rep.duty?.line?.number ?? "-"} (${repDriverName})`,
+              color: COLORS.warn,
+              fields,
+              url: `${site}/panel/zarzad`,
+            },
+          ],
+          undefined,
+          [
+            { type: 1, components: actionButtons },
+            { type: 1, components: navButtons },
+          ]
+        );
+      };
+
+      // Helper do wyświetlania listy nowych usterek
+      const sendDefectsList = async (offset = 0) => {
+        const pendingDefects = await prisma.vehicleDefect.findMany({
+          where: { status: "NOWE" },
+          include: { vehicle: true, user: true },
+          orderBy: { createdAt: "asc" },
+          take: 5,
+        });
+
+        if (pendingDefects.length === 0) {
+          await updateDeferred(
+            appId,
+            token,
+            [
+              {
+                title: "Brak nowych usterek",
+                color: COLORS.ok,
+                description: "🎉 Wszystkie zgłoszone usterki pojazdów zostały już skierowane do warsztatu lub naprawione. Brak pozycji ze statusem NOWE.",
+              },
+            ],
+            undefined,
+            [
+              {
+                type: 1,
+                components: [
+                  { type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Panel Zarządu" },
+                  { type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" },
+                ],
+              },
+            ]
+          );
+          return;
+        }
+
+        const index = Math.max(0, Math.min(offset, pendingDefects.length - 1));
+        const defect = pendingDefects[index];
+        const reporterBadge = defect.user?.badgeNumber || "Kierowca";
+        const reporterName = defect.user ? `${reporterBadge} ${defect.user.username}` : "Nieznany";
+
+        const fields = [
+          { name: "Pojazd", value: `#${defect.vehicle.fleetNumber} (${defect.vehicle.model})`, inline: true },
+          { name: "Zgłaszający", value: reporterName, inline: true },
+          { name: "Zgłoszono", value: fmtDate(defect.createdAt), inline: true },
+          { name: "Tytuł usterki", value: defect.title, inline: false },
+          { name: "Opis usterki", value: defect.description ? defect.description.slice(0, 1000) : "Brak", inline: false },
+        ];
+
+        if (defect.defectType) {
+          fields.push({ name: "Kategoria", value: defect.defectType, inline: true });
+        }
+
+        const actionButtons = [
+          { type: 2, style: 1, custom_id: `zarzad_def_repair:${defect.id}`, label: "🔧 Skieruj na warsztat" },
+          { type: 2, style: 3, custom_id: `zarzad_def_fixed:${defect.id}`, label: "✅ Oznacz jako naprawione" },
+        ];
+
+        const navButtons = [];
+        if (index > 0) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_def_list:${index - 1}`, label: "⬅️ Poprzednia" });
+        }
+        if (index < pendingDefects.length - 1) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_def_list:${index + 1}`, label: "➡️ Następna" });
+        }
+        navButtons.push({ type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" });
+        navButtons.push({ type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" });
+
+        await updateDeferred(
+          appId,
+          token,
+          [
+            {
+              title: `Usterka [${index + 1}/${pendingDefects.length}]: Pojazd #${defect.vehicle.fleetNumber}`,
+              color: COLORS.warn,
+              fields,
+              url: `${site}/panel/zarzad`,
+            },
+          ],
+          undefined,
+          [
+            { type: 1, components: actionButtons },
+            { type: 1, components: navButtons },
+          ]
+        );
+      };
+
+      // Helper do wyświetlania listy oczekujących kandydatów (rekrutacja)
+      const sendCandidatesList = async (offset = 0) => {
+        const pendingCandidates = await prisma.user.findMany({
+          where: { status: "PENDING" },
+          orderBy: { createdAt: "asc" },
+          take: 5,
+        });
+
+        if (pendingCandidates.length === 0) {
+          await updateDeferred(
+            appId,
+            token,
+            [
+              {
+                title: "Brak oczekujących kandydatów",
+                color: COLORS.ok,
+                description: "🎉 Wszystkie zgłoszenia rekrutacyjne zostały już rozpatrzone. Brak kandydatów ze statusem PENDING.",
+              },
+            ],
+            undefined,
+            [
+              {
+                type: 1,
+                components: [
+                  { type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Panel Zarządu" },
+                  { type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" },
+                ],
+              },
+            ]
+          );
+          return;
+        }
+
+        const index = Math.max(0, Math.min(offset, pendingCandidates.length - 1));
+        const cand = pendingCandidates[index];
+
+        const fields = [
+          { name: "Kandydat", value: cand.username, inline: true },
+          { name: "Przewoźnik", value: cand.carrier || "VMPK", inline: true },
+          { name: "Wiek", value: cand.age ? `${cand.age} lat` : "Nie podano", inline: true },
+          { name: "Zarejestrowano", value: fmtDate(cand.createdAt), inline: true },
+        ];
+
+        if (cand.bio) {
+          fields.push({ name: "O sobie / Doświadczenie", value: cand.bio.slice(0, 1000), inline: false });
+        }
+
+        const actionButtons = [
+          { type: 2, style: 3, custom_id: `zarzad_cand_approve:${cand.id}`, label: "✅ Zaakceptuj" },
+          { type: 2, style: 4, custom_id: `zarzad_cand_reject:${cand.id}`, label: "❌ Odrzuć" },
+        ];
+
+        const navButtons = [];
+        if (index > 0) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_cand_list:${index - 1}`, label: "⬅️ Poprzedni" });
+        }
+        if (index < pendingCandidates.length - 1) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_cand_list:${index + 1}`, label: "➡️ Następny" });
+        }
+        navButtons.push({ type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" });
+        navButtons.push({ type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" });
+
+        await updateDeferred(
+          appId,
+          token,
+          [
+            {
+              title: `Kandydat [${index + 1}/${pendingCandidates.length}]: ${cand.username}`,
               color: COLORS.warn,
               fields,
               url: `${site}/panel/zarzad`,
@@ -1397,6 +1571,158 @@ export async function POST(req: Request) {
                   type: 1,
                   components: [
                     { type: 2, style: 1, custom_id: "zarzad_rep_list:0", label: "📝 Kolejne raporty" },
+                    { type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" },
+                    { type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" },
+                  ],
+                },
+              ]
+            );
+            return;
+          }
+
+          if (parsed.action === "def_list") {
+            if (!perms.canFleet) {
+              await updateDeferred(appId, token, [
+                { title: "Brak uprawnień", color: COLORS.bad, description: "Brak uprawnień do zarządzania taborem." },
+              ]);
+              return;
+            }
+            await sendDefectsList(parsed.offset ?? 0);
+            return;
+          }
+
+          if (parsed.action === "def_repair" || parsed.action === "def_fixed") {
+            if (!perms.canFleet) {
+              await updateDeferred(appId, token, [
+                { title: "Brak uprawnień", color: COLORS.bad, description: "Brak uprawnień do zarządzania taborem." },
+              ]);
+              return;
+            }
+            const defectId = parsed.targetId!;
+            const newStatus = parsed.action === "def_repair" ? "WARSZTAT" : "NAPRAWIONE";
+
+            const result = await reviewDefect({
+              defectId,
+              status: newStatus,
+            });
+
+            if (!result.ok) {
+              await updateDeferred(
+                appId,
+                token,
+                [
+                  {
+                    title: "Nie można zaktualizować usterki",
+                    color: COLORS.bad,
+                    description: result.message,
+                  },
+                ],
+                undefined,
+                [
+                  {
+                    type: 1,
+                    components: [
+                      { type: 2, style: 1, custom_id: "zarzad_def_list:0", label: "🔧 Wróć do usterek" },
+                      { type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" },
+                    ],
+                  },
+                ]
+              );
+              return;
+            }
+
+            await updateDeferred(
+              appId,
+              token,
+              [
+                {
+                  title: newStatus === "WARSZTAT" ? "🔧 Skierowano do warsztatu" : "✅ Oznaczono jako naprawione",
+                  color: newStatus === "WARSZTAT" ? COLORS.warn : COLORS.ok,
+                  description: `Status usterki oraz pojazdu został zaktualizowany (${newStatus}).`,
+                },
+              ],
+              undefined,
+              [
+                {
+                  type: 1,
+                  components: [
+                    { type: 2, style: 1, custom_id: "zarzad_def_list:0", label: "🔧 Kolejne usterki" },
+                    { type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" },
+                    { type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" },
+                  ],
+                },
+              ]
+            );
+            return;
+          }
+
+          if (parsed.action === "cand_list") {
+            if (!perms.canUsers) {
+              await updateDeferred(appId, token, [
+                { title: "Brak uprawnień", color: COLORS.bad, description: "Brak uprawnień do zarządzania użytkownikami." },
+              ]);
+              return;
+            }
+            await sendCandidatesList(parsed.offset ?? 0);
+            return;
+          }
+
+          if (parsed.action === "cand_approve" || parsed.action === "cand_reject") {
+            if (!perms.canUsers) {
+              await updateDeferred(appId, token, [
+                { title: "Brak uprawnień", color: COLORS.bad, description: "Brak uprawnień do zarządzania użytkownikami." },
+              ]);
+              return;
+            }
+            const userId = parsed.targetId!;
+            const action = parsed.action === "cand_approve" ? "accept" : "reject";
+
+            const result = await reviewCandidate({
+              userId,
+              action,
+            });
+
+            if (!result.ok) {
+              await updateDeferred(
+                appId,
+                token,
+                [
+                  {
+                    title: "Nie można rozpatrzyć kandydata",
+                    color: COLORS.bad,
+                    description: result.message,
+                  },
+                ],
+                undefined,
+                [
+                  {
+                    type: 1,
+                    components: [
+                      { type: 2, style: 1, custom_id: "zarzad_cand_list:0", label: "👥 Wróć do kandydatów" },
+                      { type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" },
+                    ],
+                  },
+                ]
+              );
+              return;
+            }
+
+            await updateDeferred(
+              appId,
+              token,
+              [
+                {
+                  title: action === "accept" ? "✅ Kandydat zaakceptowany" : "❌ Kandydat odrzucony",
+                  color: action === "accept" ? COLORS.ok : COLORS.bad,
+                  description: `Kandydat został pomyślnie ${action === "accept" ? "zaakceptowany (przydzielono służbowy badge oraz zsynchronizowano role Discord)" : "odrzucony"}.`,
+                },
+              ],
+              undefined,
+              [
+                {
+                  type: 1,
+                  components: [
+                    { type: 2, style: 1, custom_id: "zarzad_cand_list:0", label: "👥 Kolejni kandydaci" },
                     { type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" },
                     { type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" },
                   ],

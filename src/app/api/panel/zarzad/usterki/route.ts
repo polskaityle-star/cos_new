@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageFleet } from "@/lib/roles";
-import { Prisma } from "@prisma/client";
+import { reviewDefect, ReviewDefectOptions } from "@/lib/defects";
 
 const ALLOWED_DEFECT_STATUSES = ["NOWE", "WARSZTAT", "NAPRAWIONE", "ODRZUCONE"];
 
@@ -94,40 +94,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Notatki administratora mogą mieć maksymalnie 2000 znaków" }, { status: 400 });
   }
 
-  const updateData: Prisma.VehicleDefectUpdateInput = {
-    status: newStatus,
-  };
-
-  if (defectType) updateData.defectType = defectType;
-  if (workshopStart) updateData.workshopStart = workshopStart;
-  if (workshopEnd) updateData.workshopEnd = workshopEnd;
-  if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
-
-  const defect = await prisma.vehicleDefect.update({
-    where: { id: defectId },
-    data: updateData,
+  const result = await reviewDefect({
+    defectId,
+    status: newStatus as ReviewDefectOptions["status"],
+    defectType,
+    workshopStart,
+    workshopEnd,
+    adminNotes,
   });
 
-  // Aktualizacja statusu pojazdu
-  if (newStatus === "NAPRAWIONE" || newStatus === "ODRZUCONE") {
-    const activeDefects = await prisma.vehicleDefect.count({
-      where: {
-        vehicleId: defect.vehicleId,
-        status: { in: ["NOWE", "WARSZTAT"] },
-      },
-    });
-
-    if (activeDefects === 0) {
-      await prisma.vehicle.update({
-        where: { id: defect.vehicleId },
-        data: { status: "SPRAWNY" },
-      });
-    }
-  } else if (newStatus === "WARSZTAT") {
-    await prisma.vehicle.update({
-      where: { id: defect.vehicleId },
-      data: { status: "WARSZTAT" },
-    });
+  if (!result.ok) {
+    return NextResponse.json({ message: result.message }, { status: result.status });
   }
 
   revalidatePath("/tabor");
