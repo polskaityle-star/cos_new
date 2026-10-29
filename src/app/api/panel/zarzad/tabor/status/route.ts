@@ -1,3 +1,4 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -7,9 +8,12 @@ import { revalidatePath } from "next/cache";
 import { canManageFleet } from "@/lib/roles";
 
 export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !canManageFleet(session.user.role, (session.user as any)?.username)) {
+  if (!session || !session.user || !canManageFleet(session.user.role, session.user.username)) {
     return NextResponse.json({ message: "Brak uprawnień" }, { status: 403 });
   }
 

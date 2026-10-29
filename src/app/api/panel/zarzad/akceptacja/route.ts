@@ -1,3 +1,4 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,6 +9,9 @@ import { canManageUsers } from "@/lib/roles";
 import { COLORS, notifyUser, runAfter, syncDiscordRoles } from "@/lib/discord";
 
 export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   try {
     const session = await getServerSession(authOptions);
 

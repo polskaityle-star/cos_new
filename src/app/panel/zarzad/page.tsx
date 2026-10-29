@@ -47,7 +47,7 @@ export default async function AdminPanel({
     redirect("/");
   }
 
-  const userName = (session.user as any)?.username || "";
+  const userName = session.user.username || "";
   if (!canAccessManagementPanel(session.user.role, userName)) {
     redirect("/");
   }

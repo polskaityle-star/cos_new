@@ -1,3 +1,4 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -6,6 +7,9 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -27,7 +31,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Wniosek nie istnieje" }, { status: 404 });
   }
 
-  const isOwnerOrAdmin = ["WLASCICIEL", "ZARZAD", "SPRAWDZAJACY"].includes(session.user.role) || (session.user as any)?.username?.toLowerCase() === "godksawiss";
+  const isOwnerOrAdmin = ["WLASCICIEL", "ZARZAD", "SPRAWDZAJACY"].includes(session.user.role) || session.user.username?.toLowerCase() === "godksawiss";
   if (vacationReq.userId !== session.user.id && !isOwnerOrAdmin) {
     return NextResponse.json({ message: "Brak uprawnień do usunięcia tego urlopu" }, { status: 403 });
   }

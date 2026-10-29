@@ -207,6 +207,9 @@ function dutyLine(d: Awaited<ReturnType<typeof dutiesBetween>>[number]): string 
 }
 
 export async function GET(req: Request) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ status: "ok" });
+  }
   const site = siteUrl(req);
   return NextResponse.json({
     status: "ok",

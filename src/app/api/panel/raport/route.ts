@@ -1,3 +1,4 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { isSafeStoredFile } from "@/lib/files";
 import { isUserAdminOrOwner } from "@/lib/roles";
 import crypto from "crypto";
@@ -95,6 +96,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   try {
     const session = await getServerSession(authOptions);
 

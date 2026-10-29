@@ -1,3 +1,4 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,9 +9,12 @@ import { canManageRequests } from "@/lib/roles";
 import { COLORS, notifyUser, runAfter } from "@/lib/discord";
 
 export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || !canManageRequests(session.user.role, (session.user as any)?.username)) {
+  if (!session || !session.user || !canManageRequests(session.user.role, session.user.username)) {
     return NextResponse.json({ message: "Brak autoryzacji do zarządzania wnioskami" }, { status: 403 });
   }
 

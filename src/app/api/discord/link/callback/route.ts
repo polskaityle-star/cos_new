@@ -36,17 +36,24 @@ export async function GET(req: Request) {
   }
   if (!parsed || !nonce || parsed.nonce !== nonce || parsed.userId !== session.user.id) return back("error");
 
-  const profile = await exchangeCodeForProfile(code, `${base}/api/discord/link/callback`);
-  if (!profile) return back("error");
-
-  const taken = await prisma.user.findUnique({ where: { discordId: profile.id }, select: { id: true } });
-  if (taken && taken.id !== session.user.id) return back("taken");
-
   const userId = session.user.id;
-  await prisma.user.update({
-    where: { id: userId },
-    data: { discordId: profile.id, discordUsername: profile.global_name || profile.username, discordNotify: true },
-  });
+  try {
+    const profile = await exchangeCodeForProfile(code, `${base}/api/discord/link/callback`);
+    if (!profile) return back("error");
+
+    const taken = await prisma.user.findUnique({ where: { discordId: profile.id }, select: { id: true } });
+    if (taken && taken.id !== userId) return back("taken");
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { discordId: profile.id, discordUsername: profile.global_name || profile.username, discordNotify: true },
+    });
+  } catch (error: unknown) {
+    if ((error as { code?: string })?.code === "P2002") {
+      return back("taken");
+    }
+    return back("error");
+  }
 
   await runAfter(async () => {
     await syncDiscordRoles(userId);

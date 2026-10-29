@@ -1,3 +1,4 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -5,7 +6,10 @@ import { canManageUsers } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await getServerSession(authOptions);
   if (!session?.user || !canManageUsers(session.user.role)) {
     return NextResponse.json({ message: "Brak uprawnień" }, { status: 403 });

@@ -1,3 +1,4 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,7 +9,10 @@ import { syncDiscordRoles } from "@/lib/discord";
 export const maxDuration = 60;
 
 // Ręczna synchronizacja ról Discord dla wszystkich powiązanych kont (przycisk w panelu).
-export async function POST() {
+export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await getServerSession(authOptions);
   if (!session?.user || !canManageUsers(session.user.role)) {
     return NextResponse.json({ message: "Brak uprawnień" }, { status: 403 });

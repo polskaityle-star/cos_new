@@ -1,3 +1,4 @@
+import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -9,6 +10,9 @@ import { getDayOrder } from "@/lib/brigades";
 import { COLORS, notifyUser, runAfter } from "@/lib/discord";
 
 export async function POST(req: Request) {
+  const csrfError = assertSameOrigin(req);
+  if (csrfError) return csrfError;
+
   const session = await getServerSession(authOptions);
   
   if (!session || !session.user || !canManageDuties(session.user.role)) {
