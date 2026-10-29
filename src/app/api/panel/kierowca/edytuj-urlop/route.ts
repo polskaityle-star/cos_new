@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { isUserAdminOrOwner } from "@/lib/roles";
 
 export async function POST(req: Request) {
   try {
@@ -29,17 +30,40 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Wniosek urlopowy nie został odnaleziony." }, { status: 404 });
     }
 
-    // Kierowca może edytować swój urlop, a Zarząd każdy urlop
-    if (request.userId !== session.user.id && session.user.role !== "ZARZAD") {
+    // Kierowca może edytować swój urlop, a Zarząd/Właściciel każdy urlop
+    const isPrivileged = isUserAdminOrOwner(session.user.role);
+    if (request.userId !== session.user.id && !isPrivileged) {
       return NextResponse.json({ message: "Brak uprawnień do edycji tego urlopu." }, { status: 403 });
+    }
+
+    // Zwykły kierowca może edytować wniosek TYLKO w statusie PENDING
+    if (!isPrivileged && request.status !== "PENDING") {
+      return NextResponse.json(
+        { message: "Możesz edytować wniosek urlopowy tylko w statusie oczekującym (PENDING)." },
+        { status: 400 }
+      );
     }
 
     const dStart = new Date(dateStartStr);
     const dEnd = new Date(dateEndStr);
 
+    if (isNaN(dStart.getTime()) || isNaN(dEnd.getTime())) {
+      return NextResponse.json({ message: "Nieprawidłowy format daty." }, { status: 400 });
+    }
+
     if (dEnd < dStart) {
       return NextResponse.json(
         { message: "Data zakończenia urlopu nie może być wcześniejsza niż data rozpoczęcia." },
+        { status: 400 }
+      );
+    }
+
+    // Obie daty nie w przeszłości
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (dStart < today) {
+      return NextResponse.json(
+        { message: "Data rozpoczęcia urlopu nie może być w przeszłości." },
         { status: 400 }
       );
     }

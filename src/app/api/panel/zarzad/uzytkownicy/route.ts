@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { canManageUsers, generateBadgeNumber, ROLES } from "@/lib/roles";
+import { canManageUsers, generateUniqueBadgeNumber, ROLES } from "@/lib/roles";
 import { COLORS, notifyUser, runAfter, syncDiscordRoles } from "@/lib/discord";
 
 export async function POST(req: Request) {
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   // Jeśli nie podano customowego numeru, albo jeśli rola się zmieniła, generujemy numer dla nowej roli
   let finalBadge = customBadge?.trim();
   if (!finalBadge || user.role !== newRole) {
-    finalBadge = generateBadgeNumber(newRole);
+    finalBadge = await generateUniqueBadgeNumber(newRole, prisma);
   }
 
   await prisma.user.update({

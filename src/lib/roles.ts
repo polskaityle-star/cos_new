@@ -84,6 +84,57 @@ export const ROLES: Record<AppRole, RoleInfo> = {
  * - Sprawdzający: S + 1..99 (np. S03)
  * - Właściciel: W + 0..1 (np. W0, W1)
  */
+/**
+ * Generuje unikalny numer służbowy dla danej roli w bazie danych:
+ * - Dla W/M/D/P/S dobiera pierwszy wolny numer w zakresie danej roli.
+ * - Dla K (kierowca) w pętli do 20 prób losuje numer i sprawdza kolizję.
+ */
+export async function generateUniqueBadgeNumber(
+  role: string,
+  prismaClient: { user: { findFirst: (args: { where: { badgeNumber: string }; select?: { id: boolean } }) => Promise<{ id: string } | null> } }
+): Promise<string> {
+  const normRole = (role || "KIEROWCA").toUpperCase() as AppRole;
+  const info = ROLES[normRole] || ROLES.KIEROWCA;
+  const prefix = info.prefix;
+
+  if (normRole !== "KIEROWCA") {
+    const candidates: string[] = [];
+    if (normRole === "WLASCICIEL" || normRole === "ZARZAD") {
+      candidates.push("W1", "W0");
+    } else {
+      for (let i = 1; i <= info.rangeMax; i++) {
+        candidates.push(`${prefix}${i}`);
+      }
+    }
+
+    for (const badge of candidates) {
+      const exists = await prismaClient.user.findFirst({
+        where: { badgeNumber: badge },
+        select: { id: true },
+      });
+      if (!exists) {
+        return badge;
+      }
+    }
+    return `${prefix}${Date.now() % 10000}`;
+  }
+
+  // Dla K (Kierowca) - w pętli max 20 prób losujemy numer i sprawdzamy kolizję
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const num = Math.floor(Math.random() * (info.rangeMax || 9999)) + 1;
+    const badge = `${prefix}${num}`;
+    const exists = await prismaClient.user.findFirst({
+      where: { badgeNumber: badge },
+      select: { id: true },
+    });
+    if (!exists) {
+      return badge;
+    }
+  }
+
+  return `${prefix}${Date.now() % 10000}`;
+}
+
 export function generateBadgeNumber(role: string, preferredNum?: number): string {
   const normRole = (role || "KIEROWCA").toUpperCase() as AppRole;
   const info = ROLES[normRole] || ROLES.KIEROWCA;
@@ -120,6 +171,7 @@ export const ADMIN_ALIASES = [
 ];
 
 export function isUserAdminOrOwner(role?: string | null, _username?: string | null): boolean {
+  void _username;
   // Uprawnienia wynikają wyłącznie z roli (nick nie nadaje już uprawnień).
   if (role) {
     const norm = role.toUpperCase();
