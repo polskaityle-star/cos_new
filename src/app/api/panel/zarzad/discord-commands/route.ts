@@ -47,6 +47,7 @@ export async function POST(req: Request) {
     { name: "status", description: "Status Twojego konta w VZTM Kielce", type: 1 },
     { name: "linie", description: "Lista linii komunikacyjnych", type: 1 },
     { name: "tabor", description: "Stan taboru VMPK i VBP", type: 1 },
+    { name: "zarzad", description: "Panel zarządu: liczniki i szybkie akcje", type: 1, default_member_permissions: "0", dm_permission: false },
   ];
 
   const targetUrl = guildId
