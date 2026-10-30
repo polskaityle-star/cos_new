@@ -175,6 +175,245 @@ export default async function AdminPanel({
   const receivedDriverMessages = driverNotifications.filter((n) => n.direction === "TO_MANAGEMENT");
   const sentDriverMessages = driverNotifications.filter((n) => n.direction === "TO_DRIVER");
 
+  const todayWarsaw = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(new Date());
+
+  const activeDuties = allDuties.filter((duty) => {
+    const dutyDateWarsaw = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(new Date(duty.date));
+    const isCompleted = duty.status === "COMPLETED";
+    return dutyDateWarsaw >= todayWarsaw || !isCompleted;
+  });
+
+  const historyDuties = allDuties.filter((duty) => {
+    const dutyDateWarsaw = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(new Date(duty.date));
+    const isCompleted = duty.status === "COMPLETED";
+    return dutyDateWarsaw < todayWarsaw && isCompleted;
+  });
+
+  const renderDutyCard = (duty: (typeof allDuties)[number]) => (
+    <div key={duty.id} className="bg-slate-900 border border-slate-700 p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-white text-base">Linia {duty.line.number}</span>
+                          {duty.brigade && (
+                            <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
+                              Brygada: {duty.brigade}
+                            </span>
+                          )}
+                          {duty.vehicle && (
+                            <span className="bg-blue-900/50 text-blue-300 border border-blue-600/40 text-xs px-2 py-0.5 rounded font-bold">
+                              🚌 {duty.vehicle.fleetNumber} ({duty.vehicle.model}) &bull; {(duty.vehicle.mileage || 0).toLocaleString()} km
+                            </span>
+                          )}
+                          {duty.replacementVehicle && (
+                            <span className="bg-purple-900/60 text-purple-300 border border-purple-500/50 text-xs px-2 py-0.5 rounded font-bold">
+                              🔄 Wóz zastępczy: #{duty.replacementVehicle.fleetNumber} ({duty.replacementVehicle.model})
+                            </span>
+                          )}
+                          <span className="text-slate-400">&bull;</span>
+                          <span className="font-semibold text-emerald-400">
+                            {duty.user.badgeNumber ? `[${duty.user.badgeNumber}] ` : ""}{duty.user.username} ({duty.user.carrier})
+                          </span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${duty.status === 'SCHEDULED' ? 'bg-blue-900/60 text-blue-300' : 'bg-emerald-900/60 text-emerald-300'}`}>
+                            {duty.status === 'SCHEDULED' ? 'Zaplanowana' : 'Zrealizowana'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">
+                          Data służby: {new Date(duty.date).toLocaleDateString("pl-PL")}
+                        </div>
+                        {duty.notes && (
+                          <div className="mt-1.5 text-xs text-amber-300">
+                            ℹ️ <b>Uwagi:</b> {duty.notes}
+                          </div>
+                        )}
+                        {canReplaceVeh && (() => {
+                          const hasActiveDefect = vehicleDefects.some(
+                            (vd) => vd.vehicleId === duty.vehicleId || vd.userId === duty.userId
+                          );
+                          const showReplacementOption = Boolean(duty.replacementVehicleId) || hasActiveDefect;
+                          if (!showReplacementOption) return null;
+    
+                          return (
+                            <details className="mt-2 text-xs bg-slate-950/70 p-2.5 rounded border border-purple-900/60">
+                              <summary className="cursor-pointer text-purple-400 font-bold hover:underline flex items-center gap-1.5">
+                                <span>🔄 {duty.replacementVehicle ? "Zmień / Wycofaj wóz zastępczy" : "Wyznacz wóz zastępczy (zgłoszona awaria)"}</span>
+                                {hasActiveDefect && (
+                                  <span className="bg-rose-950 text-rose-300 border border-rose-600 px-1.5 py-0.2 rounded text-[10px]">
+                                    🚨 Zgłoszona awaria
+                                  </span>
+                                )}
+                              </summary>
+                              <form action="/api/panel/zarzad/woz-zastepczy" method="POST" className="mt-2 flex flex-wrap items-center gap-2">
+                                <input type="hidden" name="dutyId" value={duty.id} />
+                                <select
+                                  name="replacementVehicleId"
+                                  defaultValue={duty.replacementVehicleId || ""}
+                                  className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
+                                >
+                                  <option value="">-- Brak (Wycofaj wóz zastępczy) --</option>
+                                  {allVehicles
+                                    .filter((v) => !duty.user?.carrier || v.carrier === duty.user.carrier)
+                                    .map((v) => (
+                                      <option key={v.id} value={v.id}>
+                                        #{v.fleetNumber} {v.model} ({v.registration}) [{v.carrier}]
+                                      </option>
+                                    ))}
+                                </select>
+                                <input
+                                  type="text"
+                                  name="reason"
+                                  placeholder="Powód podmiany (np. awaria drzwi)"
+                                  className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
+                                />
+                                <button
+                                  type="submit"
+                                  className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors shadow cursor-pointer"
+                                >
+                                  Zatwierdź wóz zastępczy
+                                </button>
+                              </form>
+                            </details>
+                          );
+                        })()}
+                        {/* Formularz edycji służby (Wymóg 7) */}
+                        <details className="mt-2 text-xs bg-slate-950/80 p-3 rounded-lg border border-slate-700 space-y-2">
+                          <summary className="cursor-pointer font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 list-none">
+                            <span>✏️ Edytuj tę służbę w grafiku</span>
+                          </summary>
+                          <form action="/api/panel/zarzad/sluzby/edit" method="POST" className="mt-2 space-y-3 pt-2 border-t border-slate-800">
+                            <input type="hidden" name="dutyId" value={duty.id} />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Kierowca:</label>
+                                <select
+                                  name="userId"
+                                  defaultValue={duty.userId}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                                >
+                                  {activeUsers.map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                      {u.badgeNumber ? `[${u.badgeNumber}] ` : ""}{u.username} [{u.carrier || "Brak"}]
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+    
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Linia:</label>
+                                <select
+                                  name="lineId"
+                                  defaultValue={duty.lineId}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                                >
+                                  {allLines.map((l) => (
+                                    <option key={l.id} value={l.id}>
+                                      Linia {l.number} {l.carrier ? `[${l.carrier}]` : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+    
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Pojazd:</label>
+                                <select
+                                  name="vehicleId"
+                                  defaultValue={duty.vehicleId || ""}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                                >
+                                  <option value="">-- Brak wozu --</option>
+                                  {allVehicles
+                                    .filter((v) => !duty.user?.carrier || v.carrier === duty.user.carrier)
+                                    .map((v) => (
+                                      <option key={v.id} value={v.id}>
+                                        #{v.fleetNumber} {v.model} [{v.carrier}]
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
+    
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Data służby:</label>
+                                <input
+                                  type="date"
+                                  name="date"
+                                  defaultValue={new Date(duty.date).toISOString().split("T")[0]}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                                />
+                              </div>
+                            </div>
+    
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Brygada:</label>
+                                <input
+                                  type="text"
+                                  name="brigade"
+                                  defaultValue={duty.brigade || ""}
+                                  placeholder="np. 2/1 - Dni robocze"
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                                />
+                              </div>
+    
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Zmiana:</label>
+                                <select
+                                  name="shift"
+                                  defaultValue={duty.shift || "1 Zmiana"}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                                >
+                                  <option value="1 Zmiana">1 Zmiana</option>
+                                  <option value="2 Zmiana">2 Zmiana</option>
+                                  <option value="3 Zmiana">3 Zmiana</option>
+                                  <option value="Szczytowa">Szczytowa</option>
+                                </select>
+                              </div>
+    
+                              <div>
+                                <label className="block text-[10px] text-slate-400 mb-0.5">Status:</label>
+                                <select
+                                  name="status"
+                                  defaultValue={duty.status}
+                                  className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                                >
+                                  <option value="SCHEDULED">Zaplanowana (SCHEDULED)</option>
+                                  <option value="COMPLETED">Zrealizowana (COMPLETED)</option>
+                                  <option value="CANCELLED">Anulowana (CANCELLED)</option>
+                                  <option value="MISSED">Niezaliczona (MISSED)</option>
+                                </select>
+                              </div>
+                            </div>
+    
+                            <div>
+                              <label className="block text-[10px] text-slate-400 mb-0.5">Uwagi:</label>
+                              <input
+                                type="text"
+                                name="notes"
+                                defaultValue={duty.notes || ""}
+                                placeholder="Opcjonalne uwagi..."
+                                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
+                              />
+                            </div>
+    
+                            <div className="flex justify-end pt-1">
+                              <button
+                                type="submit"
+                                className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1.5 rounded text-xs transition cursor-pointer"
+                              >
+                                💾 Zapisz zmiany w służbie
+                              </button>
+                            </div>
+                          </form>
+                        </details>
+                      </div>
+                      <div className="shrink-0">
+                        <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">
+                          <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer">
+                            🗑 Usuń służbę
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+  );
+
   return (
     <div className="space-y-10 pb-16">
       {/* Karta Profilowa Zarządu ze Screenshotu 1 + LiveClock (Wymogi 5 i 5.1) */}
@@ -1808,237 +2047,28 @@ export default async function AdminPanel({
           />
 
           {/* Lista służb */}
-          <h3 className="text-sm font-semibold text-slate-400 mb-3">Aktualny grafik służb ({allDuties.length}):</h3>
-          {allDuties.length === 0 ? (
-            <p className="text-slate-400 text-sm">Brak przypisanych służb w systemie.</p>
+          <h3 className="text-sm font-semibold text-slate-400 mb-3">Aktualny grafik służb ({activeDuties.length}):</h3>
+          {activeDuties.length === 0 ? (
+            <p className="text-slate-400 text-sm">Brak aktualnych służb w grafiku.</p>
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {allDuties.map((duty) => (
-                <div key={duty.id} className="bg-slate-900 border border-slate-700 p-4 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-white text-base">Linia {duty.line.number}</span>
-                      {duty.brigade && (
-                        <span className="bg-amber-900/50 text-amber-300 border border-amber-600/40 text-xs px-2 py-0.5 rounded font-mono font-bold">
-                          Brygada: {duty.brigade}
-                        </span>
-                      )}
-                      {duty.vehicle && (
-                        <span className="bg-blue-900/50 text-blue-300 border border-blue-600/40 text-xs px-2 py-0.5 rounded font-bold">
-                          🚌 {duty.vehicle.fleetNumber} ({duty.vehicle.model}) &bull; {(duty.vehicle.mileage || 0).toLocaleString()} km
-                        </span>
-                      )}
-                      {duty.replacementVehicle && (
-                        <span className="bg-purple-900/60 text-purple-300 border border-purple-500/50 text-xs px-2 py-0.5 rounded font-bold">
-                          🔄 Wóz zastępczy: #{duty.replacementVehicle.fleetNumber} ({duty.replacementVehicle.model})
-                        </span>
-                      )}
-                      <span className="text-slate-400">&bull;</span>
-                      <span className="font-semibold text-emerald-400">
-                        {duty.user.badgeNumber ? `[${duty.user.badgeNumber}] ` : ""}{duty.user.username} ({duty.user.carrier})
-                      </span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${duty.status === 'SCHEDULED' ? 'bg-blue-900/60 text-blue-300' : 'bg-emerald-900/60 text-emerald-300'}`}>
-                        {duty.status === 'SCHEDULED' ? 'Zaplanowana' : 'Zrealizowana'}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      Data służby: {new Date(duty.date).toLocaleDateString("pl-PL")}
-                    </div>
-                    {duty.notes && (
-                      <div className="mt-1.5 text-xs text-amber-300">
-                        ℹ️ <b>Uwagi:</b> {duty.notes}
-                      </div>
-                    )}
-                    {canReplaceVeh && (() => {
-                      const hasActiveDefect = vehicleDefects.some(
-                        (vd) => vd.vehicleId === duty.vehicleId || vd.userId === duty.userId
-                      );
-                      const showReplacementOption = Boolean(duty.replacementVehicleId) || hasActiveDefect;
-                      if (!showReplacementOption) return null;
-
-                      return (
-                        <details className="mt-2 text-xs bg-slate-950/70 p-2.5 rounded border border-purple-900/60">
-                          <summary className="cursor-pointer text-purple-400 font-bold hover:underline flex items-center gap-1.5">
-                            <span>🔄 {duty.replacementVehicle ? "Zmień / Wycofaj wóz zastępczy" : "Wyznacz wóz zastępczy (zgłoszona awaria)"}</span>
-                            {hasActiveDefect && (
-                              <span className="bg-rose-950 text-rose-300 border border-rose-600 px-1.5 py-0.2 rounded text-[10px]">
-                                🚨 Zgłoszona awaria
-                              </span>
-                            )}
-                          </summary>
-                          <form action="/api/panel/zarzad/woz-zastepczy" method="POST" className="mt-2 flex flex-wrap items-center gap-2">
-                            <input type="hidden" name="dutyId" value={duty.id} />
-                            <select
-                              name="replacementVehicleId"
-                              defaultValue={duty.replacementVehicleId || ""}
-                              className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
-                            >
-                              <option value="">-- Brak (Wycofaj wóz zastępczy) --</option>
-                              {allVehicles
-                                .filter((v) => !duty.user?.carrier || v.carrier === duty.user.carrier)
-                                .map((v) => (
-                                  <option key={v.id} value={v.id}>
-                                    #{v.fleetNumber} {v.model} ({v.registration}) [{v.carrier}]
-                                  </option>
-                                ))}
-                            </select>
-                            <input
-                              type="text"
-                              name="reason"
-                              placeholder="Powód podmiany (np. awaria drzwi)"
-                              className="bg-slate-900 border border-slate-700 text-xs rounded px-2.5 py-1.5 text-white outline-none focus:border-purple-500"
-                            />
-                            <button
-                              type="submit"
-                              className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-3 py-1.5 rounded text-xs transition-colors shadow cursor-pointer"
-                            >
-                              Zatwierdź wóz zastępczy
-                            </button>
-                          </form>
-                        </details>
-                      );
-                    })()}
-                    {/* Formularz edycji służby (Wymóg 7) */}
-                    <details className="mt-2 text-xs bg-slate-950/80 p-3 rounded-lg border border-slate-700 space-y-2">
-                      <summary className="cursor-pointer font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 list-none">
-                        <span>✏️ Edytuj tę służbę w grafiku</span>
-                      </summary>
-                      <form action="/api/panel/zarzad/sluzby/edit" method="POST" className="mt-2 space-y-3 pt-2 border-t border-slate-800">
-                        <input type="hidden" name="dutyId" value={duty.id} />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                          <div>
-                            <label className="block text-[10px] text-slate-400 mb-0.5">Kierowca:</label>
-                            <select
-                              name="userId"
-                              defaultValue={duty.userId}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
-                            >
-                              {activeUsers.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.badgeNumber ? `[${u.badgeNumber}] ` : ""}{u.username} [{u.carrier || "Brak"}]
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] text-slate-400 mb-0.5">Linia:</label>
-                            <select
-                              name="lineId"
-                              defaultValue={duty.lineId}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
-                            >
-                              {allLines.map((l) => (
-                                <option key={l.id} value={l.id}>
-                                  Linia {l.number} {l.carrier ? `[${l.carrier}]` : ""}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] text-slate-400 mb-0.5">Pojazd:</label>
-                            <select
-                              name="vehicleId"
-                              defaultValue={duty.vehicleId || ""}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
-                            >
-                              <option value="">-- Brak wozu --</option>
-                              {allVehicles
-                                .filter((v) => !duty.user?.carrier || v.carrier === duty.user.carrier)
-                                .map((v) => (
-                                  <option key={v.id} value={v.id}>
-                                    #{v.fleetNumber} {v.model} [{v.carrier}]
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] text-slate-400 mb-0.5">Data służby:</label>
-                            <input
-                              type="date"
-                              name="date"
-                              defaultValue={new Date(duty.date).toISOString().split("T")[0]}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <div>
-                            <label className="block text-[10px] text-slate-400 mb-0.5">Brygada:</label>
-                            <input
-                              type="text"
-                              name="brigade"
-                              defaultValue={duty.brigade || ""}
-                              placeholder="np. 2/1 - Dni robocze"
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] text-slate-400 mb-0.5">Zmiana:</label>
-                            <select
-                              name="shift"
-                              defaultValue={duty.shift || "1 Zmiana"}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
-                            >
-                              <option value="1 Zmiana">1 Zmiana</option>
-                              <option value="2 Zmiana">2 Zmiana</option>
-                              <option value="3 Zmiana">3 Zmiana</option>
-                              <option value="Szczytowa">Szczytowa</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-[10px] text-slate-400 mb-0.5">Status:</label>
-                            <select
-                              name="status"
-                              defaultValue={duty.status}
-                              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
-                            >
-                              <option value="SCHEDULED">Zaplanowana (SCHEDULED)</option>
-                              <option value="COMPLETED">Zrealizowana (COMPLETED)</option>
-                              <option value="CANCELLED">Anulowana (CANCELLED)</option>
-                              <option value="MISSED">Niezaliczona (MISSED)</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] text-slate-400 mb-0.5">Uwagi:</label>
-                          <input
-                            type="text"
-                            name="notes"
-                            defaultValue={duty.notes || ""}
-                            placeholder="Opcjonalne uwagi..."
-                            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-amber-500"
-                          />
-                        </div>
-
-                        <div className="flex justify-end pt-1">
-                          <button
-                            type="submit"
-                            className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1.5 rounded text-xs transition cursor-pointer"
-                          >
-                            💾 Zapisz zmiany w służbie
-                          </button>
-                        </div>
-                      </form>
-                    </details>
-                  </div>
-                  <div className="shrink-0">
-                    <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">
-                      <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer">
-                        🗑 Usuń służbę
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              ))}
+              {activeDuties.map((duty) => renderDutyCard(duty))}
             </div>
           )}
+
+          {/* Historia służb */}
+          <details className="mt-6 border-t border-slate-700/80 pt-4">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-2 select-none">
+              <span>📜 Historia służb ({historyDuties.length})</span>
+            </summary>
+            {historyDuties.length === 0 ? (
+              <p className="text-slate-500 text-xs mt-3">Brak historycznych służb w grafiku.</p>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto mt-3">
+                {historyDuties.map((duty) => renderDutyCard(duty))}
+              </div>
+            )}
+          </details>
         </section>
       )}
     </div>
