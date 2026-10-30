@@ -2,7 +2,6 @@ import { assertSameOrigin } from "@/lib/csrf";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageUsers } from "@/lib/roles";
@@ -34,10 +33,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Nieprawidłowa akcja (dozwolone: accept, reject)" }, { status: 400 });
     }
 
+    if (action === "accept" && (!carrier || (carrier !== "VMPK" && carrier !== "VBP"))) {
+      return NextResponse.json({ message: "Brak lub nieprawidłowy przewoźnik (dozwolone: VMPK, VBP)" }, { status: 400 });
+    }
+
     const result = await reviewCandidate({
       userId,
       action: action as "accept" | "reject",
       carrier,
+      reviewerId: session.user.id,
+      reviewerRole: session.user.role,
     });
 
     if (!result.ok) {
