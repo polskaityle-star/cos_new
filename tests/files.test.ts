@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isSafeStoredFile, isSafeImageUrl } from "../src/lib/files.ts";
+import {
+  isSafeStoredFile,
+  isSafeImageUrl,
+  isTrustedImageHost,
+  formatScreenshotForDiscord,
+} from "../src/lib/files.ts";
 
 test("isSafeStoredFile: akceptuje bezpieczne pliki graficzne", () => {
   assert.equal(
@@ -50,4 +55,48 @@ test("isSafeImageUrl: akceptuje tylko bezpieczne obrazy", () => {
   assert.equal(isSafeImageUrl("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="), false);
   assert.equal(isSafeImageUrl(null), false);
   assert.equal(isSafeImageUrl(""), false);
+});
+
+test("isTrustedImageHost: akceptuje tylko dozwolone hosty Discorda bez spacji i nawiasów", () => {
+  assert.equal(isTrustedImageHost("https://cdn.discordapp.com/attachments/123/456/photo.png"), true);
+  assert.equal(isTrustedImageHost("https://media.discordapp.net/attachments/123/456/screen.jpg"), true);
+
+  // Odrzucenie obcych domen
+  assert.equal(isTrustedImageHost("https://evil.com/image.png"), false);
+  assert.equal(isTrustedImageHost("https://discordapp.com.evil.com/image.png"), false);
+  assert.equal(isTrustedImageHost("https://google.com/photo.jpg"), false);
+
+  // Odrzucenie protokołu http
+  assert.equal(isTrustedImageHost("http://cdn.discordapp.com/image.png"), false);
+
+  // Odrzucenie spacji i nawiasów niszczących formatowanie markdown
+  assert.equal(isTrustedImageHost("https://cdn.discordapp.com/attachments/test (1).png"), false);
+  assert.equal(isTrustedImageHost("https://cdn.discordapp.com/attachments/test photo.png"), false);
+
+  // Odrzucenie lokalnych plików i pustych wartości
+  assert.equal(isTrustedImageHost("/uploads/reports/file.png"), false);
+  assert.equal(isTrustedImageHost(""), false);
+  assert.equal(isTrustedImageHost(null), false);
+  assert.equal(isTrustedImageHost(undefined), false);
+});
+
+test("formatScreenshotForDiscord: formatuje linki z hostname lub jako tekst", () => {
+  assert.equal(
+    formatScreenshotForDiscord("https://cdn.discordapp.com/attachments/123/screen.png", "Screen wyjazdu"),
+    "[Screen wyjazdu (cdn.discordapp.com)](https://cdn.discordapp.com/attachments/123/screen.png)"
+  );
+  assert.equal(
+    formatScreenshotForDiscord("https://media.discordapp.net/attachments/123/screen.jpg", "Screen zjazdu"),
+    "[Screen zjazdu (media.discordapp.net)](https://media.discordapp.net/attachments/123/screen.jpg)"
+  );
+  assert.equal(
+    formatScreenshotForDiscord("/uploads/reports/file.png", "Screen wyjazdu"),
+    "Screen wyjazdu: link niedostępny w bocie, sprawdź w panelu WWW"
+  );
+  assert.equal(
+    formatScreenshotForDiscord("https://example.com/screen.png", "Screen zjazdu"),
+    "Screen zjazdu: link niedostępny w bocie, sprawdź w panelu WWW"
+  );
+  assert.equal(formatScreenshotForDiscord(null, "Screen wyjazdu"), null);
+  assert.equal(formatScreenshotForDiscord("", "Screen wyjazdu"), null);
 });

@@ -76,3 +76,53 @@ export function isSafeImageUrl(url: string | null | undefined): boolean {
   }
   return false;
 }
+
+export const TRUSTED_IMAGE_HOSTS = ["cdn.discordapp.com", "media.discordapp.net"];
+
+/**
+ * Sprawdza, czy URL jest bezpiecznym linkiem zewnętrznym do wyświetlenia w embedzie bota Discord.
+ * Wymogi:
+ * - protokół https:
+ * - brak spacji i nawiasów okrągłych (zapobiega uszkodzeniu markdownu w Discordzie)
+ * - hostname należy do allowlisty (cdn.discordapp.com, media.discordapp.net)
+ */
+export function isTrustedImageHost(url: string | null | undefined): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (!trimmed.startsWith("https://")) return false;
+  if (/[\s()]/.test(trimmed)) return false;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "https:") return false;
+    const hostname = parsed.hostname.toLowerCase();
+    return TRUSTED_IMAGE_HOSTS.includes(hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Formatuje zrzut ekranu do embeda bota Discord:
+ * - Jeśli URL należy do zaufanych hostów i jest poprawny -> link z etykietą zawierającą hostname: [Etykieta (hostname)](url)
+ * - W przeciwnym razie -> tekst informacyjny, że link jest niedostępny w bocie (sprawdź w panelu WWW).
+ */
+export function formatScreenshotForDiscord(
+  rawUrl: string | null | undefined,
+  label: string
+): string | null {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  if (isTrustedImageHost(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      return `[${label} (${parsed.hostname})](${trimmed})`;
+    } catch {
+      // fallback
+    }
+  }
+
+  return `${label}: link niedostępny w bocie, sprawdź w panelu WWW`;
+}

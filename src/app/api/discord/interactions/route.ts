@@ -1,4 +1,4 @@
-import { isSafeStoredFile } from "@/lib/files";
+import { isSafeStoredFile, isTrustedImageHost, formatScreenshotForDiscord } from "@/lib/files";
 import { rateLimit } from "@/lib/rateLimit";
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -1070,15 +1070,14 @@ export async function POST(req: Request) {
           fields.push({ name: "Uwagi / karta drogowa", value: rep.summaryFile.slice(0, 1000), inline: false });
         }
 
-        const links = [];
-        if (rep.startScreenshot && rep.startScreenshot.startsWith("https://") && isSafeStoredFile(rep.startScreenshot, "image")) {
-          links.push(`[Screen wyjazdu](${rep.startScreenshot})`);
-        }
-        if (rep.endScreenshot && rep.endScreenshot.startsWith("https://") && isSafeStoredFile(rep.endScreenshot, "image")) {
-          links.push(`[Screen zjazdu](${rep.endScreenshot})`);
-        }
-        if (links.length > 0) {
-          fields.push({ name: "Zrzuty ekranu", value: links.join(" • "), inline: false });
+        const screenshotItems: string[] = [];
+        const startDisplay = formatScreenshotForDiscord(rep.startScreenshot, "Screen wyjazdu");
+        if (startDisplay) screenshotItems.push(startDisplay);
+        const endDisplay = formatScreenshotForDiscord(rep.endScreenshot, "Screen zjazdu");
+        if (endDisplay) screenshotItems.push(endDisplay);
+
+        if (screenshotItems.length > 0) {
+          fields.push({ name: "Zrzuty ekranu", value: screenshotItems.join("\n"), inline: false });
         }
 
         fields.push({
