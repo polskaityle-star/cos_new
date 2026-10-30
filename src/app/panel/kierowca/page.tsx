@@ -15,6 +15,35 @@ import DiscordLinkCard from "@/components/DiscordLinkCard";
 
 export const dynamic = "force-dynamic";
 
+const REPORT_STATUS_BADGE: Record<string, { label: string; icon: string; className: string }> = {
+  PENDING: {
+    label: "Raport wysłany, oczekuje na akceptację",
+    icon: "⏳",
+    className: "bg-amber-500/15 text-amber-300 border-amber-500/40",
+  },
+  ACCEPTED: {
+    label: "Raport zaakceptowany",
+    icon: "✅",
+    className: "bg-emerald-500/15 text-emerald-300 border-emerald-500/40",
+  },
+  REJECTED: {
+    label: "Raport odrzucony",
+    icon: "❌",
+    className: "bg-red-500/15 text-red-300 border-red-500/40",
+  },
+};
+
+const DEFAULT_REPORT_STATUS_BADGE = {
+  label: "Brak raportu",
+  icon: "⚪",
+  className: "bg-slate-700/40 text-slate-300 border-slate-600",
+};
+
+function getReportStatusBadge(status?: string | null) {
+  const key = status?.toUpperCase() || "";
+  return REPORT_STATUS_BADGE[key] ?? DEFAULT_REPORT_STATUS_BADGE;
+}
+
 export default async function DriverPanel() {
   const session = await getServerSession(authOptions);
 
@@ -539,14 +568,19 @@ export default async function DriverPanel() {
                       </a>
                     );
                   })()}
-                  {duty.status === "COMPLETED" && (
-                    <div className="text-right">
-                      <span className="bg-slate-800 px-3 py-1 rounded text-xs text-slate-300 block mb-1">
-                        Status raportu: {duty.report?.status || "Brak"}
-                      </span>
-                      <span className="text-emerald-400 font-bold text-xs">Raport wysłany</span>
-                    </div>
-                  )}
+                  {duty.status === "COMPLETED" && (() => {
+                    const badge = getReportStatusBadge(duty.report?.status);
+                    return (
+                      <div className="text-right">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${badge.className}`}
+                        >
+                          <span>{badge.icon}</span>
+                          <span>{badge.label}</span>
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             ))}
