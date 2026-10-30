@@ -21,7 +21,15 @@ export async function reviewReport(options: ReviewReportOptions): Promise<Review
 
   const existingReport = await prisma.report.findUnique({
     where: { id: reportId },
-    include: { duty: { include: { line: true } } },
+    include: {
+      duty: {
+        include: {
+          line: true,
+          replacementVehicle: true,
+          vehicle: true,
+        },
+      },
+    },
   });
 
   if (!existingReport) {
@@ -55,7 +63,7 @@ export async function reviewReport(options: ReviewReportOptions): Promise<Review
       }
 
       if (isAccepted) {
-        const targetVehicleId = existingReport.duty?.replacementVehicleId || existingReport.duty?.vehicleId;
+        const targetVehicleId = existingReport.duty?.replacementVehicleId ?? existingReport.duty?.vehicleId;
         const distance = existingReport.endMileage - existingReport.startMileage;
 
         if (
