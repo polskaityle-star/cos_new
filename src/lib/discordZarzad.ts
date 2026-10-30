@@ -36,8 +36,11 @@ export type ZarzadActionType =
   | "def_list"
   | "def_repair"
   | "def_fixed"
+  | "def_reject"
   | "cand_list"
   | "cand_approve"
+  | "cand_approve_vmpk"
+  | "cand_approve_vbp"
   | "cand_reject";
 
 export interface ParsedZarzadCustomId {
@@ -84,7 +87,10 @@ export function parseZarzadCustomId(customId: string): ParsedZarzadCustomId | nu
     prefix === "rep_reject" ||
     prefix === "def_repair" ||
     prefix === "def_fixed" ||
+    prefix === "def_reject" ||
     prefix === "cand_approve" ||
+    prefix === "cand_approve_vmpk" ||
+    prefix === "cand_approve_vbp" ||
     prefix === "cand_reject"
   ) {
     if (!ID_REGEX.test(param)) return null;
