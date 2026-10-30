@@ -881,14 +881,11 @@ export async function POST(req: Request) {
 
       // Helper do wyświetlania listy wniosków z przyciskami decyzji
       const sendRequestsList = async (offset = 0) => {
-        const pendingRequests = await prisma.driverRequest.findMany({
+        const total = await prisma.driverRequest.count({
           where: { status: "PENDING" },
-          include: { user: true },
-          orderBy: { createdAt: "asc" },
-          take: 5,
         });
 
-        if (pendingRequests.length === 0) {
+        if (total === 0) {
           await updateDeferred(
             appId,
             token,
@@ -913,8 +910,18 @@ export async function POST(req: Request) {
           return;
         }
 
-        const index = Math.max(0, Math.min(offset, pendingRequests.length - 1));
-        const req = pendingRequests[index];
+        const clampedOffset = Math.max(0, Math.min(offset, total - 1));
+        const pendingRequests = await prisma.driverRequest.findMany({
+          where: { status: "PENDING" },
+          include: { user: true },
+          orderBy: { createdAt: "asc" },
+          skip: clampedOffset,
+          take: 1,
+        });
+
+        const req = pendingRequests[0];
+        if (!req) return;
+
         const reqDriverBadge = req.user.badgeNumber || "Kierowca";
         const reqDriverName = `${reqDriverBadge} ${req.user.username}`;
 
@@ -936,7 +943,17 @@ export async function POST(req: Request) {
         }
 
         if (req.details) {
-          fields.push({ name: "Szczegóły", value: req.details.slice(0, 500), inline: false });
+          if (req.type === "STALY_POJAZD" || req.type === "ZMIANA_STALEGO_POJAZDU") {
+            const targetVehicle = await prisma.vehicle.findUnique({
+              where: { id: req.details },
+            });
+            const vehDisplay = targetVehicle
+              ? `#${targetVehicle.fleetNumber} (${targetVehicle.model}) [${targetVehicle.carrier || "VMPK"}]`
+              : "Nieznany pojazd";
+            fields.push({ name: "Wnioskowany pojazd", value: vehDisplay, inline: false });
+          } else {
+            fields.push({ name: "Szczegóły", value: req.details.slice(0, 500), inline: false });
+          }
         }
 
         const actionButtons = [
@@ -945,11 +962,11 @@ export async function POST(req: Request) {
         ];
 
         const navButtons = [];
-        if (index > 0) {
-          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_req_list:${index - 1}`, label: "⬅️ Poprzedni" });
+        if (clampedOffset > 0) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_req_list:${clampedOffset - 1}`, label: "⬅️ Poprzedni" });
         }
-        if (index < pendingRequests.length - 1) {
-          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_req_list:${index + 1}`, label: "➡️ Następny" });
+        if (clampedOffset < total - 1) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_req_list:${clampedOffset + 1}`, label: "➡️ Następny" });
         }
         navButtons.push({ type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" });
         navButtons.push({ type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" });
@@ -959,7 +976,7 @@ export async function POST(req: Request) {
           token,
           [
             {
-              title: `Wniosek [${index + 1}/${pendingRequests.length}]: ${req.type}`,
+              title: `Wniosek [${clampedOffset + 1}/${total}]: ${req.type}`,
               color: COLORS.warn,
               fields,
               url: `${site}/panel/zarzad`,
@@ -975,23 +992,11 @@ export async function POST(req: Request) {
 
       // Helper do wyświetlania listy raportów ze służb z przyciskami decyzji
       const sendReportsList = async (offset = 0) => {
-        const pendingReports = await prisma.report.findMany({
+        const total = await prisma.report.count({
           where: { status: "PENDING" },
-          include: {
-            duty: {
-              include: {
-                user: true,
-                line: true,
-                vehicle: true,
-                replacementVehicle: true,
-              },
-            },
-          },
-          orderBy: { createdAt: "asc" },
-          take: 5,
         });
 
-        if (pendingReports.length === 0) {
+        if (total === 0) {
           await updateDeferred(
             appId,
             token,
@@ -1016,8 +1021,27 @@ export async function POST(req: Request) {
           return;
         }
 
-        const index = Math.max(0, Math.min(offset, pendingReports.length - 1));
-        const rep = pendingReports[index];
+        const clampedOffset = Math.max(0, Math.min(offset, total - 1));
+        const pendingReports = await prisma.report.findMany({
+          where: { status: "PENDING" },
+          include: {
+            duty: {
+              include: {
+                user: true,
+                line: true,
+                vehicle: true,
+                replacementVehicle: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+          skip: clampedOffset,
+          take: 1,
+        });
+
+        const rep = pendingReports[0];
+        if (!rep) return;
+
         const repDriverBadge = rep.duty?.user?.badgeNumber || "Kierowca";
         const repDriverName = `${repDriverBadge} ${rep.duty?.user?.username ?? "Nieznany"}`;
         const veh = rep.duty?.replacementVehicle || rep.duty?.vehicle;
@@ -1046,7 +1070,7 @@ export async function POST(req: Request) {
           fields.push({ name: "Uwagi / karta drogowa", value: rep.summaryFile.slice(0, 1000), inline: false });
         }
 
-        const links: string[] = [];
+        const links = [];
         if (rep.startScreenshot && rep.startScreenshot.startsWith("https://") && isSafeStoredFile(rep.startScreenshot, "image")) {
           links.push(`[Screen wyjazdu](${rep.startScreenshot})`);
         }
@@ -1069,11 +1093,11 @@ export async function POST(req: Request) {
         ];
 
         const navButtons = [];
-        if (index > 0) {
-          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_rep_list:${index - 1}`, label: "⬅️ Poprzedni" });
+        if (clampedOffset > 0) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_rep_list:${clampedOffset - 1}`, label: "⬅️ Poprzedni" });
         }
-        if (index < pendingReports.length - 1) {
-          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_rep_list:${index + 1}`, label: "➡️ Następny" });
+        if (clampedOffset < total - 1) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_rep_list:${clampedOffset + 1}`, label: "➡️ Następny" });
         }
         navButtons.push({ type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" });
         navButtons.push({ type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" });
@@ -1083,7 +1107,7 @@ export async function POST(req: Request) {
           token,
           [
             {
-              title: `Raport [${index + 1}/${pendingReports.length}]: Linia ${rep.duty?.line?.number ?? "-"} (${repDriverName})`,
+              title: `Raport [${clampedOffset + 1}/${total}]: Linia ${rep.duty?.line?.number ?? "-"} (${repDriverName})`,
               color: COLORS.warn,
               fields,
               url: `${site}/panel/zarzad`,
@@ -1099,14 +1123,11 @@ export async function POST(req: Request) {
 
       // Helper do wyświetlania listy nowych usterek
       const sendDefectsList = async (offset = 0) => {
-        const pendingDefects = await prisma.vehicleDefect.findMany({
+        const total = await prisma.vehicleDefect.count({
           where: { status: "NOWE" },
-          include: { vehicle: true, user: true },
-          orderBy: { createdAt: "asc" },
-          take: 5,
         });
 
-        if (pendingDefects.length === 0) {
+        if (total === 0) {
           await updateDeferred(
             appId,
             token,
@@ -1131,8 +1152,18 @@ export async function POST(req: Request) {
           return;
         }
 
-        const index = Math.max(0, Math.min(offset, pendingDefects.length - 1));
-        const defect = pendingDefects[index];
+        const clampedOffset = Math.max(0, Math.min(offset, total - 1));
+        const pendingDefects = await prisma.vehicleDefect.findMany({
+          where: { status: "NOWE" },
+          include: { vehicle: true, user: true },
+          orderBy: { createdAt: "asc" },
+          skip: clampedOffset,
+          take: 1,
+        });
+
+        const defect = pendingDefects[0];
+        if (!defect) return;
+
         const reporterBadge = defect.user?.badgeNumber || "Kierowca";
         const reporterName = defect.user ? `${reporterBadge} ${defect.user.username}` : "Nieznany";
 
@@ -1150,15 +1181,15 @@ export async function POST(req: Request) {
 
         const actionButtons = [
           { type: 2, style: 1, custom_id: `zarzad_def_repair:${defect.id}`, label: "🔧 Skieruj na warsztat" },
-          { type: 2, style: 3, custom_id: `zarzad_def_fixed:${defect.id}`, label: "✅ Oznacz jako naprawione" },
+          { type: 2, style: 4, custom_id: `zarzad_def_reject:${defect.id}`, label: "❌ Odrzuć" },
         ];
 
         const navButtons = [];
-        if (index > 0) {
-          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_def_list:${index - 1}`, label: "⬅️ Poprzednia" });
+        if (clampedOffset > 0) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_def_list:${clampedOffset - 1}`, label: "⬅️ Poprzednia" });
         }
-        if (index < pendingDefects.length - 1) {
-          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_def_list:${index + 1}`, label: "➡️ Następna" });
+        if (clampedOffset < total - 1) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_def_list:${clampedOffset + 1}`, label: "➡️ Następna" });
         }
         navButtons.push({ type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" });
         navButtons.push({ type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" });
@@ -1168,7 +1199,7 @@ export async function POST(req: Request) {
           token,
           [
             {
-              title: `Usterka [${index + 1}/${pendingDefects.length}]: Pojazd #${defect.vehicle.fleetNumber}`,
+              title: `Usterka [${clampedOffset + 1}/${total}]: Pojazd #${defect.vehicle.fleetNumber}`,
               color: COLORS.warn,
               fields,
               url: `${site}/panel/zarzad`,
@@ -1184,13 +1215,11 @@ export async function POST(req: Request) {
 
       // Helper do wyświetlania listy oczekujących kandydatów (rekrutacja)
       const sendCandidatesList = async (offset = 0) => {
-        const pendingCandidates = await prisma.user.findMany({
+        const total = await prisma.user.count({
           where: { status: "PENDING" },
-          orderBy: { createdAt: "asc" },
-          take: 5,
         });
 
-        if (pendingCandidates.length === 0) {
+        if (total === 0) {
           await updateDeferred(
             appId,
             token,
@@ -1215,12 +1244,23 @@ export async function POST(req: Request) {
           return;
         }
 
-        const index = Math.max(0, Math.min(offset, pendingCandidates.length - 1));
-        const cand = pendingCandidates[index];
+        const clampedOffset = Math.max(0, Math.min(offset, total - 1));
+        const pendingCandidates = await prisma.user.findMany({
+          where: { status: "PENDING" },
+          orderBy: { createdAt: "asc" },
+          skip: clampedOffset,
+          take: 1,
+        });
+
+        const cand = pendingCandidates[0];
+        if (!cand) return;
+
+        const carrierDisplay =
+          cand.carrier === "VMPK" || cand.carrier === "VBP" ? cand.carrier : "nie wybrano";
 
         const fields = [
           { name: "Kandydat", value: cand.username, inline: true },
-          { name: "Przewoźnik", value: cand.carrier || "VMPK", inline: true },
+          { name: "Przewoźnik", value: carrierDisplay, inline: true },
           { name: "Wiek", value: cand.age ? `${cand.age} lat` : "Nie podano", inline: true },
           { name: "Zarejestrowano", value: fmtDate(cand.createdAt), inline: true },
         ];
@@ -1229,17 +1269,28 @@ export async function POST(req: Request) {
           fields.push({ name: "O sobie / Doświadczenie", value: cand.bio.slice(0, 1000), inline: false });
         }
 
-        const actionButtons = [
-          { type: 2, style: 3, custom_id: `zarzad_cand_approve:${cand.id}`, label: "✅ Zaakceptuj" },
-          { type: 2, style: 4, custom_id: `zarzad_cand_reject:${cand.id}`, label: "❌ Odrzuć" },
-        ];
+        const actionButtons = [];
+        if (cand.carrier === "VMPK" || cand.carrier === "VBP") {
+          actionButtons.push({
+            type: 2,
+            style: 3,
+            custom_id: `zarzad_cand_approve:${cand.id}`,
+            label: `✅ Zatwierdź (${cand.carrier})`,
+          });
+        } else {
+          actionButtons.push(
+            { type: 2, style: 3, custom_id: `zarzad_cand_approve_vmpk:${cand.id}`, label: "✅ Zatwierdź (VMPK)" },
+            { type: 2, style: 3, custom_id: `zarzad_cand_approve_vbp:${cand.id}`, label: "✅ Zatwierdź (VBP)" }
+          );
+        }
+        actionButtons.push({ type: 2, style: 4, custom_id: `zarzad_cand_reject:${cand.id}`, label: "❌ Odrzuć" });
 
         const navButtons = [];
-        if (index > 0) {
-          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_cand_list:${index - 1}`, label: "⬅️ Poprzedni" });
+        if (clampedOffset > 0) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_cand_list:${clampedOffset - 1}`, label: "⬅️ Poprzedni" });
         }
-        if (index < pendingCandidates.length - 1) {
-          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_cand_list:${index + 1}`, label: "➡️ Następny" });
+        if (clampedOffset < total - 1) {
+          navButtons.push({ type: 2, style: 2, custom_id: `zarzad_cand_list:${clampedOffset + 1}`, label: "➡️ Następny" });
         }
         navButtons.push({ type: 2, style: 2, custom_id: "zarzad_menu", label: "👑 Menu Zarządu" });
         navButtons.push({ type: 2, style: 5, url: `${site}/panel/zarzad`, label: "🌐 Panel WWW" });
@@ -1249,7 +1300,7 @@ export async function POST(req: Request) {
           token,
           [
             {
-              title: `Kandydat [${index + 1}/${pendingCandidates.length}]: ${cand.username}`,
+              title: `Kandydat [${clampedOffset + 1}/${total}]: ${cand.username}`,
               color: COLORS.warn,
               fields,
               url: `${site}/panel/zarzad`,
@@ -1448,6 +1499,7 @@ export async function POST(req: Request) {
             const result = await reviewRequest({
               requestId,
               action,
+              rejectReason: action === "reject" ? "Odrzucono przez zarząd w Discordzie" : undefined,
               reviewerId: user.id,
               reviewerRole: user.role,
             });
@@ -1591,7 +1643,7 @@ export async function POST(req: Request) {
             return;
           }
 
-          if (parsed.action === "def_repair" || parsed.action === "def_fixed") {
+          if (parsed.action === "def_repair" || parsed.action === "def_fixed" || parsed.action === "def_reject") {
             if (!perms.canFleet) {
               await updateDeferred(appId, token, [
                 { title: "Brak uprawnień", color: COLORS.bad, description: "Brak uprawnień do zarządzania taborem." },
@@ -1599,11 +1651,17 @@ export async function POST(req: Request) {
               return;
             }
             const defectId = parsed.targetId!;
-            const newStatus = parsed.action === "def_repair" ? "WARSZTAT" : "NAPRAWIONE";
+            const newStatus =
+              parsed.action === "def_repair"
+                ? "WARSZTAT"
+                : parsed.action === "def_reject"
+                  ? "ODRZUCONE"
+                  : "NAPRAWIONE";
 
             const result = await reviewDefect({
               defectId,
               status: newStatus,
+              reviewerId: user.id,
             });
 
             if (!result.ok) {
@@ -1631,13 +1689,20 @@ export async function POST(req: Request) {
               return;
             }
 
+            const actionTitle =
+              newStatus === "WARSZTAT"
+                ? "🔧 Skierowano do warsztatu"
+                : newStatus === "ODRZUCONE"
+                  ? "❌ Usterka odrzucona"
+                  : "✅ Oznaczono jako naprawione";
+
             await updateDeferred(
               appId,
               token,
               [
                 {
-                  title: newStatus === "WARSZTAT" ? "🔧 Skierowano do warsztatu" : "✅ Oznaczono jako naprawione",
-                  color: newStatus === "WARSZTAT" ? COLORS.warn : COLORS.ok,
+                  title: actionTitle,
+                  color: newStatus === "ODRZUCONE" ? COLORS.bad : newStatus === "WARSZTAT" ? COLORS.warn : COLORS.ok,
                   description: `Status usterki oraz pojazdu został zaktualizowany (${newStatus}).`,
                 },
               ],
@@ -1667,7 +1732,12 @@ export async function POST(req: Request) {
             return;
           }
 
-          if (parsed.action === "cand_approve" || parsed.action === "cand_reject") {
+          if (
+            parsed.action === "cand_approve" ||
+            parsed.action === "cand_approve_vmpk" ||
+            parsed.action === "cand_approve_vbp" ||
+            parsed.action === "cand_reject"
+          ) {
             if (!perms.canUsers) {
               await updateDeferred(appId, token, [
                 { title: "Brak uprawnień", color: COLORS.bad, description: "Brak uprawnień do zarządzania użytkownikami." },
@@ -1675,11 +1745,17 @@ export async function POST(req: Request) {
               return;
             }
             const userId = parsed.targetId!;
-            const action = parsed.action === "cand_approve" ? "accept" : "reject";
+            const action = parsed.action === "cand_reject" ? "reject" : "accept";
+            let chosenCarrier = undefined;
+            if (parsed.action === "cand_approve_vmpk") chosenCarrier = "VMPK";
+            if (parsed.action === "cand_approve_vbp") chosenCarrier = "VBP";
 
             const result = await reviewCandidate({
               userId,
               action,
+              carrier: chosenCarrier,
+              reviewerId: user.id,
+              reviewerRole: user.role,
             });
 
             if (!result.ok) {
@@ -1714,7 +1790,7 @@ export async function POST(req: Request) {
                 {
                   title: action === "accept" ? "✅ Kandydat zaakceptowany" : "❌ Kandydat odrzucony",
                   color: action === "accept" ? COLORS.ok : COLORS.bad,
-                  description: `Kandydat został pomyślnie ${action === "accept" ? "zaakceptowany (przydzielono służbowy badge oraz zsynchronizowano role Discord)" : "odrzucony"}.`,
+                  description: `Kandydat został pomyślnie ${action === "accept" ? `zaakceptowany (${result.user?.carrier || chosenCarrier || "VMPK"}, służbowy badge: ${result.user?.badgeNumber || "-"})` : "odrzucony"}.`,
                 },
               ],
               undefined,
@@ -1941,14 +2017,6 @@ export async function POST(req: Request) {
               where: { id: duty.id },
               data: { status: "COMPLETED" },
             }),
-            ...(veh && endMileage > veh.mileage && (endMileage - startMileage) <= 2000
-              ? [
-                  prisma.vehicle.update({
-                    where: { id: veh.id },
-                    data: { mileage: endMileage },
-                  }),
-                ]
-              : []),
           ]);
 
           await runAfter(() =>

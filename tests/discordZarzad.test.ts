@@ -50,8 +50,20 @@ test("parseZarzadCustomId: akcje na obiektach z walidacją ID", () => {
     action: "def_fixed",
     targetId: "def_456",
   });
+  assert.deepEqual(parseZarzadCustomId("zarzad_def_reject:def_456"), {
+    action: "def_reject",
+    targetId: "def_456",
+  });
   assert.deepEqual(parseZarzadCustomId("zarzad_cand_approve:usr_789"), {
     action: "cand_approve",
+    targetId: "usr_789",
+  });
+  assert.deepEqual(parseZarzadCustomId("zarzad_cand_approve_vmpk:usr_789"), {
+    action: "cand_approve_vmpk",
+    targetId: "usr_789",
+  });
+  assert.deepEqual(parseZarzadCustomId("zarzad_cand_approve_vbp:usr_789"), {
+    action: "cand_approve_vbp",
     targetId: "usr_789",
   });
   assert.deepEqual(parseZarzadCustomId("zarzad_cand_reject:usr_789"), {
@@ -101,6 +113,7 @@ test("getZarzadPermissions: poprawne mapowanie ról", () => {
   const mechanik = getZarzadPermissions("MECHANIK");
   assert.equal(mechanik.canAccess, true);
   assert.equal(mechanik.canRequests, false);
+  assert.equal(mechanik.canReports, false);
   assert.equal(mechanik.canFleet, true);
   assert.equal(mechanik.canUsers, false);
 
