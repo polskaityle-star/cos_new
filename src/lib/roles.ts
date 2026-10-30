@@ -235,3 +235,14 @@ export function canAssignReplacementVehicle(role?: string | null, username?: str
   const normRole = role.toUpperCase();
   return ["WLASCICIEL", "ZARZAD", "MECHANIK", "SPRAWDZAJACY", "DYSPOZYTOR"].includes(normRole);
 }
+
+/**
+ * Waliduje poprawność formatu numeru służbowego (badgeNumber).
+ * Dozwolony format: /^[A-Za-z]{1,3}[0-9]{1,4}$/, maks. 8 znaków po trim.
+ */
+export function isValidBadgeNumber(badge: string | null | undefined): boolean {
+  if (!badge || typeof badge !== "string") return false;
+  const trimmed = badge.trim();
+  if (trimmed.length === 0 || trimmed.length > 8) return false;
+  return /^[A-Za-z]{1,3}[0-9]{1,4}$/.test(trimmed);
+}

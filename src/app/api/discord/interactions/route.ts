@@ -1,4 +1,4 @@
-import { isSafeStoredFile, isTrustedImageHost, formatScreenshotForDiscord } from "@/lib/files";
+import { isSafeStoredFile, formatScreenshotForDiscord } from "@/lib/files";
 import { rateLimit } from "@/lib/rateLimit";
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
