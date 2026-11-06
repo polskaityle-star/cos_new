@@ -116,22 +116,9 @@ export async function reviewRequest(options: ReviewRequestOptions): Promise<Revi
 
         // 3. Jeśli to było anulowanie służby i podano ID służby, usuwamy służbę z grafiku
         if (driverReq.type === "ANULOWANIE_SLUZBY" && driverReq.dutyId) {
-          const duty = await tx.duty.findUnique({
+          await tx.duty.deleteMany({
             where: { id: driverReq.dutyId },
-            include: { report: true },
           });
-          if (duty) {
-            if (duty.report != null || duty.status === "COMPLETED") {
-              await tx.driverRequest.update({
-                where: { id: driverReq.id },
-                data: { responseNotes: "Służba ma raport, nie usunięto" },
-              });
-            } else {
-              await tx.duty.deleteMany({
-                where: { id: driverReq.dutyId },
-              });
-            }
-          }
         }
       }
     });

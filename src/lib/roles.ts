@@ -135,6 +135,11 @@ export async function generateUniqueBadgeNumber(
   return `${prefix}${Date.now() % 10000}`;
 }
 
+export function isValidBadgeNumber(badge: string): boolean {
+  const trimmed = badge.trim();
+  return /^[A-Za-z]{1,3}[0-9]{1,4}$/.test(trimmed) && trimmed.length <= 8;
+}
+
 export function generateBadgeNumber(role: string, preferredNum?: number): string {
   const normRole = (role || "KIEROWCA").toUpperCase() as AppRole;
   const info = ROLES[normRole] || ROLES.KIEROWCA;

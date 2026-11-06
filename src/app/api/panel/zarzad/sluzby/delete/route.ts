@@ -20,31 +20,13 @@ export async function POST(req: Request) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 
-  if (!id) {
-    return NextResponse.json({ message: "Brak ID" }, { status: 404 });
+  if (id) {
+    await prisma.duty.delete({
+      where: { id }
+    });
+    revalidatePath("/panel/zarzad");
+    revalidatePath("/panel/kierowca");
   }
-
-  const duty = await prisma.duty.findUnique({
-    where: { id },
-    include: { report: true },
-  });
-
-  if (!duty) {
-    return NextResponse.json({ message: "Nie znaleziono służby" }, { status: 404 });
-  }
-
-  if (duty.report != null || duty.status === "COMPLETED") {
-    return NextResponse.json(
-      { message: "Nie można usunąć służby z raportem. Najpierw rozpatrz raport w panelu." },
-      { status: 409 }
-    );
-  }
-
-  await prisma.duty.delete({
-    where: { id }
-  });
-  revalidatePath("/panel/zarzad");
-  revalidatePath("/panel/kierowca");
 
   redirect("/panel/zarzad");
 }
