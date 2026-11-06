@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isSafeStoredFile, isSafeImageUrl } from "../src/lib/files.ts";
+import { isSafeStoredFile, isSafeImageUrl, isTrustedImageHost } from "../src/lib/files.ts";
 
 test("isSafeStoredFile: akceptuje bezpieczne pliki graficzne", () => {
   assert.equal(
@@ -50,4 +50,20 @@ test("isSafeImageUrl: akceptuje tylko bezpieczne obrazy", () => {
   assert.equal(isSafeImageUrl("data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="), false);
   assert.equal(isSafeImageUrl(null), false);
   assert.equal(isSafeImageUrl(""), false);
+});
+
+test("isTrustedImageHost: validates URLs according to strict rules", () => {
+  assert.equal(isTrustedImageHost("https://cdn.discordapp.com/attachments/123/456/photo.jpg"), true);
+  assert.equal(isTrustedImageHost("https://media.discordapp.net/attachments/123/456/photo.jpg"), true);
+  assert.equal(isTrustedImageHost("https://i.imgur.com/photo.png"), true);
+  assert.equal(isTrustedImageHost("https://prnt.sc/photo"), true);
+  assert.equal(isTrustedImageHost("https://zapodaj.net/photo"), true);
+
+  assert.equal(isTrustedImageHost("http://cdn.discordapp.com/photo.jpg"), false);
+  assert.equal(isTrustedImageHost("https://cdn.discordapp.com.zly.pl/photo.jpg"), false);
+  assert.equal(isTrustedImageHost("https://example.com/photo.jpg"), false);
+  assert.equal(isTrustedImageHost("https://cdn.discordapp.com/photo.jpg with space"), false);
+  assert.equal(isTrustedImageHost("https://cdn.discordapp.com/photo(1).jpg"), false);
+  assert.equal(isTrustedImageHost("https://user:pass@cdn.discordapp.com/photo.jpg"), false);
+  assert.equal(isTrustedImageHost("not a url"), false);
 });
