@@ -33,6 +33,8 @@ export async function proxy(req: NextRequest) {
   // Model uprawnień (G9):
   // Rola KIEROWCA ma dostęp wyłącznie do /panel/kierowca oraz /api/panel/kierowca/*.
   // Próba wejścia do /panel/zarzad przekierowuje do /panel/kierowca, a do /api/panel/zarzad zwraca 403.
+  // Jest to dodatkowa, początkowa warstwa blokady w edge middleware -
+  // rola czytana stąd pochodzi z tokena (sesji) i może być nieaktualna z bazą (zostanie odświeżona podczas getServerSession niżej, jednak samo wejście bez odświeżenia tokena dla 'KIEROWCA' tu zostanie obcięte).
   if (role === "KIEROWCA") {
     if (pathname.startsWith("/panel/zarzad")) {
       return NextResponse.redirect(new URL("/panel/kierowca", req.url));

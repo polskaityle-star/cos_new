@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import DiscordProvider from "next-auth/providers/discord";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { generateBadgeNumber } from "@/lib/roles";
+import { generateUniqueBadgeNumber } from "@/lib/roles";
 import { verifyPassword } from "@/lib/password";
 import { getClientIp, isBlocked, recordHit, clearKey } from "@/lib/rateLimit";
 
@@ -87,7 +87,7 @@ export const authOptions: NextAuthOptions = {
 
         // Auto-przydział badgeNumber jeśli brakuje
         if (!user.badgeNumber) {
-          const badge = generateBadgeNumber(user.role);
+          const badge = await generateUniqueBadgeNumber(user.role, prisma);
           try {
             await prisma.user.update({
               where: { id: user.id },
@@ -210,7 +210,7 @@ export const authOptions: NextAuthOptions = {
           }
           let finalBadge = dbUser.badgeNumber;
           if (!finalBadge && (dbUser.role === "WLASCICIEL" || dbUser.role === "ZARZAD")) {
-            finalBadge = generateBadgeNumber(dbUser.role);
+            finalBadge = await generateUniqueBadgeNumber(dbUser.role, prisma);
             try {
               await prisma.user.update({
                 where: { id: token.id as string },

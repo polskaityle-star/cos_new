@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { canManageUsers, generateUniqueBadgeNumber, ROLES } from "@/lib/roles";
+import { canManageUsers, generateUniqueBadgeNumber, ROLES, isValidBadgeNumber } from "@/lib/roles";
 import { COLORS, notifyUser, runAfter, syncDiscordRoles } from "@/lib/discord";
 
 export async function POST(req: Request) {
@@ -47,8 +47,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Tylko Właściciel może modyfikować konto Właściciela" }, { status: 403 });
   }
 
+  if (newRole === "WLASCICIEL" && session.user.role !== "WLASCICIEL") {
+    return NextResponse.json({ message: "Tylko Właściciel może nadawać rolę Właściciela" }, { status: 403 });
+  }
+
   // Jeśli nie podano customowego numeru, albo jeśli rola się zmieniła, generujemy numer dla nowej roli
   let finalBadge = customBadge?.trim();
+  if (finalBadge) {
+    finalBadge = finalBadge.toUpperCase();
+    if (!isValidBadgeNumber(finalBadge)) {
+      return NextResponse.json({ message: "Nieprawidłowy format numeru służbowego" }, { status: 400 });
+    }
+
+    const existingUser = await prisma.user.findFirst({
+      where: { badgeNumber: finalBadge, NOT: { id: userId } },
+    });
+    if (existingUser) {
+      return NextResponse.json({ message: "Ten numer służbowy jest już zajęty" }, { status: 409 });
+    }
+  }
+
   if (!finalBadge || user.role !== newRole) {
     finalBadge = await generateUniqueBadgeNumber(newRole, prisma);
   }

@@ -404,15 +404,13 @@ export default async function AdminPanel({
                           </form>
                         </details>
                       </div>
-                      {!duty.report && duty.status !== "COMPLETED" && (
-                        <div className="shrink-0">
-                          <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">
-                            <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer">
-                              🗑 Usuń służbę
-                            </button>
-                          </form>
-                        </div>
-                      )}
+                      <div className="shrink-0">
+                        <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">
+                          <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer">
+                            🗑 Usuń służbę
+                          </button>
+                        </form>
+                      </div>
                     </div>
   );
 
