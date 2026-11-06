@@ -57,6 +57,34 @@ export function isSafeStoredFile(value: string | null | undefined, kind: "image"
 }
 
 /**
+ * Sprawdza czy URL obrazu jest na liście zaufanych hostów i jest prawidłowym adresem https.
+ */
+export function isTrustedImageHost(url: string | null | undefined): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.includes(" ") || trimmed.includes("(") || trimmed.includes(")")) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "https:") return false;
+
+    const allowedHosts = [
+      "cdn.discordapp.com",
+      "media.discordapp.net",
+      "i.imgur.com",
+      "prnt.sc",
+      "zapodaj.net"
+    ];
+
+    return allowedHosts.includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Waliduje czy URL obrazu jest bezpieczny do wyrenderowania w tagach <img src> lub <a href>.
  * Dozwolone: data:image/(png|jpeg|webp);base64,..., ścieżki zaczynające się od /uploads/ oraz URL https://.
  */
