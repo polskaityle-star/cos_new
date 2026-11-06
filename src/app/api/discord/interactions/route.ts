@@ -1,4 +1,4 @@
-import { isSafeStoredFile } from "@/lib/files";
+import { isSafeStoredFile, isTrustedImageHost } from "@/lib/files";
 import { rateLimit } from "@/lib/rateLimit";
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -1071,11 +1071,21 @@ export async function POST(req: Request) {
         }
 
         const links = [];
-        if (rep.startScreenshot && rep.startScreenshot.startsWith("https://") && isSafeStoredFile(rep.startScreenshot, "image")) {
-          links.push(`[Screen wyjazdu](${rep.startScreenshot})`);
+        if (rep.startScreenshot) {
+          if (isTrustedImageHost(rep.startScreenshot)) {
+            const hostname = new URL(rep.startScreenshot).hostname;
+            links.push(`[Screen wyjazdu (${hostname})](${new URL(rep.startScreenshot).href})`);
+          } else {
+            links.push(`(link niedostępny w bocie, sprawdź w panelu WWW)`);
+          }
         }
-        if (rep.endScreenshot && rep.endScreenshot.startsWith("https://") && isSafeStoredFile(rep.endScreenshot, "image")) {
-          links.push(`[Screen zjazdu](${rep.endScreenshot})`);
+        if (rep.endScreenshot) {
+          if (isTrustedImageHost(rep.endScreenshot)) {
+            const hostname = new URL(rep.endScreenshot).hostname;
+            links.push(`[Screen zjazdu (${hostname})](${new URL(rep.endScreenshot).href})`);
+          } else {
+            links.push(`(link niedostępny w bocie, sprawdź w panelu WWW)`);
+          }
         }
         if (links.length > 0) {
           fields.push({ name: "Zrzuty ekranu", value: links.join(" • "), inline: false });

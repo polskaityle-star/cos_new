@@ -59,7 +59,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Nieprawidłowy format numeru służbowego" }, { status: 400 });
     }
 
-
     const existingUser = await prisma.user.findFirst({
       where: { badgeNumber: finalBadge, NOT: { id: userId } },
     });
