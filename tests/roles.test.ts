@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isValidBadgeNumber } from "../src/lib/roles.ts";
+import { isValidBadgeNumber } from "../src/lib/roles";
 
 test("isValidBadgeNumber validates correctly", () => {
   assert.equal(isValidBadgeNumber("K123"), true);
