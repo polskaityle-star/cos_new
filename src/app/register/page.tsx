@@ -8,6 +8,7 @@ export default function RegisterPage() {
   const [carrier, setCarrier] = useState("VMPK");
   const [age, setAge] = useState("");
   const [bio, setBio] = useState("");
+  const [setupToken, setSetupToken] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +22,7 @@ export default function RegisterPage() {
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(setupToken ? { "x-owner-setup-token": setupToken } : {}) },
         body: JSON.stringify({
           username,
           password,
@@ -42,6 +43,7 @@ export default function RegisterPage() {
       setPassword("");
       setAge("");
       setBio("");
+      setSetupToken("");
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -134,6 +136,14 @@ export default function RegisterPage() {
               onChange={e => setBio(e.target.value)}
               className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300" htmlFor="owner-setup-token">Token pierwszego właściciela (opcjonalny)</label>
+            <input id="owner-setup-token" type="password" autoComplete="off" value={setupToken}
+              onChange={e => setSetupToken(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
+            <p className="text-[11px] text-slate-400">Tylko dla pierwszego konta, jeśli ustawiono OWNER_SETUP_TOKEN.</p>
           </div>
 
           <button disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded shadow transition-colors disabled:opacity-50">

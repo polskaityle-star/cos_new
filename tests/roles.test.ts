@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { isValidBadgeNumber } from "../src/lib/roles.ts";
+import { warsawTodayStr, dutyDateStr } from "../src/lib/dates.ts";
+
+test("date helpers use Warsaw today and preserve stored duty date", () => {
+  assert.equal(warsawTodayStr(new Date("2026-11-08T23:30:00Z")), "2026-11-09");
+  assert.equal(warsawTodayStr(new Date("2026-07-10T22:30:00Z")), "2026-07-11");
+  assert.equal(dutyDateStr(new Date("2026-11-09T00:00:00Z")), "2026-11-09");
+});
 
 test("isValidBadgeNumber validates correctly", () => {
   assert.equal(isValidBadgeNumber("K123"), true);

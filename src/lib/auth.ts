@@ -55,9 +55,7 @@ export const authOptions: NextAuthOptions = {
 
         // 1. Wyszukanie użytkownika - tylko po jego własnym loginie (bez aliasów)
         const user = await prisma.user.findFirst({
-          where: {
-            OR: [{ username: inputUsername }, { username: lowerUsername }],
-          },
+          where: { username: { equals: inputUsername, mode: "insensitive" } },
         });
 
         if (!user || !user.password) {
@@ -226,7 +224,9 @@ export const authOptions: NextAuthOptions = {
           token.discordId = dbUser.discordId || null;
           token.discordUsername = dbUser.discordUsername || null;
         } catch {
-          // ignore
+          // Nie używaj starej roli, jeśli nie można zweryfikować konta w bazie.
+          delete token.id;
+          delete token.role;
         }
       }
       return token;

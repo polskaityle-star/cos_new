@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageDuties } from "@/lib/roles";
+import { getDayOrder } from "@/lib/brigades";
 
 export async function POST(req: Request) {
   const csrfError = assertSameOrigin(req);
@@ -18,33 +19,65 @@ export async function POST(req: Request) {
   }
 
   const formData = await req.formData();
-  const dutyId = formData.get("dutyId") as string;
-  const userId = formData.get("userId") as string;
-  const lineId = formData.get("lineId") as string;
-  const vehicleId = formData.get("vehicleId") as string;
-  const dateStr = formData.get("date") as string;
-  const brigade = formData.get("brigade") as string;
-  const shift = formData.get("shift") as string;
-  const notes = formData.get("notes") as string;
-  const status = formData.get("status") as string;
+  const getText = (key: string) => {
+    const value = formData.get(key);
+    return typeof value === "string" ? value.trim() : null;
+  };
+  const dutyId = getText("dutyId");
+  if (!dutyId) return NextResponse.json({ message: "Brak ID służby" }, { status: 400 });
 
-  if (!dutyId) {
-    return NextResponse.json({ message: "Brak ID służby" }, { status: 400 });
+  const existing = await prisma.duty.findUnique({ where: { id: dutyId }, include: { report: true } });
+  if (!existing) return NextResponse.json({ message: "Służba nie istnieje" }, { status: 404 });
+
+  const userId = getText("userId") || existing.userId;
+  const lineId = getText("lineId") || existing.lineId;
+  const vehicleField = getText("vehicleId");
+  const vehicleId = vehicleField === null ? existing.vehicleId : vehicleField || null;
+  const dateStr = getText("date") || existing.date.toISOString().slice(0, 10);
+  const brigade = getText("brigade") ?? existing.brigade ?? "";
+  const shift = getText("shift") ?? existing.shift ?? "";
+  const notes = getText("notes") ?? existing.notes ?? "";
+  const status = getText("status") || existing.status;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return NextResponse.json({ message: "Nieprawidłowa data służby." }, { status: 400 });
   }
-
-  const updateData: any = {};
-  if (userId) updateData.userId = userId;
-  if (lineId) updateData.lineId = lineId;
-  if (vehicleId !== undefined) updateData.vehicleId = vehicleId || null;
-  if (dateStr) updateData.date = new Date(dateStr);
-  if (brigade !== undefined) updateData.brigade = brigade || null;
-  if (shift !== undefined) updateData.shift = shift || null;
-  if (notes !== undefined) updateData.notes = notes || null;
-  if (status) updateData.status = status;
+  const date = new Date(`${dateStr}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== dateStr || !["SCHEDULED", "COMPLETED", "CANCELLED", "MISSED"].includes(status)) {
+    return NextResponse.json({ message: "Nieprawidłowa data lub status służby." }, { status: 400 });
+  }
+  const scheduleChanged = userId !== existing.userId || lineId !== existing.lineId || vehicleId !== existing.vehicleId || dateStr !== existing.date.toISOString().slice(0, 10) || brigade !== (existing.brigade || "");
+  if (existing.report && (scheduleChanged || status !== existing.status)) {
+    return NextResponse.json({ message: "Nie można zmieniać danych ani statusu służby z raportem." }, { status: 409 });
+  }
+  if (scheduleChanged || (status === "SCHEDULED" && existing.status !== "SCHEDULED")) {
+    if (!vehicleId) return NextResponse.json({ message: "Pojazd jest wymagany." }, { status: 400 });
+    const [driver, line, vehicle] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId } }),
+      prisma.line.findUnique({ where: { id: lineId } }),
+      prisma.vehicle.findUnique({ where: { id: vehicleId } }),
+    ]);
+    if (!driver || !line || !vehicle) return NextResponse.json({ message: "Kierowca, linia lub pojazd nie istnieje." }, { status: 404 });
+    if (vehicle.status !== "SPRAWNY") return NextResponse.json({ message: "Pojazd nie jest sprawny." }, { status: 400 });
+    if (driver.carrier && (vehicle.carrier !== driver.carrier || (line.carrier && line.carrier !== driver.carrier))) {
+      return NextResponse.json({ message: "Przewoźnik kierowcy, pojazdu i linii musi być zgodny." }, { status: 400 });
+    }
+    const nextDay = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+    const [conflict, vacation] = await Promise.all([
+      prisma.duty.findFirst({ where: { id: { not: dutyId }, date: { gte: date, lt: nextDay }, OR: [{ userId }, { vehicleId }] } }),
+      prisma.driverRequest.findFirst({ where: { userId, type: "URLOP", status: "ACCEPTED", dateStart: { lt: nextDay }, dateEnd: { gte: date } } }),
+    ]);
+    if (conflict) return NextResponse.json({ message: "Kierowca lub pojazd ma już służbę tego dnia." }, { status: 409 });
+    if (vacation) return NextResponse.json({ message: "Kierowca ma zaakceptowany urlop w tym terminie." }, { status: 409 });
+    const order = getDayOrder(brigade);
+    const weekday = date.getUTCDay();
+    if ((order === 2 && weekday !== 6) || (order === 3 && weekday !== 0) || (order === 1 && (weekday === 0 || weekday === 6))) {
+      return NextResponse.json({ message: "Brygada nie pasuje do dnia tygodnia." }, { status: 400 });
+    }
+  }
 
   await prisma.duty.update({
     where: { id: dutyId },
-    data: updateData,
+    data: { userId, lineId, vehicleId, date, brigade: brigade || null, shift: shift || null, notes: notes || null, status },
   });
 
   revalidatePath("/panel/zarzad");

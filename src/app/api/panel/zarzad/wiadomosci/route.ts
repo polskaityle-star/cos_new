@@ -88,13 +88,13 @@ export async function POST(req: Request) {
     if (reply.length > 2000) {
       return NextResponse.json({ message: "Odpowiedź może mieć maksymalnie 2000 znaków" }, { status: 400 });
     }
-    // TODO: Odpowiedź jest zapisywana w bazie danych, ale nie jest wysyłana e-mailem do autora (brak integracji SMTP).
+    // Tylko notatka wewnętrzna: brak wysyłki e-mail, więc nie oznaczamy jako odpowiedziano.
     await prisma.contactMessage.update({
       where: { id: messageId },
       data: {
         reply,
         repliedAt: new Date(),
-        status: "ODPOWIEDZIANO",
+        status: "PRZECZYTANA",
       },
     });
   }

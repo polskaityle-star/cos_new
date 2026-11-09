@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     }
 
     const user = await prisma.user.findFirst({
-      where: { OR: [{ username }, { username: username.toLowerCase() }] },
+      where: { username: { equals: username, mode: "insensitive" } },
     });
 
     if (!user || !user.password) {

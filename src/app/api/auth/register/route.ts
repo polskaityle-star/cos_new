@@ -65,11 +65,11 @@ export async function POST(req: Request) {
         throw new Error("USER_EXISTS");
       }
 
-      let isOwner = currentCount === 0;
+      const isOwner = currentCount === 0;
       if (isOwner && process.env.OWNER_SETUP_TOKEN) {
         const setupToken = req.headers.get("x-owner-setup-token");
         if (setupToken !== process.env.OWNER_SETUP_TOKEN) {
-          isOwner = false;
+          throw new Error("INVALID_OWNER_SETUP_TOKEN");
         }
       }
 
@@ -128,6 +128,9 @@ export async function POST(req: Request) {
     }
     if ((err as Error)?.message === "RESERVED_NICK") {
       return NextResponse.json({ message: "Ten nick jest zarezerwowany." }, { status: 400 });
+    }
+    if ((err as Error)?.message === "INVALID_OWNER_SETUP_TOKEN") {
+      return NextResponse.json({ message: "Nieprawidłowy lub brakujący token konfiguracji właściciela." }, { status: 403 });
     }
     console.error("REGISTER ERROR", err);
     return NextResponse.json({ message: "Błąd podczas rejestracji." }, { status: 500 });
