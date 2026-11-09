@@ -29,3 +29,10 @@ declare module "next-auth" {
     discordUsername?: string | null
   }
 }
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    verifiedAt?: number
+  }
+}
+
