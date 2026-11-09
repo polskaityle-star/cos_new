@@ -29,16 +29,30 @@ export async function POST(req: Request) {
   const mileageStr = formData.get("mileage") as string;
   const imageFile = formData.get("image") as File | null;
 
+  if (!id || !["VMPK", "VBP"].includes(carrier) || !model?.trim() || !registration?.trim() || !fleetNumber?.trim()) {
+    return NextResponse.json({ message: "Nieprawidłowe dane pojazdu." }, { status: 400 });
+  }
+  if (status && !["SPRAWNY", "WARSZTAT", "KASACJA"].includes(status)) {
+    return NextResponse.json({ message: "Nieprawidłowy status pojazdu." }, { status: 400 });
+  }
+  if (mileageStr && (!/^\d+$/.test(mileageStr.trim()) || Number(mileageStr) > 2_000_000_000)) {
+    return NextResponse.json({ message: "Przebieg musi być liczbą całkowitą od 0 do 2 000 000 000." }, { status: 400 });
+  }
+
   let newImageUrl: string | undefined = undefined;
 
   if (imageFile && imageFile.size > 0 && typeof imageFile.arrayBuffer === "function") {
+    const extensions: Record<string, string> = { "image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp" };
+    if (!extensions[imageFile.type] || imageFile.size > 3 * 1024 * 1024) {
+      return NextResponse.json({ message: "Dozwolone są obrazy PNG, JPEG i WebP do 3 MB." }, { status: 400 });
+    }
     const buffer = Buffer.from(await imageFile.arrayBuffer());
-    const mime = imageFile.type || "image/jpeg";
+    const mime = imageFile.type;
     if (process.env.VERCEL) {
       newImageUrl = `data:${mime};base64,${buffer.toString("base64")}`;
     } else {
       try {
-        const ext = path.extname(imageFile.name) || ".jpg";
+        const ext = extensions[mime];
         const fileName = `veh_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
         const uploadDir = path.join(process.cwd(), "public", "uploads", "vehicles");
         if (!fs.existsSync(uploadDir)) {

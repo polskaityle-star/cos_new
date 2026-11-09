@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import DiscordProvider from "next-auth/providers/discord";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { generateBadgeNumber, generateUniqueBadgeNumber } from "@/lib/roles";
+import { generateUniqueBadgeNumber } from "@/lib/roles";
 import { verifyPassword } from "@/lib/password";
 import { getClientIp, isBlocked, recordHit, clearKey } from "@/lib/rateLimit";
 
@@ -55,9 +55,7 @@ export const authOptions: NextAuthOptions = {
 
         // 1. Wyszukanie użytkownika - tylko po jego własnym loginie (bez aliasów)
         const user = await prisma.user.findFirst({
-          where: {
-            OR: [{ username: inputUsername }, { username: lowerUsername }],
-          },
+          where: { username: { equals: inputUsername, mode: "insensitive" } },
         });
 
         if (!user || !user.password) {
@@ -87,7 +85,7 @@ export const authOptions: NextAuthOptions = {
 
         // Auto-przydział badgeNumber jeśli brakuje
         if (!user.badgeNumber) {
-          const badge = generateBadgeNumber(user.role);
+          const badge = await generateUniqueBadgeNumber(user.role, prisma);
           try {
             await prisma.user.update({
               where: { id: user.id },
@@ -226,7 +224,9 @@ export const authOptions: NextAuthOptions = {
           token.discordId = dbUser.discordId || null;
           token.discordUsername = dbUser.discordUsername || null;
         } catch {
-          // ignore
+          // Nie używaj starej roli, jeśli nie można zweryfikować konta w bazie.
+          delete token.id;
+          delete token.role;
         }
       }
       return token;

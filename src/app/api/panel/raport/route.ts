@@ -1,4 +1,5 @@
 import { assertSameOrigin } from "@/lib/csrf";
+import { dutyDateStr, warsawTodayStr } from "@/lib/dates";
 import { isSafeStoredFile } from "@/lib/files";
 import { isUserAdminOrOwner } from "@/lib/roles";
 import crypto from "crypto";
@@ -106,6 +107,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Brak autoryzacji" }, { status: 401 });
     }
 
+    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { suspended: true } });
+    if (!user || user.suspended) {
+      return NextResponse.json({ message: "Konto jest zawieszone lub niedostępne. Nie można wysłać raportu." }, { status: 403 });
+    }
+
     const contentType = req.headers.get("content-type") || "";
 
     let dutyId = "";
@@ -119,8 +125,10 @@ export async function POST(req: Request) {
     if (contentType.includes("multipart/form-data")) {
       const formData = await req.formData();
       dutyId = formData.get("dutyId") as string;
-      startMileage = parseInt((formData.get("startMileage") as string) || "0");
-      endMileage = parseInt((formData.get("endMileage") as string) || "0");
+      const startRaw = formData.get("startMileage");
+      const endRaw = formData.get("endMileage");
+      startMileage = typeof startRaw === "string" && /^\d+$/.test(startRaw.trim()) ? Number(startRaw.trim()) : NaN;
+      endMileage = typeof endRaw === "string" && /^\d+$/.test(endRaw.trim()) ? Number(endRaw.trim()) : NaN;
 
       const startFile = formData.get("startScreenshotFile") as File | null;
       const endFile = formData.get("endScreenshotFile") as File | null;
@@ -199,9 +207,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Wszystkie podstawowe pola i pliki raportu są wymagane." }, { status: 400 });
     }
 
-    if (!Number.isInteger(startMileage) || !Number.isInteger(endMileage) || startMileage < 0 || endMileage < 0 || endMileage < startMileage) {
+    if (!Number.isSafeInteger(startMileage) || !Number.isSafeInteger(endMileage) || startMileage < 0 || endMileage < startMileage || endMileage > 2_000_000_000 || endMileage - startMileage > 2000) {
       return NextResponse.json(
-        { message: "Nieprawidłowy przebieg: wartości muszą być liczbami całkowitymi >= 0, a stan końcowy musi być większy lub równy początkowemu." },
+        { message: "Nieprawidłowy przebieg: liczby całkowite od 0 do 2 000 000 000, dystans od 0 do 2000 km." },
         { status: 400 }
       );
     }
@@ -225,10 +233,9 @@ export async function POST(req: Request) {
     }
 
     // Blokada raportu dla przyszłych służb
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const todayStr = warsawTodayStr();
     const dutyD = new Date(duty.date);
-    const dutyStr = `${dutyD.getFullYear()}-${String(dutyD.getMonth() + 1).padStart(2, "0")}-${String(dutyD.getDate()).padStart(2, "0")}`;
+    const dutyStr = dutyDateStr(dutyD);
 
     if (dutyStr > todayStr && session.user.role === "KIEROWCA") {
       return NextResponse.json({

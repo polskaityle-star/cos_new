@@ -1,4 +1,4 @@
-import { isSafeStoredFile, formatScreenshotForDiscord } from "@/lib/files";
+import { isSafeStoredFile, isTrustedImageHost } from "@/lib/files";
 import { rateLimit } from "@/lib/rateLimit";
 import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -1070,14 +1070,25 @@ export async function POST(req: Request) {
           fields.push({ name: "Uwagi / karta drogowa", value: rep.summaryFile.slice(0, 1000), inline: false });
         }
 
-        const screenshotItems: string[] = [];
-        const startDisplay = formatScreenshotForDiscord(rep.startScreenshot, "Screen wyjazdu");
-        if (startDisplay) screenshotItems.push(startDisplay);
-        const endDisplay = formatScreenshotForDiscord(rep.endScreenshot, "Screen zjazdu");
-        if (endDisplay) screenshotItems.push(endDisplay);
-
-        if (screenshotItems.length > 0) {
-          fields.push({ name: "Zrzuty ekranu", value: screenshotItems.join("\n"), inline: false });
+        const links = [];
+        if (rep.startScreenshot) {
+          if (isTrustedImageHost(rep.startScreenshot)) {
+            const hostname = new URL(rep.startScreenshot).hostname;
+            links.push(`[Screen wyjazdu (${hostname})](${new URL(rep.startScreenshot).href})`);
+          } else {
+            links.push(`(link niedostępny w bocie, sprawdź w panelu WWW)`);
+          }
+        }
+        if (rep.endScreenshot) {
+          if (isTrustedImageHost(rep.endScreenshot)) {
+            const hostname = new URL(rep.endScreenshot).hostname;
+            links.push(`[Screen zjazdu (${hostname})](${new URL(rep.endScreenshot).href})`);
+          } else {
+            links.push(`(link niedostępny w bocie, sprawdź w panelu WWW)`);
+          }
+        }
+        if (links.length > 0) {
+          fields.push({ name: "Zrzuty ekranu", value: links.join(" • "), inline: false });
         }
 
         fields.push({

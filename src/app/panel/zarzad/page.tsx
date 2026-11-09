@@ -404,13 +404,15 @@ export default async function AdminPanel({
                           </form>
                         </details>
                       </div>
-                      <div className="shrink-0">
-                        <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">
-                          <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer">
-                            🗑 Usuń służbę
-                          </button>
-                        </form>
-                      </div>
+                      {!duty.report && duty.status !== "COMPLETED" && (
+                        <div className="shrink-0">
+                          <form action={`/api/panel/zarzad/sluzby/delete?id=${duty.id}`} method="POST">
+                            <button type="submit" className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors cursor-pointer">
+                              🗑 Usuń służbę
+                            </button>
+                          </form>
+                        </div>
+                      )}
                     </div>
   );
 
@@ -1500,11 +1502,12 @@ export default async function AdminPanel({
 
                 {msg.reply && (
                   <div className="bg-slate-950/80 p-3 rounded border border-purple-800/40 text-xs space-y-1">
-                    <span className="font-bold text-purple-300 block">Odpowiedź Zarządu ({msg.repliedAt ? new Date(msg.repliedAt).toLocaleString() : ""}):</span>
+                    <span className="font-bold text-purple-300 block">Zapisana treść, bez potwierdzenia wysyłki ({msg.repliedAt ? new Date(msg.repliedAt).toLocaleString() : ""}):</span>
                     <p className="text-slate-200 whitespace-pre-wrap">{msg.reply}</p>
                   </div>
                 )}
 
+                <p className="text-xs text-amber-300">Notatka wewnętrzna: nie zostanie wysłana e-mailem.</p>
                 <form action={`/api/panel/zarzad/wiadomosci?id=${msg.id}&action=reply`} method="POST" className="flex gap-2 items-center pt-1 border-t border-slate-800">
                   <input
                     type="text"
@@ -1514,7 +1517,7 @@ export default async function AdminPanel({
                     className="flex-grow bg-slate-800 border border-slate-600 rounded px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500"
                   />
                   <button type="submit" className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded text-xs font-semibold whitespace-nowrap cursor-pointer">
-                    💬 Wyślij odpowiedź
+                    💾 Zapisz notatkę
                   </button>
                 </form>
               </div>

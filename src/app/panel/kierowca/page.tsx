@@ -542,11 +542,14 @@ export default async function DriverPanel() {
 
                 <div className="flex flex-wrap items-center gap-3">
                   {duty.status === "SCHEDULED" && (() => {
-                    const now = new Date();
-                    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                    const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(new Date());
                     const dutyD = new Date(duty.date);
-                    const dutyStr = `${dutyD.getFullYear()}-${String(dutyD.getMonth() + 1).padStart(2, "0")}-${String(dutyD.getDate()).padStart(2, "0")}`;
+                    const dutyStr = dutyD.toISOString().slice(0, 10);
                     const isFuture = dutyStr > todayStr;
+
+                    if (isSuspended) {
+                      return <span className="text-xs text-red-300">Raportowanie niedostępne: konto zawieszone.</span>;
+                    }
 
                     if (isFuture) {
                       return (

@@ -135,6 +135,11 @@ export async function generateUniqueBadgeNumber(
   return `${prefix}${Date.now() % 10000}`;
 }
 
+export function isValidBadgeNumber(badge: string): boolean {
+  const trimmed = badge.trim();
+  return /^[A-Za-z]{1,3}[0-9]{1,4}$/.test(trimmed) && trimmed.length <= 8;
+}
+
 export function generateBadgeNumber(role: string, preferredNum?: number): string {
   const normRole = (role || "KIEROWCA").toUpperCase() as AppRole;
   const info = ROLES[normRole] || ROLES.KIEROWCA;
@@ -234,15 +239,4 @@ export function canAssignReplacementVehicle(role?: string | null, username?: str
   if (!role) return false;
   const normRole = role.toUpperCase();
   return ["WLASCICIEL", "ZARZAD", "MECHANIK", "SPRAWDZAJACY", "DYSPOZYTOR"].includes(normRole);
-}
-
-/**
- * Waliduje poprawność formatu numeru służbowego (badgeNumber).
- * Dozwolony format: /^[A-Za-z]{1,3}[0-9]{1,4}$/, maks. 8 znaków po trim.
- */
-export function isValidBadgeNumber(badge: string | null | undefined): boolean {
-  if (!badge || typeof badge !== "string") return false;
-  const trimmed = badge.trim();
-  if (trimmed.length === 0 || trimmed.length > 8) return false;
-  return /^[A-Za-z]{1,3}[0-9]{1,4}$/.test(trimmed);
 }
