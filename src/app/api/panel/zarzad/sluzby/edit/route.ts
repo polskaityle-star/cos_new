@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { canManageDuties } from "@/lib/roles";
-import { getDayOrder } from "@/lib/brigades";
+import { getDayOrder, isBrigadeAllowedOnWeekday } from "@/lib/brigades";
 
 export async function POST(req: Request) {
   const csrfError = assertSameOrigin(req);
@@ -70,7 +70,8 @@ export async function POST(req: Request) {
     if (vacation) return NextResponse.json({ message: "Kierowca ma zaakceptowany urlop w tym terminie." }, { status: 409 });
     const order = getDayOrder(brigade);
     const weekday = date.getUTCDay();
-    if ((order === 2 && weekday !== 6) || (order === 3 && weekday !== 0) || (order === 1 && (weekday === 0 || weekday === 6))) {
+    // Order 3 ("Niedziela i Święta") nie jest ograniczany do niedzieli, bo święta mogą wypadać w dowolny dzień tygodnia
+    if (!isBrigadeAllowedOnWeekday(order, weekday)) {
       return NextResponse.json({ message: "Brygada nie pasuje do dnia tygodnia." }, { status: 400 });
     }
   }

@@ -18,6 +18,7 @@ if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
 }
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+export const JWT_STALE_GRACE_MS = 5 * 60 * 1000;
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -187,6 +188,7 @@ export const authOptions: NextAuthOptions = {
 
         token.workingDays = currentUser.workingDays;
         token.assignedVehicleId = currentUser.assignedVehicleId;
+        token.verifiedAt = Date.now();
       } else if (token.id) {
         try {
           const dbUser = await prisma.user.findUnique({
@@ -204,6 +206,7 @@ export const authOptions: NextAuthOptions = {
             delete token.assignedVehicleId;
             delete token.discordId;
             delete token.discordUsername;
+            delete token.verifiedAt;
             return token;
           }
           let finalBadge = dbUser.badgeNumber;
@@ -223,10 +226,16 @@ export const authOptions: NextAuthOptions = {
           token.role = dbUser.role;
           token.discordId = dbUser.discordId || null;
           token.discordUsername = dbUser.discordUsername || null;
+          token.verifiedAt = Date.now();
         } catch {
-          // Nie używaj starej roli, jeśli nie można zweryfikować konta w bazie.
-          delete token.id;
-          delete token.role;
+          // Nie usuwaj od razu token.id i token.role w przypadku chwilowej awarii bazy (grace period 5 min).
+          const isGracePeriodActive =
+            typeof token.verifiedAt === "number" &&
+            Date.now() - token.verifiedAt < JWT_STALE_GRACE_MS;
+          if (!isGracePeriodActive) {
+            delete token.id;
+            delete token.role;
+          }
         }
       }
       return token;

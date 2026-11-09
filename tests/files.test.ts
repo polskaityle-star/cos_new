@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isSafeStoredFile, isSafeImageUrl, isTrustedImageHost } from "../src/lib/files.ts";
+import { isSafeStoredFile, isSafeImageUrl, isTrustedImageHost, detectUploadKind } from "../src/lib/files.ts";
 
 test("isSafeStoredFile: akceptuje bezpieczne pliki graficzne", () => {
   assert.equal(
@@ -67,3 +67,31 @@ test("isTrustedImageHost: validates URLs according to strict rules", () => {
   assert.equal(isTrustedImageHost("https://user:pass@cdn.discordapp.com/photo.jpg"), false);
   assert.equal(isTrustedImageHost("not a url"), false);
 });
+
+test("detectUploadKind: poprawny PNG", () => {
+  const pngHeader = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+  assert.equal(detectUploadKind(pngHeader), "png");
+});
+
+test("detectUploadKind: poprawny JPEG", () => {
+  const jpegHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+  assert.equal(detectUploadKind(jpegHeader), "jpeg");
+});
+
+test("detectUploadKind: poprawny WebP", () => {
+  const webpHeader = Buffer.concat([
+    Buffer.from("RIFF"),
+    Buffer.from([0x24, 0x00, 0x00, 0x00]),
+    Buffer.from("WEBP"),
+  ]);
+  assert.equal(detectUploadKind(webpHeader), "webp");
+});
+
+test("detectUploadKind: pusty bufor → null", () => {
+  assert.equal(detectUploadKind(Buffer.alloc(0)), null);
+});
+
+test("detectUploadKind: losowe bajty → null", () => {
+  assert.equal(detectUploadKind(Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])), null);
+});
+

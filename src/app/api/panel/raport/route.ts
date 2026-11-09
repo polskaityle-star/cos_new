@@ -14,6 +14,7 @@ import path from "path";
 
 const ALLOWED_UPLOAD_MIME = ["image/png", "image/jpeg", "image/webp", "text/plain"];
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_DUTY_DISTANCE_KM = 2000;
 
 class FileValidationError extends Error {
   constructor(message: string, public status = 400) {
@@ -207,9 +208,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Wszystkie podstawowe pola i pliki raportu są wymagane." }, { status: 400 });
     }
 
-    if (!Number.isSafeInteger(startMileage) || !Number.isSafeInteger(endMileage) || startMileage < 0 || endMileage < startMileage || endMileage > 2_000_000_000 || endMileage - startMileage > 2000) {
+    if (!Number.isSafeInteger(startMileage) || !Number.isSafeInteger(endMileage) || startMileage < 0 || endMileage < startMileage || endMileage > 2_000_000_000 || endMileage - startMileage > MAX_DUTY_DISTANCE_KM) {
       return NextResponse.json(
-        { message: "Nieprawidłowy przebieg: liczby całkowite od 0 do 2 000 000 000, dystans od 0 do 2000 km." },
+        { message: `Nieprawidłowy przebieg: liczby całkowite od 0 do 2 000 000 000, dystans od 0 do ${MAX_DUTY_DISTANCE_KM} km.` },
         { status: 400 }
       );
     }
