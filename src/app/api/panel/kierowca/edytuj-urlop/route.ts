@@ -93,8 +93,7 @@ export async function POST(req: Request) {
     }
 
     const datesChanged =
-      request.dateStart.getTime() !== dStart.getTime() || request.dateEnd.getTime() !== dEnd.getTime();
-
+      request.dateStart?.getTime() !== dStart.getTime() || request.dateEnd?.getTime() !== dEnd.getTime();
     await prisma.driverRequest.update({
       where: { id: requestId },
       data: {
