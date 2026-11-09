@@ -139,11 +139,11 @@ export default function RegisterPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300" htmlFor="owner-setup-token">Token pierwszego właściciela (opcjonalny)</label>
+            <label className="text-xs font-semibold text-slate-300" htmlFor="owner-setup-token">Token pierwszego właściciela (wymagany, jeśli administrator go ustawił)</label>
             <input id="owner-setup-token" type="password" autoComplete="off" value={setupToken}
               onChange={e => setSetupToken(e.target.value)}
               className="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm text-white" />
-            <p className="text-[11px] text-slate-400">Tylko dla pierwszego konta, jeśli ustawiono OWNER_SETUP_TOKEN.</p>
+            <p className="text-[11px] text-slate-400">Dotyczy tylko pierwszego konta w systemie.</p>
           </div>
 
           <button disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded shadow transition-colors disabled:opacity-50">

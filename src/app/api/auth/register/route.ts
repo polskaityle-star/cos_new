@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { generateUniqueBadgeNumber } from "@/lib/roles";
@@ -67,8 +68,14 @@ export async function POST(req: Request) {
 
       const isOwner = currentCount === 0;
       if (isOwner && process.env.OWNER_SETUP_TOKEN) {
-        const setupToken = req.headers.get("x-owner-setup-token");
-        if (setupToken !== process.env.OWNER_SETUP_TOKEN) {
+        const setupToken = req.headers.get("x-owner-setup-token") || "";
+        const expectedToken = process.env.OWNER_SETUP_TOKEN;
+        const setupBuffer = Buffer.from(setupToken);
+        const expectedBuffer = Buffer.from(expectedToken);
+        const isMatch =
+          setupBuffer.length === expectedBuffer.length &&
+          crypto.timingSafeEqual(setupBuffer, expectedBuffer);
+        if (!isMatch) {
           throw new Error("INVALID_OWNER_SETUP_TOKEN");
         }
       }
