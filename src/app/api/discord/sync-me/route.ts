@@ -3,14 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { syncDiscordRolesDetailed } from "@/lib/discord";
 import { rateLimit } from "@/lib/rateLimit";
-import { assertSameOrigin } from "@/lib/csrf";
 
 const SYNC_WINDOW_MS = 10 * 60 * 1000; // 10 minut
 
-export async function POST(req: Request) {
-  const csrfError = assertSameOrigin(req);
-  if (csrfError) return csrfError;
-
+export async function POST() {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ message: "Musisz być zalogowany, aby zsynchronizować role." }, { status: 401 });
