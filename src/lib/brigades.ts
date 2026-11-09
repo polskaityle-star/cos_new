@@ -135,6 +135,27 @@ export function getDayBadgeClass(brigadeNumber?: string | null, notes?: string |
 }
 
 /**
+ * Sprawdza czy brygada o danym typie dnia (order) może być zrealizowana w dany dzień tygodnia (weekday: 0=niedziela, 6=sobota).
+ * Uwaga: order === 3 ("Niedziela i Święta") nie jest ograniczony do niedzieli, bo święta mogą wypadać w dowolny dzień tygodnia.
+ */
+export function isBrigadeAllowedOnWeekday(order: number, weekday: number): boolean {
+  if (order === 1) {
+    return weekday !== 0 && weekday !== 6;
+  }
+  if (order === 2) {
+    return weekday === 6;
+  }
+  if (order === 2.5) {
+    return weekday === 0 || weekday === 6;
+  }
+  // Order 3 ("Niedziela i Święta"): dozwolony w każdy dzień, bo święto może wypaść w dowolny dzień tygodnia
+  if (order === 3) {
+    return true;
+  }
+  return true;
+}
+
+/**
  * Sortuje brygady wg reguły:
  * 1. Numer linii (naturalnie: 1, 2, 10, 34...)
  * 2. Typ dnia: Dni robocze (1) -> Sobotni (2) -> Niedzielny (3)
