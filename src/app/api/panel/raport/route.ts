@@ -1,5 +1,5 @@
 import { assertSameOrigin } from "@/lib/csrf";
-import { isSafeStoredFile } from "@/lib/files";
+import { isSafeStoredFile, detectUploadKind } from "@/lib/files";
 import { isUserAdminOrOwner } from "@/lib/roles";
 import crypto from "crypto";
 import { NextResponse } from "next/server";
@@ -31,6 +31,18 @@ async function saveUploadFile(file: File, prefix: string): Promise<string> {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  const kind = detectUploadKind(buffer);
+
+  const kindMap: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpeg",
+    "image/webp": "webp",
+    "text/plain": "text",
+  };
+
+  if (kind !== kindMap[mimeType]) {
+    throw new FileValidationError(`Plik ${file.name} ma zawartość niezgodną z deklarowanym typem.`, 400);
+  }
 
   if (process.env.VERCEL) {
     return `data:${mimeType};base64,${buffer.toString("base64")}`;

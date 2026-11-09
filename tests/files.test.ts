@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isSafeStoredFile, isSafeImageUrl, isTrustedImageHost } from "../src/lib/files.ts";
+import { isSafeStoredFile, isSafeImageUrl, isTrustedImageHost, detectUploadKind } from "../src/lib/files.ts";
 
 test("isSafeStoredFile: akceptuje bezpieczne pliki graficzne", () => {
   assert.equal(
@@ -66,4 +66,34 @@ test("isTrustedImageHost: validates URLs according to strict rules", () => {
   assert.equal(isTrustedImageHost("https://cdn.discordapp.com/photo(1).jpg"), false);
   assert.equal(isTrustedImageHost("https://user:pass@cdn.discordapp.com/photo.jpg"), false);
   assert.equal(isTrustedImageHost("not a url"), false);
+});
+
+test("detectUploadKind: poprawne nagłówki PNG/JPEG/WebP, tekst UTF-8, bufor z NUL -> null, plik PNG deklarowany jako JPEG -> niezgodność, pusty bufor -> null", () => {
+  // Pusty bufor
+  assert.equal(detectUploadKind(Buffer.from([])), null);
+
+  // PNG
+  const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
+  assert.equal(detectUploadKind(pngBuffer), "png");
+
+  // JPEG
+  const jpegBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00]);
+  assert.equal(detectUploadKind(jpegBuffer), "jpeg");
+
+  // WebP
+  const webpBuffer = Buffer.from("RIFF\x24\x00\x00\x00WEBPVP8X\x0a\x00\x00\x00", "ascii");
+  assert.equal(detectUploadKind(webpBuffer), "webp");
+
+  // Tekst UTF-8
+  const textBuffer = Buffer.from("Zażółć gęślą jaźń", "utf-8");
+  assert.equal(detectUploadKind(textBuffer), "text");
+
+  // Bufor z NUL (0x00) w teksćie
+  const nulBuffer = Buffer.from("To jest tekst \x00 z NUL", "utf-8");
+  assert.equal(detectUploadKind(nulBuffer), null);
+
+  // Plik PNG błędnie deklarowany jako JPEG
+  // Test upewnia się, że funkcja wykrywa rzeczywistą zawartość (PNG), niezależnie od nazwy zmiennej
+  assert.equal(detectUploadKind(pngBuffer), "png");
+  assert.notEqual(detectUploadKind(pngBuffer), "jpeg");
 });
