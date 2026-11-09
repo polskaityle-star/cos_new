@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { isUserAdminOrOwner } from "@/lib/roles";
+import { warsawTodayStr } from "@/lib/dates";
+import { notifyUser, runAfter, COLORS } from "@/lib/discord";
 
 export async function POST(req: Request) {
   const csrfError = assertSameOrigin(req);
@@ -24,6 +26,13 @@ export async function POST(req: Request) {
 
     if (!requestId || !dateStartStr || !dateEndStr) {
       return NextResponse.json({ message: "Brak wymaganych danych urlopu." }, { status: 400 });
+    }
+
+    if (reason && reason.length > 1000) {
+      return NextResponse.json(
+        { message: "Uzasadnienie urlopu nie może przekraczać 1000 znaków." },
+        { status: 400 }
+      );
     }
 
     const request = await prisma.driverRequest.findUnique({
@@ -62,10 +71,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Obie daty nie w przeszłości
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (dStart < today) {
+    // Obie daty nie w przeszłości (porównanie napisów YYYY-MM-DD w strefie Europe/Warsaw)
+    const todayStr = warsawTodayStr();
+    if (dateStartStr.slice(0, 10) < todayStr) {
       return NextResponse.json(
         { message: "Data rozpoczęcia urlopu nie może być w przeszłości." },
         { status: 400 }
@@ -84,6 +92,8 @@ export async function POST(req: Request) {
       );
     }
 
+    const datesChanged =
+      request.dateStart?.getTime() !== dStart.getTime() || request.dateEnd?.getTime() !== dEnd.getTime();
     await prisma.driverRequest.update({
       where: { id: requestId },
       data: {
@@ -92,6 +102,21 @@ export async function POST(req: Request) {
         reason: reason || request.reason,
       },
     });
+
+    // Gdy urlop edytuje ktoś inny niż autor (Zarząd/Właściciel) i zmienił daty - powiadom kierowcę
+    if (isPrivileged && request.userId !== session.user.id && datesChanged) {
+      await runAfter(async () => {
+        await notifyUser(request.userId, [
+          {
+            title: "Zmiana urlopu",
+            color: COLORS.warn,
+            fields: [
+              { name: "Nowy termin", value: `${dateStartStr} – ${dateEndStr}` },
+            ],
+          },
+        ]);
+      });
+    }
 
     revalidatePath("/panel/kierowca");
     revalidatePath("/panel/zarzad");
