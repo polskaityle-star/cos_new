@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import fs from "fs";
 import path from "path";
 import { canManageFleet } from "@/lib/roles";
+import { detectUploadKind } from "@/lib/files";
 
 export async function POST(req: Request) {
   const csrfError = assertSameOrigin(req);
@@ -47,6 +48,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Dozwolone są obrazy PNG, JPEG i WebP do 3 MB." }, { status: 400 });
     }
     const buffer = Buffer.from(await imageFile.arrayBuffer());
+    const detected = detectUploadKind(buffer);
+    if (!detected || `image/${detected}` !== imageFile.type) {
+      return NextResponse.json({ message: "Zawartość pliku jest niezgodna z deklarowanym typem obrazu." }, { status: 400 });
+    }
     const mime = imageFile.type;
     if (process.env.VERCEL) {
       newImageUrl = `data:${mime};base64,${buffer.toString("base64")}`;
