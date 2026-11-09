@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const ALLOWED_GET_MIME = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+const ALLOWED_REDIRECT_HOSTS = ["cdn.discordapp.com", "media.discordapp.net"];
 const MAX_AVATAR_BYTES = 1.5 * 1024 * 1024; // ~1.5 MB
 
 export async function GET(req: Request) {
@@ -33,7 +34,19 @@ export async function GET(req: Request) {
 
     // Jeśli to zewnętrzny URL
     if (user.avatar.startsWith("https://") || user.avatar.startsWith("http://")) {
-      return NextResponse.redirect(user.avatar, 307);
+      try {
+        const url = new URL(user.avatar);
+        if (url.protocol === "https:" && ALLOWED_REDIRECT_HOSTS.includes(url.hostname)) {
+          return NextResponse.redirect(url.toString(), 307);
+        }
+      } catch {
+        // nieprawidłowy URL
+      }
+
+      return new NextResponse("Nieprawidłowy format", {
+        status: 400,
+        headers: { "X-Content-Type-Options": "nosniff" },
+      });
     }
 
     // Jeśli to base64 data URL
@@ -58,7 +71,7 @@ export async function GET(req: Request) {
           headers: {
             "Content-Type": mime,
             "X-Content-Type-Options": "nosniff",
-            "Cache-Control": "public, max-age=86400, stale-while-revalidate=43200",
+            "Cache-Control": "private, max-age=86400, stale-while-revalidate=43200",
           },
         });
       }
