@@ -229,7 +229,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "To nie jest twoja służba" }, { status: 403 });
     }
 
-    if (duty.report) {
+    if (duty.status === "CANCELLED") {
+      return NextResponse.json({ message: "Ta służba została anulowana" }, { status: 400 });
+    }
+
+    if (duty.report && duty.report.status !== "REJECTED") {
       return NextResponse.json({ message: "Raport dla tej służby już istnieje" }, { status: 400 });
     }
 
@@ -249,23 +253,38 @@ export async function POST(req: Request) {
       : null;
 
     // Tworzenie raportu i aktualizacja statusu służby
-    const transactions = [
-      prisma.report.create({
-        data: {
-          dutyId,
-          startMileage,
-          endMileage,
-          startScreenshot,
-          endScreenshot,
-          summaryFile,
-          depotScreenshots: depotScreenshotsJson,
-        }
-      }),
-      prisma.duty.update({
-        where: { id: dutyId },
-        data: { status: "COMPLETED" }
-      })
-    ];
+    const reportData = {
+      startMileage,
+      endMileage,
+      startScreenshot,
+      endScreenshot,
+      summaryFile,
+      depotScreenshots: depotScreenshotsJson,
+    };
+
+    const transactions = duty.report
+      ? [
+          prisma.report.updateMany({
+            where: { id: duty.report.id, status: "REJECTED" },
+            data: { ...reportData, status: "PENDING" },
+          }),
+          prisma.duty.update({
+            where: { id: dutyId },
+            data: { status: "COMPLETED" }
+          })
+        ]
+      : [
+          prisma.report.create({
+            data: {
+              dutyId,
+              ...reportData,
+            }
+          }),
+          prisma.duty.update({
+            where: { id: dutyId },
+            data: { status: "COMPLETED" }
+          })
+        ];
 
     await prisma.$transaction(transactions);
 

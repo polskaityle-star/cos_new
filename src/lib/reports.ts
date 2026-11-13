@@ -17,7 +17,7 @@ export interface ReviewReportResult {
 }
 
 export async function reviewReport(options: ReviewReportOptions): Promise<ReviewReportResult> {
-  const { reportId, action, reviewerId, reviewerRole } = options;
+  const { reportId, action, rejectReason, reviewerId, reviewerRole } = options;
 
   const existingReport = await prisma.report.findUnique({
     where: { id: reportId },
@@ -90,7 +90,7 @@ export async function reviewReport(options: ReviewReportOptions): Promise<Review
         {
           title: isAccepted ? "Raport zaakceptowany" : "Raport odrzucony",
           color: isAccepted ? COLORS.ok : COLORS.bad,
-          description: `Służba z ${existingReport.duty.date.toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}, linia ${existingReport.duty.line?.number ?? "-"}.`,
+          description: `Służba z ${existingReport.duty.date.toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}, linia ${existingReport.duty.line?.number ?? "-"}.${!isAccepted && rejectReason ? `\nPowód: ${rejectReason}` : ""}`,
         },
       ])
     );

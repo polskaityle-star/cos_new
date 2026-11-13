@@ -21,6 +21,23 @@ export async function POST(req: Request) {
   const reportId = searchParams.get("reportId");
   const action = searchParams.get("action");
 
+  let reason = searchParams.get("reason") || undefined;
+  if (!reason) {
+    const contentType = req.headers.get("content-type") || "";
+    try {
+      if (contentType.includes("application/json")) {
+        const body = await req.json();
+        if (typeof body?.reason === "string") reason = body.reason;
+      } else if (contentType.includes("application/x-www-form-urlencoded")) {
+        const form = await req.formData();
+        const value = form.get("reason");
+        if (typeof value === "string") reason = value;
+      }
+    } catch {
+      reason = undefined;
+    }
+  }
+
   if (!reportId || !action) {
     return NextResponse.json({ message: "Brak parametrów" }, { status: 400 });
   }
@@ -32,6 +49,7 @@ export async function POST(req: Request) {
   const result = await reviewReport({
     reportId,
     action,
+    rejectReason: reason,
     reviewerId: session.user.id,
     reviewerRole: session.user.role,
   });

@@ -1588,6 +1588,7 @@ export async function POST(req: Request) {
             const result = await reviewReport({
               reportId,
               action,
+              rejectReason: action === "reject" ? "Raport odrzucony przez Zarząd (Discord)." : undefined,
               reviewerId: user.id,
               reviewerRole: user.role,
             });
@@ -1937,7 +1938,18 @@ export async function POST(req: Request) {
             return;
           }
 
-          if (duty.report) {
+          if (duty.status === "CANCELLED") {
+            await updateDeferred(appId, token, [
+              {
+                title: "Służba anulowana",
+                color: COLORS.bad,
+                description: "Ta służba została anulowana.",
+              },
+            ]);
+            return;
+          }
+
+          if (duty.report && duty.report.status !== "REJECTED") {
             await updateDeferred(appId, token, [
               {
                 title: "Raport już istnieje",
@@ -2012,17 +2024,29 @@ export async function POST(req: Request) {
           const kmDiff = Math.max(0, endMileage - startMileage);
 
           await prisma.$transaction([
-            prisma.report.create({
-              data: {
-                dutyId: duty.id,
-                startMileage,
-                endMileage,
-                startScreenshot,
-                endScreenshot,
-                summaryFile,
-                status: "PENDING",
-              },
-            }),
+            duty.report
+              ? prisma.report.updateMany({
+                  where: { id: duty.report.id, status: "REJECTED" },
+                  data: {
+                    startMileage,
+                    endMileage,
+                    startScreenshot,
+                    endScreenshot,
+                    summaryFile,
+                    status: "PENDING",
+                  },
+                })
+              : prisma.report.create({
+                  data: {
+                    dutyId: duty.id,
+                    startMileage,
+                    endMileage,
+                    startScreenshot,
+                    endScreenshot,
+                    summaryFile,
+                    status: "PENDING",
+                  },
+                }),
             prisma.duty.update({
               where: { id: duty.id },
               data: { status: "COMPLETED" },
